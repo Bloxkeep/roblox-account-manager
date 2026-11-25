@@ -163,7 +163,10 @@ impl Ear {
             let a = ((f0 / bin).floor() as usize).max(1);
             *e = (a, ((f1 / bin).ceil() as usize).max(a + 1).min(N / 2));
         }
-        let big_win = (0..RING).map(|i| 0.5 - 0.5 * (std::f32::consts::TAU * i as f32 / (RING - 1) as f32).cos()).collect();
+        // (The bass's window leans to the newest sound, at its fullest 0.85 of the way in: an even one would weigh a
+        // kick only once it reached the middle, 40 ms on, and the ring would swell after the bars.)
+        let lean = 0.5f32.ln() / 0.85f32.ln();
+        let big_win = (0..RING).map(|i| (std::f32::consts::PI * (i as f32 / (RING - 1) as f32).powf(lean)).sin().powi(2)).collect();
         Ear { rate, win, re: vec![0.; N], im: vec![0.; N], edges, peak: 1e-4, smooth: [0.; BANDS], history: [0.; 43], hist_at: 0, last_beat: None, big_win, big_re: vec![0.; RING], big_im: vec![0.; RING], low_peak: 1e-4, low_smooth: [0.; LOW], loud_now: -99., loud_long: -99., drop: 0. }
     }
 
@@ -398,6 +401,34 @@ mod win {
         }
     }
 
+    /// How long after the music app's sound is read the speakers play it: it waits a period for Windows' mix, a period
+    /// in the speakers' buffer and a period in the device, and the speakers' own latency as Windows gives it. (Measured
+    /// on a screen recording with a 10 ms period, the bars came 17 to 34 ms before the speakers' sound.) The looks are
+    /// held that long, so the profile moves when the sound is heard, not before.
+    fn speakers_late() -> Duration {
+        unsafe {
+            let read = || -> windows::core::Result<i64> {
+                let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)?;
+                let client: IAudioClient = devices.GetDefaultAudioEndpoint(eRender, eConsole)?.Activate(CLSCTX_ALL, None)?;
+                let (mut period, mut least) = (0i64, 0i64);
+                client.GetDevicePeriod(Some(&mut period), Some(&mut least))?;
+                let fmt = client.GetMixFormat()?;
+                let done = client.Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 0, 0, fmt, None);
+                CoTaskMemFree(Some(fmt as *const _));
+                done?;
+                Ok(client.GetStreamLatency()? + 3 * period)
+            };
+            match read() {
+                // (In 100 ns steps; never more than a third of a second, whatever a driver says.)
+                Ok(t) => Duration::from_nanos((t.max(0) as u64).saturating_mul(100)).min(Duration::from_millis(330)),
+                Err(e) => {
+                    say("reading the speakers' delay", &e);
+                    Duration::ZERO
+                }
+            }
+        }
+    }
+
     fn say(what: &str, e: &dyn std::fmt::Display) {
         static SAID: Mutex<String> = Mutex::new(String::new());
         let line = format!("Song beat, {what}: {e}");
@@ -454,6 +485,12 @@ mod win {
         let capture: IAudioCaptureClient = unsafe { client.GetService()? };
         unsafe { client.Start()? };
         let mut ear = Ear::new(rate);
+        // The looks are held till the speakers play their sound (the music app's own sound is read before Windows
+        // mixes it).
+        let late = speakers_late();
+        say("held for the speakers", &format_args!("{} ms", late.as_millis()));
+        // (About 90 looks a second wait, a few dozen at most.)
+        let mut held: std::collections::VecDeque<(Instant, Beat, bool)> = std::collections::VecDeque::with_capacity(32);
         let mut ring = vec![0f32; RING];
         let (mut at, mut fresh) = (0usize, 0usize);
         let mut asked = Instant::now();
@@ -465,32 +502,11 @@ mod win {
             } else {
                 std::thread::sleep(Duration::from_millis(10));
             }
-            loop {
-                let size = match unsafe { capture.GetNextPacketSize() } {
-                    Ok(s) => s,
-                    Err(_) => break,
-                };
-                if size == 0 {
-                    break;
-                }
-                let (mut data, mut frames, mut flags) = (std::ptr::null_mut(), 0u32, 0u32);
-                if unsafe { capture.GetBuffer(&mut data, &mut frames, &mut flags, None, None) }.is_err() {
-                    break;
-                }
-                let silent = flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32 != 0 || data.is_null();
-                for f in 0..frames as usize {
-                    let mut v = 0f32;
-                    if !silent {
-                        for c in 0..channels {
-                            let i = f * channels + c;
-                            v += unsafe { if float { *(data as *const f32).add(i) } else { *(data as *const i16).add(i) as f32 / 32768. } };
-                        }
-                    }
-                    ring[at] = v / channels as f32;
-                    at = (at + 1) % RING;
-                    fresh += 1;
-                }
-                unsafe { capture.ReleaseBuffer(frames)? };
+            if drain(&capture, channels, float, rate, |_, v| {
+                ring[at] = v;
+                at = (at + 1) % RING;
+                fresh += 1;
+            })? {
                 heard = Instant::now();
             }
             // (No sound comes while the song is paused: the bands fall as silence would.)
@@ -505,7 +521,12 @@ mod win {
             while fresh >= 512 {
                 fresh -= 512;
                 let (b, beat) = ear.look(&ring, at);
-                give(b, beat);
+                held.push_back((Instant::now(), b, beat));
+            }
+            while held.front().is_some_and(|(t, _, _)| t.elapsed() >= late) {
+                if let Some((_, b, beat)) = held.pop_front() {
+                    give(b, beat);
+                }
             }
             if asked.elapsed() > Duration::from_millis(100) {
                 asked = Instant::now();
@@ -518,5 +539,38 @@ mod win {
             let _ = client.Stop();
         }
         result
+    }
+
+    /// Takes all the sound waiting: each sample (its channels mixed to one) with when Windows took it (100 ns steps, 0
+    /// when it doesn't say). Whether any came.
+    fn drain(capture: &IAudioCaptureClient, channels: usize, float: bool, rate: f32, mut each: impl FnMut(u64, f32)) -> windows::core::Result<bool> {
+        let mut any = false;
+        loop {
+            let size = match unsafe { capture.GetNextPacketSize() } {
+                Ok(s) => s,
+                Err(_) => break,
+            };
+            if size == 0 {
+                break;
+            }
+            let (mut data, mut frames, mut flags, mut taken) = (std::ptr::null_mut(), 0u32, 0u32, 0u64);
+            if unsafe { capture.GetBuffer(&mut data, &mut frames, &mut flags, None, Some(&mut taken)) }.is_err() {
+                break;
+            }
+            let silent = flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32 != 0 || data.is_null();
+            for f in 0..frames as usize {
+                let mut v = 0f32;
+                if !silent {
+                    for c in 0..channels {
+                        let i = f * channels + c;
+                        v += unsafe { if float { *(data as *const f32).add(i) } else { *(data as *const i16).add(i) as f32 / 32768. } };
+                    }
+                }
+                each(if taken == 0 { 0 } else { taken + (f as f64 * 1e7 / rate as f64) as u64 }, v / channels as f32);
+            }
+            unsafe { capture.ReleaseBuffer(frames)? };
+            any = true;
+        }
+        Ok(any)
     }
 }

@@ -907,7 +907,7 @@ ShadowVertexOutput shadow_vertex(uint vertex_id: SV_VertexID, uint instance_id: 
     Shadow shadow = shadows[shadow_id];
 
     Bounds bounds;
-    if (shadow.inset != 0u) {
+    if (shadow.inset == 1u) {
         bounds = shadow.element_bounds;
     } else {
         // Leave room for the gaussian tail outside the shadow rect.
@@ -961,7 +961,12 @@ float4 shadow_fragment(ShadowFragmentInput input): SV_TARGET {
         }
     }
 
-    if (shadow.inset != 0u) {
+    // Bloxkeep: inset 2 is an outer shadow painted in a rounded box (with_rounded_content_mask), the box in
+    // element_bounds: cut to its rounded corners as everything else in it is.
+    if (shadow.inset == 2u) {
+        alpha *= saturate(0.5 - quad_sdf(input.position.xy, shadow.element_bounds, shadow.element_corner_radii));
+    }
+    if (shadow.inset == 1u) {
         // The inset shadow is the complement of the (blurred) hole rect, clipped to the element.
         // `saturate(0.5 - d)` gives a 1-pixel antialiased edge: d <= -0.5 -> 1, d >= 0.5 -> 0.
         alpha = 1.0 - alpha;
@@ -1059,7 +1064,8 @@ StructuredBuffer<PathSprite> path_sprites: register(t1);
 
 PathSpriteVertexOutput path_sprite_vertex(uint vertex_id: SV_VertexID, uint sprite_id: SV_InstanceID) {
     float2 unit_vertex = float2(float(vertex_id & 1u), 0.5 * float(vertex_id & 2u));
-    PathSprite sprite = path_sprites[sprite_id];
+    // (Bloxkeep: all the frame's path batches' sprites are in the buffer; this batch's start at batch_start_index.)
+    PathSprite sprite = path_sprites[batch_start_index + sprite_id];
 
     // Don't apply content mask because it was already accounted for when rasterizing the path
     float4 device_position = to_device_position(unit_vertex, sprite.bounds);

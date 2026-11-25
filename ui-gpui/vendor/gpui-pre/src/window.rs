@@ -4862,7 +4862,7 @@ impl Window {
         for (i, r) in r.iter_mut().enumerate() {
             for (clip, radii) in &self.rounded_clip_stack {
                 let theirs = [radii.top_left, radii.top_right, radii.bottom_right, radii.bottom_left][i];
-                if theirs > *r && near(corner_at(&rect, i), corner_at(clip, i)) {
+                if theirs > *r && near_inside(corner_at(&rect, i), corner_at(clip, i)) {
                     *r = theirs;
                 }
             }
@@ -5261,8 +5261,13 @@ impl Window {
         let scale_factor = self.scale_factor();
         let content_mask = self.snapped_content_mask();
         let opacity = self.element_opacity();
-        let element_bounds = self.cover_bounds(bounds);
-        let element_corner_radii = corner_radii.scale(scale_factor);
+        // Bloxkeep: in a rounded box, cut to its corners (inset 2: the renderer cuts the shadow to the box given as
+        // the element), as quads and pictures are (rounded_by_clips): a glow inside a card never spills past its
+        // rounded corners.
+        let (element_bounds, element_corner_radii, kind) = match self.rounded_clip_stack.last() {
+            Some((clip, radii)) => (self.cover_bounds(*clip), radii.scale(scale_factor), 2),
+            None => (self.cover_bounds(bounds), corner_radii.scale(scale_factor), 0),
+        };
         for shadow in shadows {
             if shadow.inset {
                 continue;
@@ -5277,7 +5282,7 @@ impl Window {
                 color: shadow.color.opacity(opacity),
                 element_bounds,
                 element_corner_radii,
-                inset: 0,
+                inset: kind,
                 pad: 0,
             });
         }
@@ -11119,6 +11124,12 @@ fn corner_at(b: &Bounds<Pixels>, i: usize) -> Point<Pixels> {
 /// Bloxkeep: two points within half a pixel.
 fn near(a: Point<Pixels>, b: Point<Pixels>) -> bool {
     (a.x - b.x).0.abs() < 0.5 && (a.y - b.y).0.abs() < 0.5
+}
+
+/// Bloxkeep: a corner at a rounded box's corner, or just inside its border (a box laid in a bordered card starts a
+/// pixel in, and its corner would stay square past the card's rounding).
+fn near_inside(a: Point<Pixels>, b: Point<Pixels>) -> bool {
+    (a.x - b.x).0.abs() < 2. && (a.y - b.y).0.abs() < 2.
 }
 
 /// Bloxkeep: `Window::refresh` was asked while the window was drawn (see there), said once for each place.
