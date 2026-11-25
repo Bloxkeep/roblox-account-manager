@@ -2972,32 +2972,36 @@ fn notice_bars(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
 }
 
 /// Roblox's key for a broken rule ("Experiment.Reminders.ViolationScams") as the name of ours (rn.rule.*): Roblox
-/// names several the same, and one it may add later is "other".
-fn rule_of(key: &str) -> &'static str {
-    let v = key.rsplit("Violation").next().unwrap_or_default().trim_end_matches(".V2");
-    match v {
-        "SexualContent" => "sexual",
-        "IrlDangerousActivities" | "EncouragingDangerousBehavior" => "harm",
-        "AskingForPII" | "SharingYourOwnPii" => "pii",
-        "BullyingAndHarassment" | "MisleadingImpersonationMisrepresentation" | "ExtortionAndBlackmail" | "ThreatsOrAbuseOfRobloxEmployeesOrAffiliates" => "bullying",
-        "DiscriminationAndHate" => "hate",
-        "ViolentContentAndGore" => "violence",
-        "IllegalAndRegulatedGoodsAndActivities" | "ContestsAndSweepstakes" => "illegal",
-        "RomanticContent" => "romance",
-        "Profanity" => "profanity",
-        "PoliticalContent" => "politics",
-        "Scams" => "scams",
-        "Spam" => "spam",
-        "DirectingUsersOffPlatform" => "offPlatform",
-        "DisruptiveAudio" | "MisusingRobloxSystems" => "misuse",
-        "CheatingAndExploiting" => "cheating",
-        "Dmca" | "IpViolation" | "Trademark" => "ip",
-        "RobloxEconomy" => "economy",
-        "Advertising" => "ads",
-        "RealWorldTragedy" => "tragedy",
-        "OffPlatformSpeechAndBehavior" => "offPlatformSpeech",
-        "TerrorismExtremism" => "extremism",
-        "VirtualCasino" => "casino",
+/// names several the same, and one it may add later is "other". A violation's own key ("VIOLATION_TYPE_SCAMS", the
+/// older "ABUSE_TYPE_…") names them the same way, in capitals.
+pub(crate) fn rule_of(key: &str) -> &'static str {
+    let v = key.trim_end_matches(".V2").rsplit('.').next().unwrap_or_default();
+    let v = v.strip_prefix("Violation").unwrap_or(v);
+    let v = v.trim_start_matches("VIOLATION_TYPE_").trim_start_matches("ABUSE_TYPE_");
+    let v: String = v.chars().filter(|c| *c != '_').collect::<String>().to_ascii_lowercase();
+    match v.as_str() {
+        "sexualcontent" => "sexual",
+        "irldangerousactivities" | "encouragingdangerousbehavior" => "harm",
+        "askingforpii" | "sharingyourownpii" => "pii",
+        "bullyingandharassment" | "misleadingimpersonationmisrepresentation" | "extortionandblackmail" | "threatsorabuseofrobloxemployeesoraffiliates" => "bullying",
+        "discriminationandhate" => "hate",
+        "violentcontentandgore" => "violence",
+        "illegalandregulatedgoodsandactivities" | "contestsandsweepstakes" => "illegal",
+        "romanticcontent" => "romance",
+        "profanity" => "profanity",
+        "politicalcontent" => "politics",
+        "scams" => "scams",
+        "spam" => "spam",
+        "directingusersoffplatform" => "offPlatform",
+        "disruptiveaudio" | "misusingrobloxsystems" => "misuse",
+        "cheatingandexploiting" => "cheating",
+        "dmca" | "ipviolation" | "trademark" => "ip",
+        "robloxeconomy" => "economy",
+        "advertising" => "ads",
+        "realworldtragedy" => "tragedy",
+        "offplatformspeechandbehavior" => "offPlatformSpeech",
+        "terrorismextremism" => "extremism",
+        "virtualcasino" => "casino",
         _ => "other",
     }
 }

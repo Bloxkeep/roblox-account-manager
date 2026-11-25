@@ -4750,6 +4750,100 @@ pub fn collection(user: i64) -> Vec<Ware> {
     let (details, pics) = both(|| post("https://catalog.roblox.com/v1/catalog/items/details", &serde_json::json!({ "items": items }), None).ok(), || thumbs("assets?size=420x420&assetIds=", &ids));
     for v in details.as_ref().and_then(|d| d.get("data")).and_then(Value::as_array).into_iter().flatten() {
         if let Some(w) = list.iter_mut().find(|w| w.id == int(v, "id")) {
+/// A violation on the account, as Roblox's Account status page lists it (moderation-appeal-service v1, the website's
+/// SafetyDashboard): what was moderated (`kind`: "behavior" when Roblox gives nothing more, "chat", "avatar", "look",
+/// "bundle", or the asset's: "audio", "image", "asset", "model", "experience", "accessory", "mesh", "plugin"), when,
+/// where its appeal stands (`state`: "denied", "accepted", "inactive", "unavailable", or "" while open or under
+/// appeal, where Roblox's list says nothing either), the rules broken (Roblox's VIOLATION_TYPE_… keys), and until when
+/// it may still be appealed, when it may.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Violation {
+    pub id: String,
+    pub kind: &'static str,
+    pub at: Option<i64>,
+    pub state: &'static str,
+    pub rules: Vec<String>,
+    pub appeal_by: Option<i64>,
+}
+
+/// The account's violations, newest first (one page of 50; Roblox's page asks the same way).
+pub fn violations(cookie: &str, user: i64) -> Result<Vec<Violation>, String> {
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_NOTICES").is_ok() {
+        let day = 86_400;
+        let now = crate::time::now_secs();
+        return Ok(vec![
+            Violation { id: "1".into(), kind: "chat", at: Some(now - 2 * day), state: "", rules: vec!["VIOLATION_TYPE_PROFANITY".into()], appeal_by: Some(now + 28 * day) },
+            Violation { id: "2".into(), kind: "image", at: Some(now - 40 * day), state: "denied", rules: vec!["VIOLATION_TYPE_SPAM".into()], appeal_by: None },
+            Violation { id: "3".into(), kind: "behavior", at: Some(now - 200 * day), state: "inactive", rules: vec![], appeal_by: None },
+        ]);
+    }
+    if cfg!(feature = "shot") {
+        return Ok(Vec::new());
+    }
+    let d = get(&format!("https://apis.roblox.com/moderation-appeal-service/v1/users/{user}/violations?page_size=50"), Some(cookie))?;
+    Ok(violations_of(&d, crate::time::now_secs()))
+}
+
+/// moderation-appeal-service's list answer, read as Roblox's page reads it (violations.ts, violationI18n.tsx), `now`
+/// to tell an appeal's time gone.
+pub fn violations_of(d: &Value, now: i64) -> Vec<Violation> {
+    let mut list: Vec<Violation> = d
+        .get("violations")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .map(|v| {
+            let content = v.get("content").filter(|c| c.is_object());
+            // Roblox's own reading: an asset, a bundle, an avatar (a profile too), a look, a chat; with neither content
+            // nor evidence it is "Your behavior". Evidence names its kind in words of Roblox's own (not ours): the same.
+            let kind = match content.map(|c| text(c, "content_type")).as_deref() {
+                Some("CONTENT_TYPE_ASSET") => match text(content.unwrap_or(&Value::Null), "asset_type").as_str() {
+                    "ASSET_TYPE_AUDIO" => "audio",
+                    "ASSET_TYPE_IMAGE" => "image",
+                    "ASSET_TYPE_MODEL" => "model",
+                    "ASSET_TYPE_EXPERIENCE" => "experience",
+                    "ASSET_TYPE_3D_ACCESSORY" => "accessory",
+                    "ASSET_TYPE_MESH" => "mesh",
+                    "ASSET_TYPE_PLUGIN" => "plugin",
+                    _ => "asset",
+                },
+                Some("CONTENT_TYPE_BUNDLE") => "bundle",
+                Some("CONTENT_TYPE_AVATAR" | "CONTENT_TYPE_USER_PROFILE") => "avatar",
+                Some("CONTENT_TYPE_LOOK") => "look",
+                Some("CONTENT_TYPE_CHAT") => "chat",
+                _ => "behavior",
+            };
+            let state = text(v, "state");
+            let by = v.get("appeal_by_time").and_then(Value::as_str).and_then(crate::time::iso_secs);
+            let tries = v.get("remaining_appeal_attempts").and_then(Value::as_i64).unwrap_or(0);
+            let open = matches!(state.as_str(), "VIOLATION_STATE_INITIATED" | "VIOLATION_STATE_APPEAL_DENIED");
+            let mut rules: Vec<String> = v
+                .get("abuse_type_keys")
+                .and_then(Value::as_object)
+                .map(|m| m.keys().filter(|k| !matches!(k.as_str(), "VIOLATION_TYPE_NONE" | "VIOLATION_TYPE_INVALID")).cloned().collect())
+                .unwrap_or_default();
+            rules.sort();
+            Violation {
+                id: text(v, "uid"),
+                kind,
+                at: v.get("create_time").and_then(Value::as_str).and_then(crate::time::iso_secs),
+                state: match state.as_str() {
+                    "VIOLATION_STATE_APPEAL_DENIED" => "denied",
+                    "VIOLATION_STATE_APPEAL_ACCEPTED" => "accepted",
+                    "VIOLATION_STATE_INACTIVE" => "inactive",
+                    "VIOLATION_STATE_EDUCATIONAL_PASS" => "unavailable",
+                    _ => "",
+                },
+                rules,
+                appeal_by: by.filter(|t| open && tries > 0 && *t > now),
+            }
+        })
+        .collect();
+    list.sort_by_key(|v| std::cmp::Reverse(v.at.unwrap_or(0)));
+    list
+}
+
             let status = text(v, "priceStatus").replace(' ', "").to_lowercase();
             w.price = match status.as_str() {
                 "free" => Some(0),

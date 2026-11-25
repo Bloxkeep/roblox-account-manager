@@ -100,6 +100,25 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     let l = crate::roblox::reminder_of(&json!({ "shouldSurfaceReminder": true, "nudgeType": "TEXT_FILTER_EDUCATION", "experimentVariant": "warning", "interventionId": "i3" }));
     c.check("…the warning one, its tip respect when Roblox names none", l.as_ref().and_then(|r| r.lesson.clone()) == Some(crate::roblox::Lesson { changed: false, tip: "respect" }), format!("{l:?}"));
     c.check("…a nudge of a kind not known is left out", crate::roblox::reminder_of(&json!({ "shouldSurfaceReminder": true, "nudgeType": "NEW_KIND", "policyViolation": "x" })).is_none(), ());
+    // Violations, as Roblox's Account status page reads moderation-appeal-service's list.
+    let now = 1_790_000_000;
+    let v = crate::roblox::violations_of(&json!({ "violations": [
+        { "uid": "a", "create_time": "2026-01-02T03:04:05Z", "state": "VIOLATION_STATE_INITIATED", "remaining_appeal_attempts": 1,
+          "appeal_by_time": "2027-01-15T08:00:00Z", "content": { "content_type": "CONTENT_TYPE_CHAT" },
+          "abuse_type_keys": { "VIOLATION_TYPE_SCAMS": "x", "VIOLATION_TYPE_NONE": "y" } },
+        { "uid": "b", "create_time": "2026-03-01T00:00:00Z", "state": "VIOLATION_STATE_APPEAL_DENIED", "remaining_appeal_attempts": 0,
+          "appeal_by_time": "2027-01-15T08:00:00Z", "content": { "content_type": "CONTENT_TYPE_ASSET", "asset_type": "ASSET_TYPE_3D_ACCESSORY" } },
+        { "uid": "c", "create_time": "2025-05-01T00:00:00Z", "state": "VIOLATION_STATE_EDUCATIONAL_PASS", "evidence": { "type": "other" } } ],
+        "next_page_token": "" }), now);
+    let got: Vec<(&str, &str, &str, bool)> = v.iter().map(|v| (v.id.as_str(), v.kind, v.state, v.appeal_by.is_some())).collect();
+    c.check("violations: newest first, what was moderated, where the appeal stands, open to appeal while tries are left",
+        got == [("b", "accessory", "denied", false), ("a", "chat", "", true), ("c", "behavior", "unavailable", false)], format!("{got:?}"));
+    c.check("…the rules broken, Roblox's empty ones left out", v.get(1).is_some_and(|v| v.rules == ["VIOLATION_TYPE_SCAMS"]), format!("{v:?}"));
+    c.check("…an appeal's time gone is no appeal", crate::roblox::violations_of(&json!({ "violations": [{ "uid": "d", "state": "VIOLATION_STATE_INITIATED",
+        "remaining_appeal_attempts": 2, "appeal_by_time": "2020-01-01T00:00:00Z" }] }), now).first().is_some_and(|v| v.appeal_by.is_none()), ());
+    let rules: Vec<&str> = ["VIOLATION_TYPE_SCAMS", "VIOLATION_TYPE_ASKING_FOR_PII", "ABUSE_TYPE_PROFANITY", "Experiment.Reminders.ViolationIpViolation", "Experiment.Reminders.ViolationScams.V2", "VIOLATION_TYPE_NEW"]
+        .iter().map(|k| crate::pages::games::rule_of(k)).collect();
+    c.check("a broken rule is named from a violation's key and a reminder's", rules == ["scams", "pii", "profanity", "ip", "scams", "other"], format!("{rules:?}"));
     for (key, want) in [("Label.AgeGroup13To15", "13–15"), ("Label.AgeGroup18Plus", "18+"), ("Label.AgeGroupUnder9", "<9"), ("Label.AgeGroupUnknown", "")] {
         let got = crate::roblox::age_words(key);
         c.check(&format!("age group {key}"), got == want, &got);

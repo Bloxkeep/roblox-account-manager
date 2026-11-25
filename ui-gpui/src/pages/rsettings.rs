@@ -78,6 +78,10 @@ pub struct Data {
     /// Account status, as Roblox's own page has it: nothing against it (Ok None), a ban or a warning, or the read
     /// failed. It was only behind the card's ⋮ menu, where the owner never found it (2026-11-15).
     held: Option<Result<Option<roblox::Held>, String>>,
+    /// The account's violations (Roblox's Account status page lists them), None while read; every one shown or the
+    /// first five.
+    violations: Option<Result<Vec<roblox::Violation>, String>>,
+    vio_all: bool,
     /// Where the account is signed in (Roblox's Settings › Security › Where you're logged in), None while read; every
     /// one shown or the first ten (Roblox's page shows ten, then Show more); the places being logged out now.
     places: Option<Result<roblox::Places, String>>,
@@ -147,6 +151,14 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
     reply(held, cx, move |r, got, cx| {
         if r.rset.of == user {
             r.rset.held = Some(got);
+            cx.notify();
+        }
+    });
+    let c6 = cookie.clone();
+    let vio = roblox::run(move || roblox::violations(&c6, user));
+    reply(vio, cx, move |r, got, cx| {
+        if r.rset.of == user {
+            r.rset.violations = Some(got);
             cx.notify();
         }
     });
@@ -893,7 +905,7 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
     let part = rs.part;
     let mut inner = div().px(px(PAGE_X)).pt(px(12.)).pb(px(32.)).w_full().flex().flex_col().gap(px(SECTION_GAP)).child(part_head(root, part)).children(pin_bar);
     inner = match part {
-        Part::Account => inner.child(account).child(section(root.tr("rs.about"), about)),
+        Part::Account => inner.child(account).child(section(root.tr("rs.vio"), violations_card(root, cx))).child(section(root.tr("rs.about"), about)),
         Part::Privacy => inner.child(privacy).child(section(root.tr("rs.maturity"), maturity)).child(section(root.tr("blk.title"), blocked_card(root, cx))),
         Part::Places => inner.child(places_card(root, cx)),
         Part::Trades => inner.child(trades),
@@ -937,6 +949,76 @@ fn place_row(i: usize, mark: &'static str, what: String, sub: (String, Option<St
         )
         .children(end.map(|e| div().flex_none().flex().items_center().gap(px(10.)).child(e)))
         .into_any_element()
+}
+
+/// The account's violations, as Roblox's Account status page lists them: what was moderated, when and for which
+/// rules, and where its appeal stands (or until when it may be appealed: on Roblox's page, above). Five, then Show more.
+fn violations_card(root: &Root, cx: &mut Context<Root>) -> Div {
+    let rs = &root.rset;
+    let note = |text: String| div().px(px(20.)).py(px(18.)).text_size(px(T_M)).text_color(c(MUTED)).child(text);
+    let card = surface().overflow_hidden().flex().flex_col();
+    let list = match &rs.violations {
+        None => return card.child(note(root.tr("vis.reading"))),
+        Some(Err(why)) => return card.child(note(root.i18n.tv("rs.vioFailed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]))),
+        Some(Ok(l)) if l.is_empty() => return card.child(note(root.tr("rs.vioNone"))),
+        Some(Ok(l)) => l,
+    };
+    let shown = if rs.vio_all { list.len() } else { list.len().min(5) };
+    let mut rows: Vec<AnyElement> = list
+        .iter()
+        .take(shown)
+        .enumerate()
+        .map(|(i, v)| {
+            let mark = match v.kind {
+                "chat" => "message",
+                "avatar" | "accessory" | "look" | "bundle" => "user",
+                "audio" => "music",
+                "image" => "image",
+                "experience" => "gamepad",
+                "behavior" => "shield",
+                _ => "layers",
+            };
+            let mut rules: Vec<String> = v.rules.iter().map(|k| super::games::rule_of(k)).filter(|k| *k != "other").map(|k| root.tr(&format!("rn.rule.{k}"))).collect();
+            rules.dedup();
+            let mut sub: Vec<String> = v.at.map(|t| date(root, t)).into_iter().collect();
+            sub.extend(rules.first().map(|r| capital(r)).into_iter().chain(rules.iter().skip(1).cloned()));
+            let end = match v.state {
+                "denied" => Some(badge(root.tr("rs.vioDenied"), Tone::Bad).into_any_element()),
+                "accepted" => Some(badge(root.tr("rs.vioAccepted"), Tone::Ok).into_any_element()),
+                "inactive" => Some(badge(root.tr("rs.vioInactive"), Tone::Muted).into_any_element()),
+                "unavailable" => Some(badge(root.tr("rs.vioNoAppeal"), Tone::Muted).into_any_element()),
+                _ => v.appeal_by.map(|t| {
+                    div().text_size(px(T_M)).text_color(c(MUTED)).font_features(tnum()).whitespace_nowrap().child(root.i18n.tv("rs.vioBy", &[("t", &date(root, t))])).into_any_element()
+                }),
+            };
+            place_row(i, mark, root.tr(&format!("rs.vk.{}", v.kind)), (sub.join(" · "), None), end)
+        })
+        .collect();
+    if list.len() > 5 {
+        let all = rs.vio_all;
+        let words = if all { root.tr("gp.less") } else { root.i18n.tv("rs.placesMore", &[("n", &(list.len() - shown).to_string())]) };
+        let more = Button::new("rs-vio-more", words)
+            .small()
+            .quiet()
+            .icon_end(if all { "chevronUp" } else { "chevronDown" })
+            .on_click(cx.listener(move |r, _, _, cx| {
+                r.rset.vio_all = !all;
+                cx.notify();
+            }));
+        rows.push(div().px(px(20.)).py(px(10.)).border_t_1().border_color(c(LINE)).flex().justify_center().child(more).into_any_element());
+    }
+    card.children(rows)
+}
+
+/// A day with its year, as the birthday row says one (this PC's clock).
+fn date(root: &Root, secs: i64) -> String {
+    let (y, m, d) = crate::time::civil((secs + crate::time::utc_offset_secs()).div_euclid(86_400));
+    if root.i18n.lang != "en" { crate::lang::cur().dmy(d, m, y) } else { format!("{y}-{m:02}-{d:02}") }
+}
+
+fn capital(s: &str) -> String {
+    let mut c = s.chars();
+    c.next().map(|f| f.to_uppercase().chain(c).collect()).unwrap_or_default()
 }
 
 /// Where the account is signed in, as Roblox's Settings › Security has it and Discord's Devices lays it out: this PC
