@@ -34,6 +34,9 @@ export async function scramble(key, id) {
 
 /** How long a PC has had Bloxkeep, as the app says it (its data folder's age): a day, a week, longer. */
 export const AGES = ['new', 'week', 'old'];
+/** The app's languages (ui-gpui/src/lang.rs ALL), each named in its own words on the dashboard; anything else counts as English. */
+export const LANGS = { en: 'English', vi: 'Tiếng Việt', es: 'Español', pt: 'Português (Brasil)', id: 'Bahasa Indonesia', fr: 'Français',
+  de: 'Deutsch', ru: 'Русский', ja: '日本語', ko: '한국어', tr: 'Türkçe', pl: 'Polski', th: 'ไทย', lo: 'ລາວ', fil: 'Filipino', ms: 'Bahasa Melayu' };
 /** How long they'd had it, in the developers' /online lines. */
 const AGE_WORDS = { new: 'had it a day', week: 'a week', old: 'longer' };
 /** Why someone removed Bloxkeep, as its uninstaller's buttons say it: after "It didn't work", what didn't (signin,
@@ -94,7 +97,7 @@ export function readBeat(body) {
     return null;
   const name = typeof body.board === 'string' ? body.board.normalize('NFC').replace(/\s+/g, ' ').trim() : '';
   return {
-    id, app, lang: body.language === 'vi' ? 'vi' : 'en', first: body.first === true, age: AGES.includes(body.age) ? body.age : null,
+    id, app, lang: Object.hasOwn(LANGS, body.language) ? body.language : 'en', first: body.first === true, age: AGES.includes(body.age) ? body.age : null,
     games: ids(body.games, GAMES_MAX),
     alts: Number.isSafeInteger(body.alts) ? Math.min(Math.max(body.alts, 0), ALTS_MAX) : 0,
     drops: (Array.isArray(body.drops) ? body.drops : []).filter(d => Number.isSafeInteger(d?.game) && d.game > 0 && DROPS.includes(d.why))
@@ -371,7 +374,7 @@ const T = vi ? {
   why: { broken: 'không dùng được', signin: 'không đăng nhập được', launch: 'Roblox không mở', antivirus: 'bị diệt virus chặn', unneeded: 'không cần nữa', hard: 'khó dùng', other: 'lý do khác', none: 'không nói' }, installsDay: 'Cài mới', removedDay: 'Gỡ',
   byLang: 'Đang online, theo ngôn ngữ', nobody: 'Chưa có ai', at: t => 'lúc ' + t, none: 'Chưa có ai trong hôm nay', day: 'Ngày',
   foot: m => 'Tính các app Bloxkeep đã báo đang mở trong ' + m + ' phút qua. Tự cập nhật mỗi 30 giây.', error: 'Không tải được số liệu. Thử lại sau ít phút.',
-  langs: { vi: 'Tiếng Việt', en: 'Tiếng Anh' }, updated: t => 'Cập nhật lúc ' + t,
+  langs: { ...${JSON.stringify(LANGS)}, vi: 'Tiếng Việt', en: 'Tiếng Anh' }, updated: t => 'Cập nhật lúc ' + t,
   upd: { current: 'báo đã mới nhất', waiting: 'đang chờ', off: 'tắt cập nhật', limit: 'GitHub chặn', offline: 'mất mạng', error: 'kiểm tra lỗi', failed: 'cài lỗi', none: 'không tự cập nhật được',
     'waiting-inuse': 'chờ: đang dùng', 'waiting-roblox': 'chờ: Roblox bận', 'waiting-app': 'chờ: app bận', 'waiting-window': 'chờ: cửa sổ khác', 'waiting-installer': 'chờ: trình cài' },
 } : {
@@ -380,7 +383,7 @@ const T = vi ? {
   why: { broken: "didn't work", signin: "couldn't sign in", launch: "Roblox didn't open", antivirus: 'antivirus', unneeded: 'not needed', hard: 'too hard', other: 'other', none: 'no reason' }, installsDay: 'New installs', removedDay: 'Removed',
   byLang: 'Online now, by language', nobody: 'Nobody', at: t => 'at ' + t, none: 'Nobody today yet', day: 'Day',
   foot: m => "Counts the Bloxkeep apps that said they're open in the last " + m + ' minutes. Updates every 30 seconds.',
-  error: "Couldn't load the numbers. Try again in a few minutes.", langs: { vi: 'Vietnamese', en: 'English' }, updated: t => 'Updated ' + t,
+  error: "Couldn't load the numbers. Try again in a few minutes.", langs: { ...${JSON.stringify(LANGS)}, vi: 'Vietnamese', en: 'English' }, updated: t => 'Updated ' + t,
   upd: ${JSON.stringify(UPDATE_WORDS)},
 };
 if (vi) document.documentElement.lang = 'vi';
