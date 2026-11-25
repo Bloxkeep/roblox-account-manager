@@ -2816,10 +2816,18 @@ impl Window {
     }
 
     /// Mark the window as dirty, scheduling it to be redrawn on the next frame.
+    ///
+    /// Bloxkeep: asked while the window is being drawn (a render, a prepaint, a paint) it does nothing, as the frame
+    /// is already being made and no next one is asked for: what it follows is to be told where that changes (or the
+    /// next frame asked for with `request_animation_frame`). A debug build says so once for each place that does it.
+    #[cfg_attr(debug_assertions, track_caller)]
     pub fn refresh(&mut self) {
         if self.invalidator.not_drawing() {
             self.refreshing = true;
             self.invalidator.set_dirty(true);
+        } else {
+            #[cfg(debug_assertions)]
+            refresh_while_drawing(std::panic::Location::caller());
         }
     }
 
@@ -11032,4 +11040,16 @@ fn corner_at(b: &Bounds<Pixels>, i: usize) -> Point<Pixels> {
 /// Bloxkeep: two points within half a pixel.
 fn near(a: Point<Pixels>, b: Point<Pixels>) -> bool {
     (a.x - b.x).0.abs() < 0.5 && (a.y - b.y).0.abs() < 0.5
+}
+
+/// Bloxkeep: `Window::refresh` was asked while the window was drawn (see there), said once for each place.
+#[cfg(debug_assertions)]
+#[cold]
+fn refresh_while_drawing(at: &'static std::panic::Location<'static>) {
+    thread_local! {
+        static SAID: RefCell<FxHashSet<(&'static str, u32, u32)>> = RefCell::default();
+    }
+    if SAID.with(|said| said.borrow_mut().insert((at.file(), at.line(), at.column()))) {
+        eprintln!("Window::refresh() at {at} was called while the window was being drawn, where it does nothing");
+    }
 }

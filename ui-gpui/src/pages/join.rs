@@ -3,7 +3,6 @@
 // jobId, userId, name, displayName, game }); found, the join is the app's "joinServer" through the usual launch, so its
 // warnings ask first, and with "look them up again" ticked a rejoin goes wherever that player is by then. Names looked
 // up before are offered again (the app's recentPlayers), each with a way to forget it.
-use std::{cell::Cell, rc::Rc};
 
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::dialog::DialogEntrance;
@@ -133,14 +132,10 @@ pub fn open(r: &mut Root, ids: Vec<String>, window: &mut Window, cx: &mut Contex
     // (The recent names are the app's: the box is drawn again as its state changes.)
     r.help_open = true;
     let this = cx.weak_entity();
-    let first = Rc::new(Cell::new(true));
+    // The name box has the keyboard as the box opens (given here, once: its draws leave the keyboard where it is).
+    let keys = r.jp_name.read(cx).focus_handle(cx);
     window.open_dialog(cx, move |dialog, window, cx| {
         let Some(root) = this.upgrade() else { return dialog };
-        // The name box has the keyboard as the box opens (once: later draws leave the keyboard where it is).
-        if first.replace(false) {
-            let h = root.read(cx).jp_name.read(cx).focus_handle(cx);
-            window.focus(&h, cx);
-        }
         let r = root.read(cx);
         let n = r.join.ids.len() as i64;
         let recent: Vec<String> = r.state.pointer("/settings/recentPlayers").and_then(Value::as_array).map(|l| l.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default();
@@ -252,4 +247,5 @@ pub fn open(r: &mut Root, ids: Vec<String>, window: &mut Window, cx: &mut Contex
         .child(dialog_body(body))
         .footer(foot)
     });
+    window.focus(&keys, cx);
 }

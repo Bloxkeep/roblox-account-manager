@@ -51,12 +51,11 @@ pub struct Look {
     deleting: Option<String>,
     /// The name box is to be emptied (it was saved).
     clear_name: bool,
-    scale: f32,
 }
 
-/// Each frame on Settings: the boxes made the first time, the screen's scale kept for the tiles' pictures.
+/// Root's data changed while on Settings (shell.rs `settle`): the boxes made the first time, the name box emptied once
+/// saved.
 pub fn settle(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
-    r.settings.look.scale = window.scale_factor();
     if r.settings.look.boxes.is_none() {
         let name = cx.new(|cx| InputState::new(window, cx).placeholder(r.tr("ct.namePh")));
         let hex = cx.new(|cx| InputState::new(window, cx).placeholder("#1b2a3a"));
@@ -413,7 +412,7 @@ pub fn appearance(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
 
 /// A theme's tile: a small window in its colours (its picture behind), a line of words and its accent, its name under.
 pub(crate) fn tile(root: &Root, id: &'static str, i: usize, on: bool, uses: Option<i64>, cx: &mut Context<Root>) -> impl IntoElement {
-    let scale = if root.settings.look.scale > 0. { root.settings.look.scale } else { 1. };
+    let scale = crate::kit::screen_scale();
     let (w, h) = ((TILE_W * scale).round() as u32, (TILE_H * scale).round() as u32);
     // A little window of the theme; `half` is one of Sync with Windows' two: its own whole window in half the tile (cut
     // out of a whole one, the split went through the title line and left the dark half a lone bar, review 7.2).
@@ -599,7 +598,7 @@ fn saved_rows(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
         let on = using.as_deref() == Some(id.as_str());
         let mut dot = div().relative().w(px(34.)).h(px(24.)).flex_none().rounded(px(6.)).overflow_hidden().border_1().border_color(ca(WHITE, 0.14)).bg(p.get(GROUND));
         if let Some(bk) = &p.backdrop {
-            let scale = if root.settings.look.scale > 0. { root.settings.look.scale } else { 1. };
+            let scale = crate::kit::screen_scale();
             if let Some(pic) = crate::scene::thumb(&bk.file, bk.under, bk.veil, (34. * scale) as u32, (24. * scale) as u32, cx) {
                 dot = dot.child(img(ImageSource::Render(pic)).absolute().inset_0().size_full().object_fit(ObjectFit::Cover));
             }

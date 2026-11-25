@@ -1112,8 +1112,224 @@ impl Root {
                 }
             }));
         }
+        // The pages' asks that go by time (a list read again once a minute old, Roblox told every 30 s that an
+        // account's tab is open, the community's figures each minute) are looked at each second while the window is
+        // seen: a frame is drawn only when something on it changes, and none at all while it is hidden.
+        root.tasks.push(cx.spawn_in(window, async move |this, cx| {
+            loop {
+                cx.background_executor().timer(Duration::from_secs(1)).await;
+                let alive = this.update_in(cx, |r, window, cx| {
+                    if window.is_visible() {
+                        r.want_home_data(cx);
+                        r.community_tick();
+                    }
+                });
+                if alive.is_err() {
+                    break;
+                }
+            }
+        }));
+        crate::motion::main_window(window);
         window.focus(&root.focus, cx);
+        cx.defer_in(window, |r, window, cx| {
+            // What follows from Root's data (`settle`) is worked out when it changes, as Root is told so: not at each
+            // frame, most of which only move what motion.rs paints.
+            let me = cx.entity();
+            cx.observe_in(&me, window, |r, _, window, cx| r.settle(window, cx)).detach();
+            // A dialog opened or closed (the window's root holds them, and is told when they change).
+            if let Some(Some(base)) = window.root::<gpui_kit::base::Root>() {
+                cx.observe_in(&base, window, |r, _, window, cx| r.tell_busy(window, cx)).detach();
+            }
+            r.settle(window, cx);
+        });
         root
+    }
+
+    /// What follows from Root's data, worked out each time it changes (Root notified; `new` observes it), before the
+    /// frame that shows it: boxes made or emptied as a page or a view needs them, what the app is told about the page
+    /// (Settings opened, a form open), the boxes waiting for a window, what the page shown asks for.
+    fn settle(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        pages::lock::settle(self, cx);
+        pages::games::settle_words(self, window, cx);
+        pages::rsettings::settle(self, window, cx);
+        pages::wiki::settle(self, window, cx);
+        pages::accounts::settle_job(window, cx);
+        // Settings left (or the app locked): typed passwords emptied, the Discord link hidden again.
+        pages::settings::settle(self, window, cx);
+        // The search reads every part's rows, Discord's too: its boxes are made here the first time something is
+        // searched (they were only made when Discord itself was opened, so "discord" found two unrelated rows).
+        if self.page == Page::Settings && self.settings.dc.is_none() && !self.set_q.read(cx).value().trim().is_empty() {
+            pages::settings::ensure_discord(self, window, cx);
+        }
+        if self.page == Page::Settings {
+            pages::settings::appearance::settle(self, window, cx);
+        }
+        self.community_tick();
+        self.tell_busy(window, cx);
+        // app.js asked for the backup folders to suggest (OneDrive, Google Drive, …) each time Settings was opened.
+        let on_settings = self.page == Page::Settings && !self.locked();
+        if on_settings && !self.on_settings {
+            self.send("backupSuggestions", json!({}));
+        }
+        self.on_settings = on_settings;
+        if !self.pending.is_empty() {
+            let waiting = std::mem::take(&mut self.pending);
+            cx.defer_in(window, move |r, window, cx| {
+                for p in waiting {
+                    r.open_pending(p, window, cx);
+                }
+            });
+        }
+        if !self.shot_asked && !self.state.is_null() {
+            self.shot_asked = true;
+            // BLOXKEEP_SHOT_ASK=1: a hidden shot opens with a question, to see the box (=multi: the Multi-Roblox one).
+            if let Ok(which) = std::env::var("BLOXKEEP_SHOT_ASK") {
+                cx.defer_in(window, move |r, window, cx| Self::shot_ask(r, which, window, cx));
+            }
+        }
+        // The cover over the window comes off once there's something to see (ShellForm.CoverOffAsync).
+        if !self.shown && !self.state.is_null() {
+            self.shown = true;
+            let link = self.link.clone();
+            cx.on_next_frame(window, move |_, _, _| {
+                if let Some(l) = &link {
+                    l.send("pageShown", Value::Null);
+                }
+            });
+        }
+        self.want_home_data(cx);
+        // The lock screen is up: its password box takes the keyboard, once.
+        let locked = pages::lock::up(self) && !self.lost;
+        if locked && !self.lock.focused {
+            self.lock.focused = true;
+            let h = self.lock_pw.read(cx).focus_handle(cx);
+            window.focus(&h, cx);
+            // BLOXKEEP_SHOT_UNLOCK="secret": a hidden shot types that password (in both boxes) and sends it.
+            #[cfg(feature = "shot")]
+            if let Ok(pw) = std::env::var("BLOXKEEP_SHOT_UNLOCK") {
+                self.lock_pw.update(cx, |s, cx| s.set_value(pw.clone(), window, cx));
+                self.lock_pw2.update(cx, |s, cx| s.set_value(pw, window, cx));
+                pages::lock::submit(self, window, cx);
+            }
+        }
+    }
+
+    /// BLOXKEEP_SHOT_ASK=1: a hidden shot opens with a question, to see the box (=multi: the Multi-Roblox one).
+    fn shot_ask(r: &mut Root, which: String, window: &mut Window, cx: &mut Context<Self>) {
+        // (=add the sign-in screen, =phone its code, =cookie and =edit the account form, =import, =feedback,
+        // =join, =order: the other boxes.)
+        let first = r.accounts().first().and_then(|a| a.get("id")).and_then(Value::as_str).map(str::to_string);
+        // (=launch: Play on an idle account, for the app's "Before you open" (with ?multioff=1); =launcherr:
+        // on an idle and a banned one, for the list of those that didn't open; =send:CMD: that command sent
+        // to the app as it is (send:addVault, send:pickVault); =saveserver: Save server once the game box
+        // knows its game.)
+        #[cfg(feature = "shot")]
+        {
+            let id_of = |a: &Value| a.get("id").and_then(Value::as_str).map(str::to_string);
+            let idle: Vec<String> = r.accounts().iter().filter(|a| pages::accounts::can_play(a) && a.get("banned").and_then(Value::as_bool) != Some(true)).filter_map(id_of).take(2).collect();
+            let banned = r.accounts().iter().filter(|a| a.get("banned").and_then(Value::as_bool) == Some(true)).find_map(id_of);
+            match which.as_str() {
+                // (Two, as the app asks about Multi-Roblox only when more than one window opens.)
+                "launch" => return r.launch("launch", json!({ "ids": idle }), false, cx),
+                "launcherr" => return r.launch("launch", json!({ "ids": idle.into_iter().take(1).chain(banned).collect::<Vec<_>>() }), false, cx),
+                "saveserver" => return pages::picker::shot_save(r, window, cx),
+                // (=gcadd: Game collection's Add game, for the section BLOXKEEP_SHOT_GC_ADD names.)
+                "gcadd" => return pages::collection::shot_add(r, 0, window, cx),
+                // (=ram: the Clean RAM panel.)
+                "ram" => return crate::clean_ram::shot_open(r, window, cx),
+                _ => {}
+            }
+            if let Some(cmd) = which.strip_prefix("send:") {
+                return r.send(cmd, json!({}));
+            }
+            // BLOXKEEP_SHOT_PW=2fa (a username the mock answers by): the sign-in sent with it, for its next step.
+            if let (true, Ok(user)) = (which == "add", std::env::var("BLOXKEEP_SHOT_PW")) {
+                pages::password::open(r, window, cx);
+                r.pl_user.update(cx, |s, cx| s.set_value(user, window, cx));
+                r.pl_pass.update(cx, |s, cx| s.set_value("hunter22", window, cx));
+                return pages::password::submit(r, window, cx);
+            }
+            // BLOXKEEP_SHOT_IMPORT=pick (the file chosen), =demo (opened with that password: the preview),
+            // =wrong… (a wrong one): the import's later steps.
+            if let (true, Ok(pw)) = (which == "import", std::env::var("BLOXKEEP_SHOT_IMPORT")) {
+                pages::import_vault::open(r, window, cx);
+                cx.spawn_in(window, async move |this, cx| {
+                    cx.background_executor().timer(Duration::from_millis(600)).await;
+                    let _ = this.update_in(cx, |r, window, cx| pages::import_vault::next(r, window, cx));
+                    cx.background_executor().timer(Duration::from_millis(1500)).await;
+                    if pw != "pick" {
+                        let _ = this.update_in(cx, |r, window, cx| {
+                            r.iv_pw.update(cx, |s, cx| s.set_value(pw.clone(), window, cx));
+                            pages::import_vault::next(r, window, cx);
+                        });
+                    }
+                })
+                .detach();
+                return;
+            }
+            // BLOXKEEP_SHOT_IMPORT with =importlist (lines split by "|n|", then checked) or =importram (the
+            // file picked; with a value, its password typed and opened): the new imports' later steps.
+            if let (true, Ok(v)) = (which == "importlist" || which == "importram", std::env::var("BLOXKEEP_SHOT_IMPORT")) {
+                let list = which == "importlist";
+                if list { pages::import_vault::open_list(r, window, cx) } else { pages::import_vault::open_ram(r, window, cx) }
+                cx.spawn_in(window, async move |this, cx| {
+                    cx.background_executor().timer(Duration::from_millis(600)).await;
+                    let _ = this.update_in(cx, |r, window, cx| {
+                        if list {
+                            pages::import_vault::set_list_text(r, v.replace("|n|", "\n"), window, cx);
+                        }
+                        pages::import_vault::next(r, window, cx);
+                    });
+                    cx.background_executor().timer(Duration::from_millis(1500)).await;
+                    if !list && !v.is_empty() && v != "pick" {
+                        let _ = this.update_in(cx, |r, window, cx| {
+                            r.iv_pw.update(cx, |s, cx| s.set_value(v.clone(), window, cx));
+                            pages::import_vault::next(r, window, cx);
+                        });
+                    }
+                })
+                .detach();
+                return;
+            }
+        }
+        match which.as_str() {
+            "add" => return pages::password::open(r, window, cx),
+            "phone" => return pages::quick::open(r, false, window, cx),
+            "cookie" => return pages::account_form::open(r, None, window, cx),
+            "edit" => return pages::account_form::open(r, first, window, cx),
+            "import" => return pages::import_vault::open(r, window, cx),
+            "importlist" => return pages::import_vault::open_list(r, window, cx),
+            "importram" => return pages::import_vault::open_ram(r, window, cx),
+            "feedback" => return pages::extras::open_feedback(r, window, cx),
+            "whatsnew" => return pages::extras::ask_whats_new(r, cx),
+            "join" => return pages::join::open(r, first.into_iter().collect(), window, cx),
+            "vis" => return pages::visibility::open(r, r.accounts().iter().take(3).filter_map(|a| a.get("id").and_then(Value::as_str)).map(str::to_string).collect(), window, cx),
+            "order" => return pages::accounts::open_order(r, window, cx),
+            // (=palette quick search, =snap Accounts' Windows menu, =presets the bar's Presets menu,
+            // =savepreset its Save as preset….)
+            "palette" => return pages::palette::open(r, window, cx),
+            "snap" => return pages::snap::shot(r, cx),
+            "presets" => return pages::preset_menu::shot(r, cx),
+            "savepreset" => return pages::preset_menu::save_as(r, window, cx),
+            _ => {}
+        }
+        if which == "help" {
+            return r.multi_help(window, cx);
+        }
+        if which == "multi" {
+            return r.confirm(r.tr("set.multiConfirmTitle"), r.tr("set.multiConfirm"), r.tr("set.multiOk"), false, Some("multi"), window, cx, |_, _| {});
+        }
+        r.confirm(r.tr("ps.deleteTitle"), r.i18n.tv("ps.deleteQ", &[("name", "Farm Blox Fruits")]), r.tr("ps.delete"), true, Some("deletePreset"), window, cx, |_, _| {});
+    }
+
+    /// app.js's syncBusy: something typed in a form would be lost to an update's restart, so it waits. Told when a
+    /// dialog opens or closes, and when Root's data changes (a preset's or a macro's form).
+    fn tell_busy(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let busy = window.has_active_dialog(cx) || self.auto.form.is_some() || self.auto.macro_form.is_some();
+        if busy != self.busy_told {
+            self.busy_told = busy;
+            self.send("pageBusy", json!({ "busy": busy }));
+        }
     }
 
     fn set_state(&mut self, state: Value, window: &mut Window, cx: &mut Context<Self>) {
@@ -4237,6 +4453,8 @@ enum Pending {
 }
 
 impl Render for Root {
+    /// Drawn at every frame, most of which only move what motion.rs paints (a song's bars, a clip): only what the frame
+    /// itself needs is worked out here; what follows from Root's data is worked out as it changes (`settle`).
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // (Settings > Appearance > "Stand still while behind": off, the motion goes on with another window in front.)
         let away = !window.is_window_active() && crate::kit::still_behind() && !crate::kit::mouse_over_lately();
@@ -4245,173 +4463,16 @@ impl Render for Root {
         #[cfg(feature = "shot")]
         let away = away && std::env::var_os("BLOXKEEP_SHOT_FRAMES").is_none();
         crate::kit::set_away(away);
-        crate::motion::main_window(window);
         // (A theme came in over another: the frame last drawn, the old look, is kept to fade out over this one.)
         if crate::theme::take_fade() {
             crate::scene::fade_from(window, cx);
         }
         crate::theme::set_glass_blocks(crate::scene::carries_words(cx));
         crate::kit::set_screen_scale(window.scale_factor());
-        pages::lock::settle(self, cx);
-        pages::games::settle_words(self, window, cx);
-        pages::rsettings::settle(self, window, cx);
-        pages::wiki::settle(self, window, cx);
-        pages::accounts::settle_job(window, cx);
-        // Settings left (or the app locked): typed passwords emptied, the Discord link hidden again.
-        pages::settings::settle(self, window, cx);
-        // The search reads every part's rows, Discord's too: its boxes are made here the first time something is
-        // searched (they were only made when Discord itself was opened, so "discord" found two unrelated rows).
-        if self.page == Page::Settings && self.settings.dc.is_none() && !self.set_q.read(cx).value().trim().is_empty() {
-            pages::settings::ensure_discord(self, window, cx);
-        }
-        if self.page == Page::Settings {
-            pages::settings::appearance::settle(self, window, cx);
-        }
-        self.community_tick();
-        // app.js's syncBusy: something typed in a form would be lost to an update's restart, so it waits.
-        let busy = window.has_active_dialog(cx) || self.auto.form.is_some() || self.auto.macro_form.is_some();
-        if busy != self.busy_told {
-            self.busy_told = busy;
-            self.send("pageBusy", json!({ "busy": busy }));
-        }
-        // app.js asked for the backup folders to suggest (OneDrive, Google Drive, …) each time Settings was opened.
-        let on_settings = self.page == Page::Settings && !self.locked();
-        if on_settings && !self.on_settings {
-            self.send("backupSuggestions", json!({}));
-        }
-        self.on_settings = on_settings;
-        if !self.pending.is_empty() {
-            let waiting = std::mem::take(&mut self.pending);
-            cx.defer_in(window, move |r, window, cx| {
-                for p in waiting {
-                    r.open_pending(p, window, cx);
-                }
-            });
-        }
-        if !self.shot_asked && !self.state.is_null() {
-            self.shot_asked = true;
-            // BLOXKEEP_SHOT_ASK=1: a hidden shot opens with a question, to see the box (=multi: the Multi-Roblox one).
-            if let Ok(which) = std::env::var("BLOXKEEP_SHOT_ASK") {
-                cx.defer_in(window, move |r, window, cx| {
-                    // (=add the sign-in screen, =phone its code, =cookie and =edit the account form, =import, =feedback,
-                    // =join, =order: the other boxes.)
-                    let first = r.accounts().first().and_then(|a| a.get("id")).and_then(Value::as_str).map(str::to_string);
-                    // (=launch: Play on an idle account, for the app's "Before you open" (with ?multioff=1); =launcherr:
-                    // on an idle and a banned one, for the list of those that didn't open; =send:CMD: that command sent
-                    // to the app as it is (send:addVault, send:pickVault); =saveserver: Save server once the game box
-                    // knows its game.)
-                    #[cfg(feature = "shot")]
-                    {
-                        let id_of = |a: &Value| a.get("id").and_then(Value::as_str).map(str::to_string);
-                        let idle: Vec<String> = r.accounts().iter().filter(|a| pages::accounts::can_play(a) && a.get("banned").and_then(Value::as_bool) != Some(true)).filter_map(id_of).take(2).collect();
-                        let banned = r.accounts().iter().filter(|a| a.get("banned").and_then(Value::as_bool) == Some(true)).find_map(id_of);
-                        match which.as_str() {
-                            // (Two, as the app asks about Multi-Roblox only when more than one window opens.)
-                            "launch" => return r.launch("launch", json!({ "ids": idle }), false, cx),
-                            "launcherr" => return r.launch("launch", json!({ "ids": idle.into_iter().take(1).chain(banned).collect::<Vec<_>>() }), false, cx),
-                            "saveserver" => return pages::picker::shot_save(r, window, cx),
-                            // (=gcadd: Game collection's Add game, for the section BLOXKEEP_SHOT_GC_ADD names.)
-                            "gcadd" => return pages::collection::shot_add(r, 0, window, cx),
-                            // (=ram: the Clean RAM panel.)
-                            "ram" => return crate::clean_ram::shot_open(r, window, cx),
-                            _ => {}
-                        }
-                        if let Some(cmd) = which.strip_prefix("send:") {
-                            return r.send(cmd, json!({}));
-                        }
-                        // BLOXKEEP_SHOT_PW=2fa (a username the mock answers by): the sign-in sent with it, for its next step.
-                        if let (true, Ok(user)) = (which == "add", std::env::var("BLOXKEEP_SHOT_PW")) {
-                            pages::password::open(r, window, cx);
-                            r.pl_user.update(cx, |s, cx| s.set_value(user, window, cx));
-                            r.pl_pass.update(cx, |s, cx| s.set_value("hunter22", window, cx));
-                            return pages::password::submit(r, window, cx);
-                        }
-                        // BLOXKEEP_SHOT_IMPORT=pick (the file chosen), =demo (opened with that password: the preview),
-                        // =wrong… (a wrong one): the import's later steps.
-                        if let (true, Ok(pw)) = (which == "import", std::env::var("BLOXKEEP_SHOT_IMPORT")) {
-                            pages::import_vault::open(r, window, cx);
-                            cx.spawn_in(window, async move |this, cx| {
-                                cx.background_executor().timer(Duration::from_millis(600)).await;
-                                let _ = this.update_in(cx, |r, window, cx| pages::import_vault::next(r, window, cx));
-                                cx.background_executor().timer(Duration::from_millis(1500)).await;
-                                if pw != "pick" {
-                                    let _ = this.update_in(cx, |r, window, cx| {
-                                        r.iv_pw.update(cx, |s, cx| s.set_value(pw.clone(), window, cx));
-                                        pages::import_vault::next(r, window, cx);
-                                    });
-                                }
-                            })
-                            .detach();
-                            return;
-                        }
-                        // BLOXKEEP_SHOT_IMPORT with =importlist (lines split by "|n|", then checked) or =importram (the
-                        // file picked; with a value, its password typed and opened): the new imports' later steps.
-                        if let (true, Ok(v)) = (which == "importlist" || which == "importram", std::env::var("BLOXKEEP_SHOT_IMPORT")) {
-                            let list = which == "importlist";
-                            if list { pages::import_vault::open_list(r, window, cx) } else { pages::import_vault::open_ram(r, window, cx) }
-                            cx.spawn_in(window, async move |this, cx| {
-                                cx.background_executor().timer(Duration::from_millis(600)).await;
-                                let _ = this.update_in(cx, |r, window, cx| {
-                                    if list {
-                                        pages::import_vault::set_list_text(r, v.replace("|n|", "\n"), window, cx);
-                                    }
-                                    pages::import_vault::next(r, window, cx);
-                                });
-                                cx.background_executor().timer(Duration::from_millis(1500)).await;
-                                if !list && !v.is_empty() && v != "pick" {
-                                    let _ = this.update_in(cx, |r, window, cx| {
-                                        r.iv_pw.update(cx, |s, cx| s.set_value(v.clone(), window, cx));
-                                        pages::import_vault::next(r, window, cx);
-                                    });
-                                }
-                            })
-                            .detach();
-                            return;
-                        }
-                    }
-                    match which.as_str() {
-                        "add" => return pages::password::open(r, window, cx),
-                        "phone" => return pages::quick::open(r, false, window, cx),
-                        "cookie" => return pages::account_form::open(r, None, window, cx),
-                        "edit" => return pages::account_form::open(r, first, window, cx),
-                        "import" => return pages::import_vault::open(r, window, cx),
-                        "importlist" => return pages::import_vault::open_list(r, window, cx),
-                        "importram" => return pages::import_vault::open_ram(r, window, cx),
-                        "feedback" => return pages::extras::open_feedback(r, window, cx),
-                        "whatsnew" => return pages::extras::ask_whats_new(r, cx),
-                        "join" => return pages::join::open(r, first.into_iter().collect(), window, cx),
-                        "vis" => return pages::visibility::open(r, r.accounts().iter().take(3).filter_map(|a| a.get("id").and_then(Value::as_str)).map(str::to_string).collect(), window, cx),
-                        "order" => return pages::accounts::open_order(r, window, cx),
-                        // (=palette quick search, =snap Accounts' Windows menu, =presets the bar's Presets menu,
-                        // =savepreset its Save as preset….)
-                        "palette" => return pages::palette::open(r, window, cx),
-                        "snap" => return pages::snap::shot(r, cx),
-                        "presets" => return pages::preset_menu::shot(r, cx),
-                        "savepreset" => return pages::preset_menu::save_as(r, window, cx),
-                        _ => {}
-                    }
-                    if which == "help" {
-                        return r.multi_help(window, cx);
-                    }
-                    if which == "multi" {
-                        return r.confirm(r.tr("set.multiConfirmTitle"), r.tr("set.multiConfirm"), r.tr("set.multiOk"), false, Some("multi"), window, cx, |_, _| {});
-                    }
-                    r.confirm(r.tr("ps.deleteTitle"), r.i18n.tv("ps.deleteQ", &[("name", "Farm Blox Fruits")]), r.tr("ps.delete"), true, Some("deletePreset"), window, cx, |_, _| {});
-                });
-            }
-        }
-        // The cover over the window comes off once there's something to see (ShellForm.CoverOffAsync).
-        if !self.shown && !self.state.is_null() {
-            self.shown = true;
-            let link = self.link.clone();
-            cx.on_next_frame(window, move |_, _, _| {
-                if let Some(l) = &link {
-                    l.send("pageShown", Value::Null);
-                }
-            });
-        }
-        self.want_home_data(cx);
-        // The window takes the keys from the start (Ctrl+K, Tab), before anything in it is clicked.
+        // The window takes the keys from the start (Ctrl+K, Tab), and again once nothing has them (the box that had them
+        // dropped, or let go of by a closing dialog). Looked at in each frame: GPUI says when the focused element leaves
+        // the page (`on_focus_lost`), not when the focus itself is let go, and a box only hidden for now (the lock
+        // screen's while an update installs) keeps the keys for when it shows again.
         if window.focused(cx).is_none() {
             let f = self.focus.clone();
             cx.on_next_frame(window, move |_, window, cx| {
@@ -4419,20 +4480,6 @@ impl Render for Root {
                     window.focus(&f, cx);
                 }
             });
-        }
-        // The lock screen is up: its password box takes the keyboard, once.
-        let locked = pages::lock::up(self) && !self.lost;
-        if locked && !self.lock.focused {
-            self.lock.focused = true;
-            let h = self.lock_pw.read(cx).focus_handle(cx);
-            window.focus(&h, cx);
-            // BLOXKEEP_SHOT_UNLOCK="secret": a hidden shot types that password (in both boxes) and sends it.
-            #[cfg(feature = "shot")]
-            if let Ok(pw) = std::env::var("BLOXKEEP_SHOT_UNLOCK") {
-                self.lock_pw.update(cx, |s, cx| s.set_value(pw.clone(), window, cx));
-                self.lock_pw2.update(cx, |s, cx| s.set_value(pw, window, cx));
-                pages::lock::submit(self, window, cx);
-            }
         }
         div()
             .id("root")

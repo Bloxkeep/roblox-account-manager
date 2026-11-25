@@ -3513,7 +3513,8 @@ pub fn clear_job(window: &mut Window, cx: &mut App) {
     }
 }
 
-/// The Job ID box emptied where no window is at hand: at the next frame (Root::render calls settle_job).
+/// The Job ID box emptied where no window is at hand: when Root's data next changes (shell.rs `settle` calls
+/// settle_job; the callers' Play and game lookup tell Root at once).
 pub fn clear_job_soon(cx: &mut App) {
     let ui = cx.default_global::<menu::Ui>();
     ui.job_stale = true;

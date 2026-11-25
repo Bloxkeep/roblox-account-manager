@@ -3,7 +3,6 @@
 // a small fuzzy match and grouped by kind (the group with the best match first). ↑ ↓ (and Page Up/Down) move, Enter
 // runs the highlighted entry, Esc closes; an account's other actions (Play or Close, Edit) are on Ctrl+Enter and
 // Shift+Enter, and on its highlighted row. The entries are built as it opens, as the web page's were.
-use std::cell::Cell;
 use std::rc::Rc;
 
 use gpui_kit::component::WindowExt as _;
@@ -595,15 +594,11 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         input.update(cx, |st, cx| st.set_value(q, window, cx));
     }
     let this = cx.weak_entity();
-    let first = Rc::new(Cell::new(true));
+    // The box has the keyboard as the palette opens (given here, once; the box's draws leave it where it is).
+    let keys = input.read(cx).focus_handle(cx);
     window.open_dialog(cx, move |dialog, window, cx| {
         let Some(root) = this.upgrade() else { return dialog };
         let top = window.viewport_size().height * 0.12;
-        // The box has the keyboard as the palette opens (once: later draws leave it where it is).
-        if first.replace(false) {
-            let h = input.read(cx).focus_handle(cx);
-            window.focus(&h, cx);
-        }
         let r = root.read(cx);
         let p = &r.palette;
         let (entries, rows, mixed, more, index) = (p.entries.clone(), p.rows.clone(), p.mixed, p.more, p.index);
@@ -812,6 +807,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             })
             .child(content)
     });
+    window.focus(&keys, cx);
     cx.notify();
 }
 
