@@ -1,9 +1,10 @@
 // The interface's languages and how each writes numbers, times and dates. English and Vietnamese came first; Spanish,
 // Portuguese (Brazil), Indonesian, French, German and Russian were added on 2026-11-24 (the owner), then Japanese,
-// Korean, Turkish, Polish, Thai and Lao the same day. Their words are in
+// Korean, Turkish, Polish, Thai and Lao the same day, Filipino and Malay after them. Their words are in
 // assets/lang/<code>.json; the names of days and months and the way times are written follow Roblox's own
 // (RobloxPlayer's content/configs/DateTimeLocaleConfigs: es-mx, pt-br, fr-fr, de-de, ru-ru, ja-jp, ko-kr); Roblox has
-// none for Indonesian, Turkish, Polish, Thai and Lao, which follow Windows' own (CultureInfo: CLDR).
+// none for Indonesian, Turkish, Polish, Thai, Lao, Filipino and Malay, which follow Windows' own (CultureInfo: CLDR,
+// fil-PH and ms-MY).
 //
 // Counts work as ICU's MessageFormat plurals do. A word for a count (i18n.rs tv/tn) is looked for in this order:
 //   "key1"      exactly one, in its own words when a language has them ("View the window", "Once"; =1 in ICU);
@@ -488,6 +489,57 @@ pub const ALL: &[Lang] = &[
         day_abbr: " ມື້",
         plural: rule::none,
         ages: [same(" ມື້"), same(" ເດືອນ"), same(" ປີ")],
+        era: 0,
+        sizes: ["B", "KB", "MB", "GB"],
+    },
+    Lang {
+        code: "fil",
+        name: "Filipino",
+        word: "Wika",
+        group: ',',
+        decimal: '.',
+        meridiem: Some(("AM", "PM")),
+        time_sep: ':',
+        day_first: false,
+        date_sep: '/',
+        dm_end: "",
+        days_short: ["Lin", "Lun", "Mar", "Miy", "Huw", "Biy", "Sab"],
+        days_long: ["Linggo", "Lunes", "Martes", "Miyerkules", "Huwebes", "Biyernes", "Sabado"],
+        months: ["Enero", "Pebrero", "Marso", "Abril", "Mayo", "Hunyo", "Hulyo", "Agosto", "Setyembre", "Oktubre", "Nobyembre", "Disyembre"],
+        months_of: ["Enero", "Pebrero", "Marso", "Abril", "Mayo", "Hunyo", "Hulyo", "Agosto", "Setyembre", "Oktubre", "Nobyembre", "Disyembre"],
+        months_short: ["Ene", "Peb", "Mar", "Abr", "May", "Hun", "Hul", "Ago", "Set", "Okt", "Nob", "Dis"],
+        months_short_of: ["Ene", "Peb", "Mar", "Abr", "May", "Hun", "Hul", "Ago", "Set", "Okt", "Nob", "Dis"],
+        year_end: "",
+        units: (" seg", " min", " oras"),
+        day_abbr: " araw",
+        // (Filipino says "1 account", "5 account": one word after any count.)
+        plural: rule::none,
+        ages: [same(" araw"), same(" buwan"), same(" taon")],
+        era: 0,
+        sizes: ["B", "KB", "MB", "GB"],
+    },
+    Lang {
+        code: "ms",
+        name: "Bahasa Melayu",
+        word: "Bahasa",
+        group: ',',
+        decimal: '.',
+        meridiem: Some(("PG", "PTG")),
+        time_sep: ':',
+        day_first: true,
+        date_sep: '/',
+        dm_end: "",
+        days_short: ["Ahd", "Isn", "Sel", "Rab", "Kha", "Jum", "Sab"],
+        days_long: ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"],
+        months: ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"],
+        months_of: ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"],
+        months_short: ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ogo", "Sep", "Okt", "Nov", "Dis"],
+        months_short_of: ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ogo", "Sep", "Okt", "Nov", "Dis"],
+        year_end: "",
+        units: (" s", " min", " j"),
+        day_abbr: " h",
+        plural: rule::none,
+        ages: [same(" hari"), same(" bln"), same(" thn")],
         era: 0,
         sizes: ["B", "KB", "MB", "GB"],
     },

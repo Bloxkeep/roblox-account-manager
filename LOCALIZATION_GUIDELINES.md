@@ -674,3 +674,52 @@ account konto; add Dodaj; play button Graj; auto-rejoin Automatyczny powrót; an
 - status chips "Wymaga logowania", "Niezweryfikowane"; tray/pill "Niegotowe".
 - dc.remoteAsk and ps.schNote are long paragraphs (fine in dialogs).
 - country names such as "Francuskie Terytoria Południowe i Antarktyczne" are long (CLDR standard).
+
+### Filipino (`fil`)
+
+#### Style
+
+- Casual Taglish, as Filipino players write: "mo" / "ka" for you, never "po" or "ninyo". Common English gaming and tech words stay English (account, password, server, window, cookie, hotkey, macro, update, link, browser).
+- Buttons are bare verbs: Maglaro, Sumali, I-save, Burahin, Buksan, Isara, Kanselahin. English verbs take the hyphen prefix (i-click, mag-sign in, na-kick, mag-rejoin).
+- Sentences put the verb first ("Hindi ma-save ang file"); progress is the repeated-syllable form ("Binubuksan…", "Sinusuri…").
+- No plural forms after a count ("1 account", "5 account"); the plural marker "mga" only without a number. `key1` used for "1 …" wording.
+- Units: seg / min / oras / araw / buwan / taon; time 2:30 PM, dates month first (11/25/2026), as Windows writes fil-PH.
+
+#### Glossary
+
+account=account; sign in / sign out=mag-sign in / mag-sign out; rejoin=mag-rejoin; auto-rejoin=auto-rejoin; dropped=natanggal; kicked=na-kick; banned=na-ban; play=Maglaro; join=Sumali; settings=Mga Setting; friends=Mga kaibigan; games=Mga laro; preset=preset; vault=vault; master password=master password; private server=private server; step=hakbang; area=area; If=Kung; repeat=repeat; stuck=na-stuck; theme=tema; schedule=iskedyul; backup=backup.
+
+#### Needs native review
+
+- How much English to keep: labels follow Taglish (Mga Setting, private server, master password); a stricter Tagalog reader may want more native words.
+- pf.hi* greetings "Magandang umaga/hapon/gabi" (trailing space kept).
+- Macro step names mix Tagalog and English as players type them (Kung…, Kung hindi, Tapusin ang if, Tapusin ang repeat, Kung na-stuck…); a native reader may prefer all-Tagalog names.
+
+#### Layout risks
+
+- Filipino runs about 1.2–1.4× English; verb-first sentences with "ang"/"ng" add short words.
+- Check at 960 px: Settings nav, status chips ("Kailangang mag-sign in ulit"), Home buttons and the Play row.
+
+### Bahasa Melayu (`ms`)
+
+#### Style
+
+- Malaysian Malay (ms-MY), not Indonesian: "anda" for you; Malaysian words where the two differ (tetingkap, kata laluan, pelayan, muat turun, kemas kini, akaun, Tetapan, kuki).
+- Buttons are bare verbs: Main, Sertai, Simpan, Padam, Buka, Tutup, Batal. Statuses use di- passives (dikunci, diharamkan, ditendang).
+- No plural forms after a count ("1 akaun", "5 akaun"); `key1` used for "1 …" wording.
+- Units: s / min / j (jam) / hari; time 2:30 PTG (PG/PTG), dates day first (25/11/2026), as Windows writes ms-MY.
+
+#### Glossary
+
+account=akaun; password=kata laluan; master password=kata laluan induk; sign in / sign out=log masuk / log keluar; rejoin=sertai semula; auto-rejoin=sertai semula automatik; dropped=terputus; kicked=ditendang; banned=diharamkan; window=tetingkap; server=pelayan; private server=pelayan peribadi; settings=Tetapan; play=Main; join=Sertai; friends=Rakan; games=Permainan; update=kemas kini; download=muat turun; cookie=kuki; on/off=Hidup/Mati; macro=makro; tray=dulang sistem; vault=vault; preset=preset; step=langkah; area=kawasan; If=Jika.
+
+#### Needs native review
+
+- "diharamkan" for banned (Roblox Malaysia players often just say "kena ban").
+- Lunar New Year theme "Tahun Baru Cina", as Malaysia says it.
+- Macro step names (Jika, Jika tidak, Tamat jika, Tamat ulang) read as plain words; check them in the step list.
+
+#### Layout risks
+
+- Malay runs about 1.2–1.3× English ("Tetapan › Pelancaran › Buka Roblox dengan").
+- Check at 960 px: Settings nav, status chips ("Perlu log masuk semula"), Home buttons and the Play row.
