@@ -1708,54 +1708,45 @@ fn band_at(b: &crate::beat::Beat, u: f32) -> f32 {
     ((v - 0.25) / 0.75).max(0.)
 }
 
-/// How far round the card its edges' light is drawn (px): the box `pulse_edges` is given reaches this far past it.
-pub const EDGE_REACH: f32 = 64.;
+/// How lit the card's edge is now (0 to 1): the beat's flash, as strong as the bass, over the song's level. (Clear at
+/// every strength: Light's `power` 0.45 is 0.75 here, Strong's 1 stays 1.)
+fn edge_lit(b: &crate::beat::Beat, power: f32) -> f32 {
+    let hit = (0.25 + 0.75 * b.bass).min(1.) * beat_light(b);
+    let power = 0.75 + 0.25 * ((power - 0.45) / 0.55).clamp(0., 1.);
+    ((0.4 * b.level + 0.6 * hit) * power).min(1.)
+}
 
-/// The card's edges throwing light out with the song, as Philips' Ambilight does round a TV in its music mode and
-/// YouTube's ambient mode round its player: each edge lit in zones, a soft glow out from each; a zone as strong as its
-/// band (low notes on the left, high on the right, as the bars over the banner), and all of them brighter at each beat
-/// with the bass. Drawn behind the card (`r` its corners), in a box EDGE_REACH bigger each way.
+/// The song's light thrown out from the card's edge (`r` its corners), drawn behind it in the card's box: as a
+/// phone's edge lighting does with music (Samsung's), the light round the whole edge, the corners followed, a tight
+/// bright glow and a wider one in the cover's colour. (The page leaves 24 px round the card, so the light stays in
+/// that.)
 pub fn pulse_edges(b: crate::beat::Beat, hex: u32, power: f32, r: f32) -> AnyElement {
-    canvas(|_, _, _| {}, move |bounds: Bounds<Pixels>, _, window, cx| {
-        let (w, h) = (f32::from(bounds.size.width), f32::from(bounds.size.height));
-        let g = EDGE_REACH;
-        let (x0, y0, x1, y1) = (g + r, g + r, w - g - r, h - g - r);
-        if x1 <= x0 || y1 <= y0 {
+    canvas(|_, _, _| {}, move |bounds: Bounds<Pixels>, _, window, _| {
+        let v = edge_lit(&b, power);
+        if v < 0.02 {
             return;
         }
-        let hit = (0.25 + 0.75 * b.bass).min(1.) * beat_light(&b);
-        let mut p = Pen { w: window, cx, o: bounds.origin };
-        // One zone: a short stretch of an edge (x, y, w, h), lit for the band at `u`.
-        let zone = |p: &mut Pen, x: f32, y: f32, zw: f32, zh: f32, u: f32| {
-            let v = ((0.45 * band_at(&b, u) + 0.55 * hit) * power).min(1.);
-            if v < 0.03 {
-                return;
-            }
-            let shadow = BoxShadow { color: col(mix(hex, 0xffffff, 0.25 * v), 0.7 * v), offset: point(px(0.), px(0.)), blur_radius: px(18. + 26. * v), spread_radius: px(0.), inset: false };
-            let at = p.bx(x, y, zw, zh);
-            p.w.paint_drop_shadows(at, Corners::all(px(zw.min(zh) / 2.)), &[shadow]);
-        };
-        const ACROSS: usize = 10;
-        let zw = (x1 - x0) / ACROSS as f32;
-        for i in 0..ACROSS {
-            let u = (i as f32 + 0.5) / ACROSS as f32;
-            let x = x0 + i as f32 * zw;
-            zone(&mut p, x, g - 1., zw, 3., u);
-            zone(&mut p, x, h - g - 2., zw, 3., u);
-        }
-        const DOWN: usize = 3;
-        let zh = (y1 - y0) / DOWN as f32;
-        for i in 0..DOWN {
-            let y = y0 + i as f32 * zh;
-            zone(&mut p, g - 1., y, 3., zh, 0.05 + 0.05 * i as f32);
-            zone(&mut p, w - g - 2., y, 3., zh, 0.95 - 0.05 * i as f32);
-        }
+        let wide = BoxShadow { color: col(hex, 0.65 * v), offset: point(px(0.), px(0.)), blur_radius: px(12. + 10. * v), spread_radius: px(1. + 3. * v), inset: false };
+        let tight = BoxShadow { color: col(mix(hex, 0xffffff, 0.45), 0.8 * v), offset: point(px(0.), px(0.)), blur_radius: px(4. + 4. * v), spread_radius: px(0.), inset: false };
+        window.paint_drop_shadows(bounds, Corners::all(px(r)), &[wide, tight]);
     })
     .absolute()
-    .top(px(-EDGE_REACH))
-    .left(px(-EDGE_REACH))
-    .right(px(-EDGE_REACH))
-    .bottom(px(-EDGE_REACH))
+    .inset_0()
+    .into_any_element()
+}
+
+/// The card's edge itself lit with the song, over the card (`r` its corners): a thin line, faint between the beats.
+pub fn pulse_rim(b: crate::beat::Beat, hex: u32, power: f32, r: f32) -> AnyElement {
+    canvas(|_, _, _| {}, move |bounds: Bounds<Pixels>, _, window, _| {
+        let v = edge_lit(&b, power);
+        let a = (0.25 + 0.75 * v).min(1.);
+        if a < 0.02 {
+            return;
+        }
+        window.paint_quad(quad(bounds, px(r), transparent_black(), px(1.5 + v), col(mix(hex, 0xffffff, 0.3 + 0.4 * v), a), BorderStyle::Solid));
+    })
+    .absolute()
+    .inset_0()
     .into_any_element()
 }
 

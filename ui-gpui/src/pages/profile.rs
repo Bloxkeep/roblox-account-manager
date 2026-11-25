@@ -2201,8 +2201,14 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
             .flex()
             .flex_col()
             .gap(px(SECTION_GAP))
-            // (With the song, its edges' light behind it: deco::pulse_edges.)
-            .child(div().flex().flex_col().gap(px(12.)).child(div().relative().when_some(beat_now, |d, (b, hex, power)| d.child(deco::pulse_edges(b, hex, power, R_HERO))).child(who))
+            // (With the song, its edge lit and the light thrown out behind it: deco::pulse_rim, deco::pulse_edges.)
+            .child(div().flex().flex_col().gap(px(12.)).child(
+                div()
+                    .relative()
+                    .when_some(beat_now, |d, (b, hex, power)| d.child(deco::pulse_edges(b, hex, power, R_HERO)))
+                    .child(who)
+                    .when_some(beat_now, |d, (b, hex, power)| d.child(deco::pulse_rim(b, hex, power, R_HERO))),
+            )
                 .when(own && !song_in_head, |d| d.child(profile_media::row(root, user, inner, song_art, cx))))
             // Their game collection (own profile; kept in Bloxkeep: pages/collection.rs).
             .when(own, |d| d.child(crate::pages::collection::section(root, user, inner, cx)))
