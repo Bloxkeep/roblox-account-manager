@@ -1,4 +1,4 @@
-import { words } from './monitor-language.js';
+import { words, languages } from './monitor-language.js';
 
 const element = (id) => document.getElementById(id);
 const frame = element('frame');
@@ -20,10 +20,22 @@ function renderSharp() {
   sharpButton.title = t('sharpHelp');
   sharpButton.setAttribute('aria-pressed', String(sharp));
 }
-const languageButtons = [...element('language').querySelectorAll('button[data-lang]')];
-let language = localStorage.getItem('monitor-language') === 'vi' ? 'vi' : 'en';
+// The language picked on this page; else the app's (it comes with the list of windows); else the browser's.
+const known = (code) => (code && words[code] ? code : undefined);
+const fromBrowser = () => {
+  for (const tag of navigator.languages ?? [navigator.language]) {
+    const code = known(String(tag).toLowerCase().split('-')[0]);
+    if (code) return code;
+  }
+  return 'en';
+};
+let picked;
+try {
+  picked = known(localStorage.getItem('monitor-language'));
+} catch {}
+let language = picked ?? fromBrowser();
 const t = (key, value) => {
-  const text = words[language][key];
+  const text = words[language][key] ?? words.en[key];
   return typeof text === 'function' ? text(value) : text;
 };
 const fragment = location.hash.slice(1);
@@ -188,8 +200,11 @@ async function takeThumb() {
 function renderLanguage() {
   document.documentElement.lang = language;
   document.title = t('title') + ' · Bloxkeep';
-  for (const button of languageButtons) button.setAttribute('aria-pressed', String(button.dataset.lang === language));
+  element('language-name').textContent = languages.find(([code]) => code === language)?.[1] ?? language;
   element('language').setAttribute('aria-label', t('language'));
+  for (const button of element('language-list').children) {
+    button.setAttribute('aria-current', String(button.dataset.lang === language));
+  }
   fullscreenButton.title = t('fullscreen');
   sample.title = t('demoHelp');
   frame.alt = t('stillAlt');
@@ -206,13 +221,38 @@ function renderLanguage() {
   renderCommandNote();
 }
 
-for (const button of languageButtons) {
+const languageButton = element('language');
+const languageList = element('language-list');
+function showLanguages(open) {
+  languageList.hidden = !open;
+  languageButton.setAttribute('aria-expanded', String(open));
+}
+languageList.replaceChildren(...languages.map(([code, name]) => {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.lang = code;
+  button.dataset.lang = code;
+  button.textContent = name;
   button.addEventListener('click', () => {
-    language = button.dataset.lang === 'vi' ? 'vi' : 'en';
-    localStorage.setItem('monitor-language', language);
+    language = picked = code;
+    try {
+      localStorage.setItem('monitor-language', code);
+    } catch {}
+    showLanguages(false);
     renderLanguage();
   });
-}
+  return button;
+}));
+languageButton.addEventListener('click', () => showLanguages(languageList.hidden));
+document.addEventListener('click', (event) => {
+  if (!languageList.hidden && !event.target.closest('.lang')) showLanguages(false);
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !languageList.hidden) {
+    showLanguages(false);
+    languageButton.focus();
+  }
+});
 
 const livePost = (path) => fetch(`/api/live/${path}`, { method: 'POST', headers, keepalive: true });
 
@@ -491,6 +531,10 @@ async function loadWindows() {
     videoView = Boolean(data.video);
     data.windows = data.windows.map((item, index) => ({ ...item, ordinal: index + 1 }));
     takeDone(data.done);
+    if (!picked && known(data.language) && data.language !== language) {
+      language = data.language;
+      renderLanguage();
+    }
     for (const [id, thumb] of thumbs) {
       if (data.windows.some((item) => item.id === id)) continue;
       if (thumb.url) URL.revokeObjectURL(thumb.url);

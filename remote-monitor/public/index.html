@@ -22,9 +22,12 @@
       </div>
       <div class="top-tools">
         <span class="link-state" id="session-state">Local network</span>
-        <div class="segment" id="language" role="group" aria-label="Language">
-          <button type="button" data-lang="en" lang="en">EN</button>
-          <button type="button" data-lang="vi" lang="vi">VI</button>
+        <div class="lang">
+          <button type="button" class="lang-button" id="language" aria-haspopup="true" aria-expanded="false" aria-label="Language">
+            <span id="language-name">English</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="lang-list" id="language-list" hidden></div>
         </div>
       </div>
     </header>
