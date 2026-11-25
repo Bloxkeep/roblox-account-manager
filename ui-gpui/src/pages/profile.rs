@@ -1333,14 +1333,11 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
     // sound only while this is drawn and a song plays.
     let power = if own && !cx.reduce_motion() { deco::power(deco::pulse(user)) } else { 0. };
     let beat_now = (power > 0.).then(|| profile_media::playing_now(root, user, cx)).flatten().map(|(src, hex)| (crate::beat::listen(src), hex, power));
-    // The banner's picture leans in and shakes at each beat: drawn a little larger than the banner, moved by a few px.
-    let shake = beat_now.map(|(b, _, power)| {
-        let t = deco::seconds();
-        let z = 5. + 20. * b.kick * b.bass.max(0.4) * power;
-        (z, (t * 61.).sin() * 7. * b.kick * power, (t * 47.).cos() * 4. * b.kick * power)
-    });
-    // (And the picture bounces with the bass.)
-    let grow = beat_now.map_or(0., |(b, _, power)| avatar_size * 0.07 * b.kick * b.bass.max(0.3) * power);
+    // With the bass: the banner's picture leans in (drawn a little larger than the banner) and everything shakes, and
+    // the profile's picture swells.
+    let (sx, sy) = beat_now.map_or((0., 0.), |(b, _, power)| deco::shake(b.punch, power));
+    let shake = beat_now.map(|(b, _, power)| (5. + 16. * b.punch * power, sx, sy));
+    let grow = beat_now.map_or(0., |(b, _, power)| avatar_size * 0.14 * b.punch * power);
     let shaken = move |el: AnyElement| match shake {
         Some((z, sx, sy)) => div().absolute().left(px(-z + sx)).right(px(-z - sx)).top(px(-z * 0.6 + sy)).bottom(px(-z * 0.6 - sy)).child(el).into_any_element(),
         None => el,
@@ -1506,7 +1503,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
             .when_some(banner_gif, |d, path| d.child(shaken(img(std::path::PathBuf::from(path)).size_full().object_fit(ObjectFit::Cover).into_any_element())))
             .when(!tiles.is_empty(), |d| d.child(div().absolute().inset_0().flex().justify_end().gap(px(2.)).children(tiles)))
             .when(deco_theme != "none", |d| d.child(deco::theme("pf-deco-banner", deco_theme, 0.)))
-            .when_some(beat_now, |d, (b, hex, power)| d.child(deco::pulse_banner(b, hex, power)))
+            .when_some(beat_now, |d, (b, hex, power)| d.child(deco::pulse_banner(b, hex, power, (22. + avatar_size / 2. + sx, banner_h - avatar_size * 0.1 + sy))))
             .when(deco_theme != "none" || deco_ring != "none" || deco_open || beat_now.is_some(), |d| d.child(deco::clock("pf-deco-clock")))
             .when(own, |d| d.child(div().absolute().right(px(12.)).top(px(12.)).flex().gap(px(6.))
                 .when(can_move && !moving, |d| d.child(IconButton::new("pf-move-banner", "grip").glass().tip(root.tr("pf.media.move"))
@@ -1522,6 +1519,8 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                     .on_click(cx.listener(move |r, _, _, cx| profile_media::choose(r, MediaKind::Face, user, cx))))
                 .child(IconButton::new("pf-pick-banner", "image").glass().tip(root.tr("pf.media.banner"))
                     .on_click(cx.listener(move |r, _, _, cx| profile_media::choose(r, MediaKind::Banner, user, cx)))))))
+        // (The song's rings under the name and the rest, which stay readable over them.)
+        .when_some(beat_now, |d, (b, hex, power)| d.child(pulse_box(b, hex, power, banner_h, avatar_size, grow, (sx, sy))))
         .child(
             div()
                 .pl(px(24. + avatar_size + 20.))
@@ -1536,13 +1535,12 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                 .when(song_in_head, |d| d.child(profile_media::card(root, user, 400., PANEL, song_art.clone(), cx)))
                 .children(side),
         )
-        .when_some(beat_now, |d, (b, hex, power)| d.child(pulse_box(b, hex, power, banner_h, avatar_size)))
-        .when(deco_ring != "none", |d| d.child(ring_box(deco_ring, banner_h, avatar_size, false)))
+        .when(deco_ring != "none", |d| d.child(ring_box(deco_ring, banner_h, avatar_size, false, (sx, sy))))
         .child(
             div()
                 .absolute()
-                .left(px(22. - grow / 2.))
-                .top(px(banner_h - avatar_size * 0.60 - grow / 2.))
+                .left(px(22. - grow / 2. + sx))
+                .top(px(banner_h - avatar_size * 0.60 - grow / 2. + sy))
                 .size(px(avatar_size + grow))
                 .rounded_full()
                 .border_4()
@@ -1553,7 +1551,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                 .when_some(own_face.clone(), |d, path| d.child(img(std::path::PathBuf::from(path)).size_full().rounded_full().object_fit(ObjectFit::Cover)))
                 .when_some(face.filter(|_| own_face.is_none()), |d, (src, key)| d.child(fade_in(img(src).size_full().rounded_full().object_fit(ObjectFit::Cover), &key))),
         )
-        .when(deco_ring != "none", |d| d.child(ring_box(deco_ring, banner_h, avatar_size, true)))
+        .when(deco_ring != "none", |d| d.child(ring_box(deco_ring, banner_h, avatar_size, true, (sx, sy))))
         .children(bubble(root, user, own, banner_h, avatar_size, cx));
 
     let groups: Vec<AnyElement> = p
@@ -1660,24 +1658,24 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
 
 /// The front shelf when nothing was asked yet.
 /// The song round the picture, behind it, in the ring's box.
-fn pulse_box(b: crate::beat::Beat, hex: u32, power: f32, banner_h: f32, avatar_size: f32) -> AnyElement {
+fn pulse_box(b: crate::beat::Beat, hex: u32, power: f32, banner_h: f32, avatar_size: f32, grow: f32, at: (f32, f32)) -> AnyElement {
     let room = avatar_size * 0.6;
     div()
         .absolute()
-        .left(px(22. - room))
-        .top(px(banner_h - avatar_size * 0.60 - room))
+        .left(px(22. - room + at.0))
+        .top(px(banner_h - avatar_size * 0.60 - room + at.1))
         .size(px(avatar_size + room * 2.))
-        .child(deco::pulse_ring(b, hex, power, avatar_size / 2.))
+        .child(deco::pulse_ring(b, hex, power, (avatar_size + grow) / 2.))
         .into_any_element()
 }
 
 /// A ring's part (behind the picture or over it) in a box round the picture, roomy enough for what flies round it.
-fn ring_box(id: &'static str, banner_h: f32, avatar_size: f32, front: bool) -> AnyElement {
+fn ring_box(id: &'static str, banner_h: f32, avatar_size: f32, front: bool, at: (f32, f32)) -> AnyElement {
     let room = avatar_size * 0.6;
     div()
         .absolute()
-        .left(px(22. - room))
-        .top(px(banner_h - avatar_size * 0.60 - room))
+        .left(px(22. - room + at.0))
+        .top(px(banner_h - avatar_size * 0.60 - room + at.1))
         .size(px(avatar_size + room * 2.))
         .child(deco::ring(id, avatar_size / 2., front))
         .into_any_element()

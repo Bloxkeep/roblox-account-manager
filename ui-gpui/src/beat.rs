@@ -4,8 +4,9 @@
 // 2004), what all the speakers play is read instead.
 //
 // It runs only while a profile with its beat on is drawn and a song plays: the drawing asks (`listen`) each frame, and
-// the thread ends 1.5 s after the last ask, letting go of Windows' sound. What it keeps: 1,024 samples, a 1,024-point
-// FFT and its window (about 20 KB in all); a look about 90 times a second.
+// the thread ends 1.5 s after the last ask, letting go of Windows' sound. What it keeps: 4,096 samples, a 1,024-point
+// FFT for the bands and a 4,096-point one for the bass's own curve (fine enough there: 12 Hz a step), about 120 KB in
+// all; a look about 90 times a second.
 #![cfg_attr(not(any(feature = "core", feature = "shot")), allow(dead_code))]
 
 use std::sync::Mutex;
@@ -17,10 +18,17 @@ use crate::threads::Hold;
 /// The bands, low to high (40 Hz to 14 kHz, evenly on a log scale).
 pub const BANDS: usize = 32;
 
+/// The points of the bass's curve, 25 to 160 Hz (what the ring round the picture draws, as Trap Nation's videos do).
+pub const LOW: usize = 40;
+
 /// What the song does now, each 0 to 1.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 pub struct Beat {
     pub bands: [f32; BANDS],
+    /// The bass's curve, low to high: it fills its range quickly, so it leaps.
+    pub low: [f32; LOW],
+    /// How hard the bass hits now (eased so a soft one still shows): what the picture swells and the sparks fly by.
+    pub punch: f32,
     pub bass: f32,
     pub mid: f32,
     pub high: f32,
@@ -29,6 +37,14 @@ pub struct Beat {
     pub kick: f32,
     /// The beats counted so far: a new one starts a burst.
     pub beats: u32,
+}
+
+const QUIET: Beat = Beat { bands: [0.; BANDS], low: [0.; LOW], punch: 0., bass: 0., mid: 0., high: 0., level: 0., kick: 0., beats: 0 };
+
+impl Default for Beat {
+    fn default() -> Self {
+        QUIET
+    }
 }
 
 /// Whose sound: the music app's, or Bloxkeep's own (the profile's song file plays in Bloxkeep).
@@ -45,7 +61,7 @@ struct Shared {
     beat_at: Option<Instant>,
 }
 
-static SHARED: Mutex<Shared> = Mutex::new(Shared { want: None, running: false, out: Beat { bands: [0.; BANDS], bass: 0., mid: 0., high: 0., level: 0., kick: 0., beats: 0 }, beat_at: None });
+static SHARED: Mutex<Shared> = Mutex::new(Shared { want: None, running: false, out: QUIET, beat_at: None });
 
 /// The song's beat now, from `src`'s sound; asked each frame it is drawn (the reading starts on the first ask and stops
 /// a moment after the last).
@@ -83,8 +99,19 @@ fn made_up() -> Beat {
         let roll = 0.5 + 0.5 * (t * 3.1 + i as f32 * 0.7).sin() * (t * 1.7 + i as f32 * 0.31).cos();
         *b = (low + (0.55 - u * 0.35) * roll).clamp(0., 1.);
     }
+    let mut low = [0f32; LOW];
+    for (i, v) in low.iter_mut().enumerate() {
+        let u = i as f32 / LOW as f32;
+        *v = ((0.3 + 0.65 * kick) * (1. - u * 0.55) * (0.78 + 0.22 * (t * 5. + i as f32 * 0.45).sin())).clamp(0., 1.);
+    }
     let avg = |r: std::ops::Range<usize>| bands[r.clone()].iter().sum::<f32>() / r.len() as f32;
-    Beat { bass: avg(0..6), mid: avg(6..19), high: avg(19..BANDS), level: avg(0..BANDS), kick, beats: (t / period) as u32, bands }
+    Beat { bass: avg(0..6), mid: avg(6..19), high: avg(19..BANDS), level: avg(0..BANDS), kick, beats: (t / period) as u32, bands, punch: punch(&low), low }
+}
+
+/// How hard the bass's curve hits: its mean eased up (a soft bass still shows), 0 to 1.
+fn punch(low: &[f32; LOW]) -> f32 {
+    let x = low.iter().sum::<f32>() / LOW as f32;
+    (5. * (1.2 * x - x.powf(1.2))).clamp(0., 1.).powf(0.8)
 }
 
 /// The bands from a frame of sound (`ring`, oldest first, already windowed into `re`): see `Ear`.
@@ -99,9 +126,16 @@ struct Ear {
     history: [f32; 43],
     hist_at: usize,
     last_beat: Option<Instant>,
+    big_win: Vec<f32>,
+    big_re: Vec<f32>,
+    big_im: Vec<f32>,
+    low_peak: f32,
+    low_smooth: [f32; LOW],
 }
 
 const N: usize = 1024;
+/// The samples kept, and the bass's FFT.
+const RING: usize = 4096;
 
 impl Ear {
     fn new(rate: f32) -> Ear {
@@ -115,13 +149,15 @@ impl Ear {
             let a = ((f0 / bin).floor() as usize).max(1);
             *e = (a, ((f1 / bin).ceil() as usize).max(a + 1).min(N / 2));
         }
-        Ear { rate, win, re: vec![0.; N], im: vec![0.; N], edges, peak: 1e-4, smooth: [0.; BANDS], history: [0.; 43], hist_at: 0, last_beat: None }
+        let big_win = (0..RING).map(|i| 0.5 - 0.5 * (std::f32::consts::TAU * i as f32 / (RING - 1) as f32).cos()).collect();
+        Ear { rate, win, re: vec![0.; N], im: vec![0.; N], edges, peak: 1e-4, smooth: [0.; BANDS], history: [0.; 43], hist_at: 0, last_beat: None, big_win, big_re: vec![0.; RING], big_im: vec![0.; RING], low_peak: 1e-4, low_smooth: [0.; LOW] }
     }
 
-    /// One look at the last N samples (`ring` from `at`, round): the bands, and a beat when the bass jumps.
+    /// One look at the samples (`ring`, RING of them, the oldest at `at`): the bands from the last N, the bass's curve
+    /// from all, and a beat when the bass jumps.
     fn look(&mut self, ring: &[f32], at: usize) -> (Beat, bool) {
         for i in 0..N {
-            self.re[i] = ring[(at + i) % N] * self.win[i];
+            self.re[i] = ring[(at + RING - N + i) % RING] * self.win[i];
             self.im[i] = 0.;
         }
         fft(&mut self.re, &mut self.im);
@@ -141,6 +177,33 @@ impl Ear {
             *s += (v - *s) * if v > *s { 0.6 } else { 0.14 };
             out.bands[b] = *s;
         }
+        // The bass's curve: 25 to 160 Hz, read between the big FFT's steps, measured against its own loudest of late
+        // over a 15 dB window (it fills quickly and leaps, as Trap Nation's does), quick to rise and to fall.
+        for i in 0..RING {
+            self.big_re[i] = ring[(at + i) % RING] * self.big_win[i];
+            self.big_im[i] = 0.;
+        }
+        fft(&mut self.big_re, &mut self.big_im);
+        let step = self.rate / RING as f32;
+        let mut raw = [0f32; LOW];
+        for (p, r) in raw.iter_mut().enumerate() {
+            let at_bin = 25. * (160f32 / 25.).powf(p as f32 / (LOW - 1) as f32) / step;
+            let (b0, u) = (at_bin.floor() as usize, at_bin.fract());
+            *r = mag(b0, &self.big_re, &self.big_im) * (1. - u) + mag(b0 + 1, &self.big_re, &self.big_im) * u;
+        }
+        let top = raw.iter().copied().fold(0., f32::max);
+        self.low_peak = (self.low_peak * 0.998).max(top).max(1e-4);
+        for p in 0..LOW {
+            let db = 20. * (raw[p] / self.low_peak).max(1e-6).log10();
+            let v = ((db + 15.) / 15.).clamp(0., 1.);
+            let s = &mut self.low_smooth[p];
+            *s += (v - *s) * if v > *s { 0.75 } else { 0.3 };
+        }
+        for p in 0..LOW {
+            let (a, b) = (p.saturating_sub(1), (p + 1).min(LOW - 1));
+            out.low[p] = (self.low_smooth[a] + self.low_smooth[p] + self.low_smooth[b]) / 3.;
+        }
+        out.punch = punch(&out.low);
         let avg = |r: std::ops::Range<usize>| out.bands[r.clone()].iter().sum::<f32>() / r.len() as f32;
         out.bass = avg(0..6);
         out.mid = avg(6..19);
@@ -349,7 +412,7 @@ mod win {
         let capture: IAudioCaptureClient = unsafe { client.GetService()? };
         unsafe { client.Start()? };
         let mut ear = Ear::new(rate);
-        let mut ring = vec![0f32; N];
+        let mut ring = vec![0f32; RING];
         let (mut at, mut fresh) = (0usize, 0usize);
         let mut asked = Instant::now();
         let mut heard = Instant::now();
@@ -382,7 +445,7 @@ mod win {
                         }
                     }
                     ring[at] = v / channels as f32;
-                    at = (at + 1) % N;
+                    at = (at + 1) % RING;
                     fresh += 1;
                 }
                 unsafe { capture.ReleaseBuffer(frames)? };
@@ -392,7 +455,7 @@ mod win {
             if heard.elapsed() > Duration::from_millis(40) {
                 for _ in 0..(rate * 0.012) as usize {
                     ring[at] = 0.;
-                    at = (at + 1) % N;
+                    at = (at + 1) % RING;
                     fresh += 1;
                 }
                 heard = Instant::now();

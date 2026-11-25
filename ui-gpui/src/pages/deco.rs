@@ -1612,83 +1612,113 @@ pub fn clock(id: &'static str) -> AnyElement {
 
 // ───────────────────────── With the music ─────────────────────────
 //
-// The profile moving with its song (beat.rs reads it): round the picture, the song's bands as bars on a circle (low
-// notes at the top, the two sides mirrored), a light that swells with the bass, a ring thrown off and sparks at each
-// beat; over the banner, beams rising with the middle notes, a flash of the cover's colour at each beat, dust lifted
-// faster by the bass, and the bands as bars along its foot (low notes in the middle). All shapes, nothing kept but the
-// sparks and the dust; `power` from 0.45 (light) to 1 (strong).
+// The profile moving with its song (beat.rs reads it), done as the Trap Nation videos do it (and js.nation, the open
+// one made after them): round the picture, the bass's curve as filled rings, one over another, each colour a step
+// later and reaching further when the bass is strong, so the colours trail behind the white; the picture swells with
+// the bass and everything shakes with it; sparks fly out from the picture toward the eye, faster as the bass hits.
+// The colours come from the song's cover. All shapes, nothing kept but the last 7 curves and the sparks; `power` from
+// 0.45 (light) to 1 (strong).
+
+use std::collections::VecDeque;
+
+/// The rings' colours, the white one on top, then ever further out: from the cover's colour, turned round the wheel.
+fn ring_tones(hex: u32) -> [u32; 7] {
+    [0xffffff, mix(hex, 0xffffff, 0.55), hex, turn_hue(hex, 40.), turn_hue(hex, -40.), turn_hue(hex, 85.), mix(turn_hue(hex, 180.), 0x000000, 0.25)]
+}
+
+/// How far each ring reaches past the others when the bass is strong, and how much its curve is smoothed.
+const REACH: [f32; 7] = [1., 1.12, 1.14, 1.3, 1.33, 1.36, 1.5];
+const SMOOTH: [usize; 7] = [0, 2, 2, 3, 3, 3, 5];
+
+/// A colour turned round the colour wheel by `deg`, its lightness and strength kept.
+fn turn_hue(hex: u32, deg: f32) -> u32 {
+    let mut h: Hsla = rgb(hex).into();
+    h.s = h.s.max(0.55);
+    h.l = h.l.clamp(0.45, 0.62);
+    h.h = (h.h + deg / 360.).rem_euclid(1.);
+    let c = Rgba::from(h);
+    ((c.r * 255.).round() as u32) << 16 | ((c.g * 255.).round() as u32) << 8 | (c.b * 255.).round() as u32
+}
 
 #[derive(Default)]
 struct Pulse {
-    ring_seen: u32,
+    curves: VecDeque<[f32; crate::beat::LOW]>,
     ring_last: f32,
-    waves: Vec<f32>,
     sparks: Vec<Pt>,
     banner_last: f32,
-    dust: Vec<Pt>,
-    size: (f32, f32),
+    shake: (f32, f32, f32, f32, f32, bool, bool),
+    shake_last: f32,
 }
 
 thread_local! {
     static PULSE: RefCell<Pulse> = RefCell::new(Pulse::default());
 }
 
-/// Seconds on the decorations' own clock (what the banner's shake moves by).
-pub fn seconds() -> f32 {
-    now()
+/// How far everything is shaken now (px across, down): a swing that starts anew, another way and strength, each time it
+/// has run an eighth of a turn, as far as 13 px with the bass full and `power` 1.
+pub fn shake(punch: f32, power: f32) -> (f32, f32) {
+    let t = now();
+    PULSE.with(|s| {
+        let mut s = s.borrow_mut();
+        let dt = (t - s.shake_last).clamp(0., 0.05);
+        s.shake_last = t;
+        let (mut ph, ax, ay, sx, sy, cx_, cy_) = s.shake;
+        ph += PI / 3. * punch * dt * 60.;
+        if ph > PI / 8. || ax == 0. {
+            ph = 0.;
+            let sign = |_: ()| if rnd(0., 1.) < 0.5 { -1. } else { 1. };
+            s.shake = (ph, rnd(0.9, 1.6), rnd(0.9, 1.6), rnd(0.9, 1.6) * sign(()), rnd(0.9, 1.6) * sign(()), rnd(0., 1.) < 0.5, rnd(0., 1.) < 0.5);
+        } else {
+            s.shake = (ph, ax, ay, sx, sy, cx_, cy_);
+        }
+        let (_, ax, ay, sx, sy, cx_, cy_) = s.shake;
+        let trig = |c: bool, v: f32| if c { v.cos() } else { v.sin() };
+        (trig(cx_, ph * sx) * 8. * ax * punch * power, trig(cy_, ph * sy) * 8. * ay * punch * power)
+    })
 }
 
-/// The song round the picture (`r` its radius), laid behind it in a box centred on it.
+/// The song round the picture (`r` its radius, already swollen with the bass), laid behind it in a box centred on it.
 pub fn pulse_ring(b: crate::beat::Beat, hex: u32, power: f32, r: f32) -> AnyElement {
+    use crate::beat::LOW;
     canvas(|_, _, _| {}, move |bounds: Bounds<Pixels>, _, window, cx| {
         let mut p = Pen { w: window, cx, o: bounds.center() };
         let t = now();
         PULSE.with(|s| {
             let mut s = s.borrow_mut();
-            let dt = (t - s.ring_last).clamp(0., 0.05);
-            s.ring_last = t;
-            if b.beats != s.ring_seen {
-                s.ring_seen = b.beats;
-                if b.kick > 0.6 {
-                    s.waves.push(t);
-                    for _ in 0..16 {
-                        let a = rnd(0., TAU);
-                        let v = rnd(0.9, 2.2) * r * power;
-                        s.sparks.push(Pt { x: a.cos() * r * 1.2, y: a.sin() * r * 1.2, vx: a.cos() * v, vy: a.sin() * v, l: 1., n: u8::from(rnd(0., 1.) < 0.5), ..Default::default() });
+            // (One curve a frame; ring n draws the one n frames old.)
+            if t - s.ring_last > 0.012 {
+                s.ring_last = t;
+                s.curves.push_front(b.low);
+                s.curves.truncate(REACH.len());
+            }
+            let tones = ring_tones(hex);
+            p.glow(0., 0., r * (1.8 + 0.6 * b.punch * power), hex, (0.2 + 0.45 * b.punch * power).min(0.65));
+            for layer in (0..REACH.len()).rev() {
+                let Some(curve) = s.curves.get(layer).or(s.curves.back()) else { continue };
+                let m = SMOOTH[layer];
+                let reach = |i: usize| {
+                    // (A triangle's weights over the neighbours, `m` each side.)
+                    let (mut sum, mut wsum) = (0., 0.);
+                    for j in i.saturating_sub(m)..=(i + m).min(LOW - 1) {
+                        let wgt = (m + 1 - j.abs_diff(i)) as f32;
+                        sum += curve[j] * wgt;
+                        wsum += wgt;
                     }
-                }
+                    let v = sum / wsum.max(1.);
+                    (r * 0.12 * ((1. + 4. * v).powf(REACH[layer]) - 1.) * power).min(r * (0.32 + 0.1 * layer as f32))
+                };
+                let pts: Vec<(f32, f32)> = (0..LOW).map(|i| {
+                    let a = -PI / 2. + PI * i as f32 / (LOW - 1) as f32;
+                    let rad = r + reach(i);
+                    (a.cos() * rad, a.sin() * rad)
+                }).collect();
+                // The right half, then the left one mirrored, back to the top.
+                let shape: Vec<(f32, f32)> = pts.iter().copied().chain(pts.iter().rev().map(|&(x, y)| (-x, y))).collect();
+                let soft: Vec<(f32, f32)> = shape.iter().map(|&(x, y)| (x * 1.05, y * 1.05)).collect();
+                let al = 0.95 - 0.04 * layer as f32;
+                p.shape(&soft, tones[layer], 0.22);
+                p.shape(&shape, tones[layer], al);
             }
-            let light = mix(hex, 0xffffff, 0.35);
-            p.glow(0., 0., r * (1.7 + 0.5 * b.bass * power), hex, (0.16 + 0.4 * b.level * power).min(0.6));
-            for born in &s.waves {
-                let age = t - born;
-                p.circle(0., 0., r * (1.12 + age * 2.), r * 0.025, light, (1. - age / 0.7).max(0.) * 0.7 * power);
-            }
-            s.waves.retain(|born| t - born < 0.7);
-            let n = 72usize;
-            let r0 = r * 1.14 + r * 0.05 * b.bass * power;
-            let width = r * TAU / n as f32 * 0.5;
-            for i in 0..n {
-                let a = -PI / 2. + i as f32 / n as f32 * TAU;
-                let m = if i <= n / 2 { i } else { n - i };
-                let band = b.bands[(m * (crate::beat::BANDS - 1)) / (n / 2)];
-                let len = r * (0.04 + band * 0.62 * power) * (1. + 0.25 * b.kick * power);
-                let (c, s_) = (a.cos(), a.sin());
-                let bar = [(c * r0, s_ * r0), (c * (r0 + len), s_ * (r0 + len))];
-                p.line(&bar, width * 2.4, hex, 0.16);
-                p.line(&bar, width, mix(hex, 0xffffff, band * 0.6), 0.92);
-            }
-            for sp in &mut s.sparks {
-                sp.x += sp.vx * dt;
-                sp.y += sp.vy * dt;
-                sp.l -= dt * 1.4;
-                let a = sp.l.max(0.);
-                if sp.n == 1 {
-                    p.glow(sp.x, sp.y, r * 0.12, hex, a * 0.6);
-                }
-                p.dot(sp.x, sp.y, r * 0.025, if sp.n == 1 { light } else { 0xffffff }, a);
-            }
-            s.sparks.retain(|sp| sp.l > 0.);
         });
     })
     .absolute()
@@ -1696,8 +1726,9 @@ pub fn pulse_ring(b: crate::beat::Beat, hex: u32, power: f32, r: f32) -> AnyElem
     .into_any_element()
 }
 
-/// The song over the banner.
-pub fn pulse_banner(b: crate::beat::Beat, hex: u32, power: f32) -> AnyElement {
+/// The song over the banner: sparks flying out from the picture (at `from`, in the banner) toward the eye, and a flash of
+/// the cover's colour at each beat.
+pub fn pulse_banner(b: crate::beat::Beat, hex: u32, power: f32, from: (f32, f32)) -> AnyElement {
     canvas(|_, _, _| {}, move |bounds: Bounds<Pixels>, _, window, cx| {
         let (w, h) = (f32::from(bounds.size.width), f32::from(bounds.size.height));
         let k = (h / 290.).clamp(0.55, 1.2);
@@ -1708,41 +1739,32 @@ pub fn pulse_banner(b: crate::beat::Beat, hex: u32, power: f32) -> AnyElement {
                 let mut s = s.borrow_mut();
                 let dt = (t - s.banner_last).clamp(0., 0.05);
                 s.banner_last = t;
-                if s.size != (w, h) {
-                    s.size = (w, h);
-                    s.dust = many(((w * h / 9_000.) as usize).clamp(20, 60), |_| Pt { x: rnd(0., w), y: rnd(0., h), r: rnd(0.8, 2.) * k, ph: rnd(0., TAU), ..Default::default() });
+                let n = ((w * h / 2_400.) as usize).clamp(80, 220);
+                let fresh = || Pt { x: rnd(-PI * 0.97, 0.2), y: rnd(10., 120.), l: rnd(0., 200.), v: rnd(1.1, 1.45), ph: rnd(0., 1.), vr: rnd(0.1, 0.25), s: rnd(0.05, 0.4), n: u8::from(rnd(0., 1.) < 0.4), ..Default::default() };
+                while s.sparks.len() < n {
+                    s.sparks.push(fresh());
                 }
-                let light = mix(hex, 0xffffff, 0.45);
-                p.grad(0., h * 0.6, w, h * 0.4, 180., (hex, 0.), (hex, 0.3 * b.level * power));
-                // Beams from below the banner's middle, swaying.
-                for i in 0..9 {
-                    let f = i as f32;
-                    let a = -PI / 2. + (f - 4.) * 0.22 + (t * 0.15).sin() * 0.25;
-                    p.ray(w * 0.55, h * 1.08, a, h * 1.5, 0.07, light, (0.03 + 0.1 * b.mid * power) * (0.6 + 0.4 * (t * 1.3 + f).sin()));
-                }
-                p.rect(0., 0., w, h, hex, 0.12 * b.kick * power);
-                p.glow(w * 0.55, h * 0.55, w * 0.4, hex, 0.32 * b.kick * power);
-                for d in &mut s.dust {
-                    d.y -= (14. + 150. * b.bass * power) * k * dt;
-                    d.x += (t * 0.7 + d.ph).sin() * 10. * k * dt;
-                    if d.y < -4. {
-                        d.y = h + 4.;
-                        d.x = rnd(0., w);
+                s.sparks.truncate(n);
+                p.glow(from.0, from.1, w * 0.35, hex, 0.3 * b.punch * power);
+                p.rect(0., 0., w, h, hex, 0.1 * b.kick * power);
+                let light = mix(hex, 0xffffff, 0.6);
+                for sp in &mut s.sparks {
+                    // Out from the middle and toward the eye (x and depth move together), at the bass's speed, with a
+                    // small wobble of its own; from the eye's plane it starts again.
+                    let speed = (sp.v * b.punch).max(0.15) * dt * 60.;
+                    sp.l += speed;
+                    sp.ph += sp.vr * (0.025 + 0.375 * b.punch) * dt * 60.;
+                    if sp.l > 196. {
+                        *sp = Pt { l: 0., ..fresh() };
                     }
-                    p.dot(d.x, d.y, d.r, 0xffffff, 0.2 + 0.5 * b.high * power);
+                    let near = 200. - sp.l;
+                    let reach = sp.y * k * (sp.l / 200.) * (150. / near.max(4.));
+                    let a = sp.x + (TAU * sp.ph).sin() * sp.s * (0.1 + 0.9 * b.punch) * 0.3;
+                    let (x, y) = (from.0 + a.cos() * reach * 1.6, from.1 + a.sin() * reach);
+                    let size = (0.5 + 3.5 * (sp.l / 200.).powi(3)) * k;
+                    let al = (sp.l / 40.).min(1.) * 0.9;
+                    p.dot(x, y, size, if sp.n == 0 { 0xffffff } else { light }, al);
                 }
-                // The bands along the foot, low notes in the middle, and a line over their tops.
-                let n = crate::beat::BANDS * 2;
-                let bw = w / n as f32;
-                let mut tops = Vec::with_capacity(n);
-                for i in 0..n {
-                    let m = if i < n / 2 { n / 2 - 1 - i } else { i - n / 2 };
-                    let bh = h * (0.015 + b.bands[m] * b.bands[m] * 0.24 * power);
-                    let x = i as f32 * bw;
-                    p.grad(x + bw * 0.32, h - bh, bw * 0.36, bh, 180., (light, 0.75), (hex, 0.));
-                    tops.push((x + bw / 2., h - bh));
-                }
-                p.line(&tops, 1.5 * k, 0xffffff, 0.35);
             });
         });
     })
