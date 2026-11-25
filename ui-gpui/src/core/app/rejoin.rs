@@ -812,15 +812,39 @@ impl App {
     /// Asked as a Roblox window asks when joining: a game's ban comes back as its message. The answer is logged after
     /// `why` (no account, no ticket) as proof of what Roblox answers.
     pub async fn check_join(self: &Rc<Self>, account: &Account, target: &GameTarget, why: &str, ct: &Cancel) -> Option<JoinAnswer> {
-        let ask = self.rejoin.ask_join.borrow().clone();
-        let (a, t, c) = (account.clone(), target.clone(), ct.clone());
-        let asked = rt::blocking(move || match ask {
-            Some(f) => f(&a, &t, &c),
-            None => roblox_api::join_check(&a.cookie, t.place_id, t.job_id.as_deref(), &a.realm, &c, None),
-        })
-        .await;
-        match asked {
+        match self.ask_join_once(account, target, ct).await {
             Ok(mut answer) => {
+                // A bare 211 (no words of a ban) is a ban only if the game's start place says it too: a game's ban holds
+                // for the whole game, while one of its other places answered 211 for a join to a full server
+                // (JoinAnswer::start_status). Asked again later when the start place can't be known or asked.
+                if answer.bare_211() {
+                    match self.start_place_of(target.place_id).await {
+                        Some(start) if start == target.place_id => {}
+                        None => {
+                            log::note(&format!("{why}: Roblox answered 211 without words of a ban; the game's start place isn't known yet, so it is asked again."));
+                            return None;
+                        }
+                        Some(start) => {
+                            let at_start = GameTarget { place_id: start, ..Default::default() };
+                            match self.ask_join_once(account, &at_start, ct).await {
+                                Ok(there) if there.banned() => {
+                                    log::note(&format!("{why}: Roblox answered 211 here and at the game's start place {start} too."));
+                                }
+                                Ok(there) if there.status.is_some() => {
+                                    log::note(&format!(
+                                        "{why}: Roblox answered 211 here, but status {} at the game's start place {start}: not a ban.",
+                                        there.status.unwrap_or_default()
+                                    ));
+                                    answer.start_status = there.status;
+                                }
+                                _ => {
+                                    log::note(&format!("{why}: Roblox answered 211 without words of a ban; the game's start place {start} gave no answer, so it is asked again."));
+                                    return None;
+                                }
+                            }
+                        }
+                    }
+                }
                 // A server named and refused without a ban: that server is gone (JoinAnswer::server_gone).
                 if target.job_id.as_deref().is_some_and(|j| !j.is_empty()) && answer.status == Some(12) && !answer.banned() {
                     answer.server_gone = true;
@@ -844,9 +868,29 @@ impl App {
         }
     }
 
-    /// Status 2 (a join under way): a ban noted for this game is over.
+    async fn ask_join_once(self: &Rc<Self>, account: &Account, target: &GameTarget, ct: &Cancel) -> Res<JoinAnswer> {
+        let ask = self.rejoin.ask_join.borrow().clone();
+        let (a, t, c) = (account.clone(), target.clone(), ct.clone());
+        rt::blocking(move || match ask {
+            Some(f) => f(&a, &t, &c),
+            None => roblox_api::join_check(&a.cookie, t.place_id, t.job_id.as_deref(), &a.realm, &c, None),
+        })
+        .await
+    }
+
+    /// The game's start place (its root place) for a place, looked up when not known yet; None when Roblox doesn't say.
+    async fn start_place_of(self: &Rc<Self>, place_id: i64) -> Option<i64> {
+        let known = |app: &Rc<Self>| app.controller.games.borrow().get(&place_id).cloned().flatten().map(|g| g.place_id).filter(|p| *p > 0);
+        if let Some(start) = known(self) {
+            return Some(start);
+        }
+        let _ = self.load_games(vec![(place_id, 0)], false).await;
+        known(self)
+    }
+
+    /// Status 2 (a join under way), or a 211 the game's start place doesn't share: a ban noted for this game is over.
     fn forget_ban_if_let_in(&self, account_id: Guid, place_id: i64, answer: Option<&JoinAnswer>) -> bool {
-        if !answer.is_some_and(|a| !a.banned() && a.status == Some(2)) {
+        if !answer.is_some_and(|a| !a.banned() && (a.status == Some(2) || a.start_status.is_some_and(|s| !matches!(s, 12 | 29..=33)))) {
             return false;
         }
         let Some(account) = self.find_account(account_id) else {

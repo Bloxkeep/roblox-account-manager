@@ -141,6 +141,11 @@ const PLACE: i64 = 107778070777162;
 const GPO: i64 = 1730877806;
 const BAN_LINE: &str = r#"Error [FLog::CreatorError] Error: Server Kick Message: ; Metadata: {"moderatorType":"creator","dynamicReasonTextFilterStatus":"2","beginTimestamp":"2026-10-21T00:07:04Z"}"#;
 
+/// A place known as its game's start place, with no name or universe of its own.
+fn start_place_of_its_own(app: &App, place: i64) {
+    app.controller.games.borrow_mut().insert(place, Some(GameInfo { place_id: place, ..Default::default() }));
+}
+
 fn game(place: i64) -> Option<GameTarget> {
     Some(GameTarget::new(place, None, None, None))
 }
@@ -305,6 +310,10 @@ pub async fn run(c: &mut Checks, dir: &str) {
     seed(vec![account]);
     let (app, said) = quiet_app();
     unlock(&app).await;
+    // The places asked about are their games' start places: a bare 211 there is a ban (check_join).
+    for place in [PLACE, GPO] {
+        start_place_of_its_own(&app, place);
+    }
     // A launch never touches the real Roblox: no Multi-Roblox mutex taken, no notification-area copy of Roblox closed.
     let _ = app.vault_mut(|d| d.settings.multi_instance = false);
     let log = std::fs::OpenOptions::new()
@@ -486,6 +495,62 @@ async fn body(c: &mut Checks, r: &mut R) {
         ban211.as_ref().is_some_and(|a| a.banned() && !a.server_gone && a.refused()),
         &ban211,
     );
+    // A bare 211 at another place of the game (Blox Fruits' Third Sea, a full server) is asked again at the game's start
+    // place: a ban holds for the whole game.
+    {
+        const SEA: i64 = 100117331123089;
+        const START: i64 = 2753915549;
+        app.controller.games.borrow_mut().insert(SEA, Some(GameInfo { place_id: START, universe_id: 994732206, ..Default::default() }));
+        let start_says = Arc::new(Mutex::new(answer(200, Some(2), None)));
+        let asked_at = Arc::new(Mutex::new(Vec::<i64>::new()));
+        let party_hook = app.rejoin.ask_join.borrow().clone();
+        {
+            let (says, at) = (start_says.clone(), asked_at.clone());
+            *app.rejoin.ask_join.borrow_mut() = Some(Arc::new(move |_, t, _| {
+                at.lock().unwrap().push(t.place_id);
+                Ok(if t.place_id == START { says.lock().unwrap().clone() } else { answer(200, Some(12), Some("Unable to join Game 211")) })
+            }));
+        }
+        let sea = GameTarget::new(SEA, None, None, None);
+        let let_in = app.check_join(&account, &sea, "test", &Cancel::new()).await;
+        c.check(
+            "a bare 211 at another place of the game, the start place letting the account in: not a ban, not a refusal",
+            let_in.as_ref().is_some_and(|a| !a.banned() && !a.refused() && a.start_status == Some(2)) && *asked_at.lock().unwrap() == [SEA, START],
+            (&let_in, asked_at.lock().unwrap().clone()),
+        );
+        *start_says.lock().unwrap() = answer(200, Some(6), Some("The game you requested is currently full."));
+        let full_there = app.check_join(&account, &sea, "test", &Cancel::new()).await;
+        c.check("…the start place full: not a ban either", full_there.as_ref().is_some_and(|a| !a.banned() && !a.refused()), &full_there);
+        let sea_server = GameTarget::new(SEA, Some(DEAD_SERVER.into()), None, None);
+        let server = app.check_join(&account, &sea_server, "test", &Cancel::new()).await;
+        c.check("…for a named server: that server is gone, another is tried", server.as_ref().is_some_and(|a| !a.banned() && a.server_gone && a.ended()), &server);
+        *start_says.lock().unwrap() = answer(200, Some(12), Some("Unable to join Game 211"));
+        let both = app.check_join(&account, &sea, "test", &Cancel::new()).await;
+        c.check("…the start place says 211 too: a ban", both.as_ref().is_some_and(|a| a.banned() && a.refused()), &both);
+        *start_says.lock().unwrap() = answer(429, None, Some("Too many requests"));
+        let unknown = app.check_join(&account, &sea, "test", &Cancel::new()).await;
+        c.check("…the start place gives no answer: no answer, asked again later", unknown.is_none(), &unknown);
+        let with_words = JoinAnswer { data: Some(r#"{"moderationMessage":"Exploiting"}"#.into()), ..answer(200, Some(12), Some("Unable to join Game 211")) };
+        c.check("…a 211 with the game's words is a ban without asking", !with_words.bare_211() && with_words.banned(), ());
+        // The game's start place not known (Roblox can't be asked): no answer, so nothing is said yet.
+        let unknown_place = app.check_join(&account, &GameTarget::new(987654321, None, None, None), "test", &Cancel::new()).await;
+        c.check("…a bare 211 for a place whose game isn't known: no answer, asked again later", unknown_place.is_none(), &unknown_place);
+        // A ban noted wrongly before, at that place: forgotten once the start place lets the account in.
+        *start_says.lock().unwrap() = answer(200, Some(2), None);
+        let cookie_was = r.acc().cookie.clone();
+        r.edit(|a| {
+            a.cookie = "test".into(); // asked with its own sign-in
+            a.game_bans = vec![GameBan { place_id: SEA, game_name: None, at: now().plus_secs(-3600.0), message: None, until: None }];
+        });
+        let _ = app.recheck_game_bans(&[r.acc()], &sea, &Cancel::new()).await;
+        c.check("…and a ban noted before from such a 211 is forgotten before opening", r.acc().game_bans.is_empty(), r.acc().game_bans.len());
+        r.edit(|a| {
+            a.game_bans.clear();
+            a.cookie = cookie_was;
+        });
+        app.controller.games.borrow_mut().remove(&SEA);
+        *app.rejoin.ask_join.borrow_mut() = party_hook;
+    }
     // One account opened into a chosen server that had ended (the owner's, 2026-11-14: Roblox's "This experience has
     // ended, or the server became unavailable unexpectedly due to a system error", answered 311 at 46 s and closed only at
     // 60 s). Asked 12 s on, and another server at once on that answer.
@@ -1227,7 +1292,7 @@ async fn body(c: &mut Checks, r: &mut R) {
     app.controller.games.borrow_mut().insert(GPO, Some(gpo_info(GPO)));
     app.controller.games.borrow_mut().insert(GPO_OTHER, Some(gpo_info(GPO_OTHER)));
     c.check("a game's ban noted for one of its places counts for another", app.game_ban_of(&r.acc(), Some(GPO_OTHER)).is_some(), ());
-    app.controller.games.borrow_mut().remove(&GPO);
+    start_place_of_its_own(&app, GPO);
     app.controller.games.borrow_mut().remove(&GPO_OTHER);
     r.edit(|a| a.game_bans.clear());
     // A game started in the window while still on a server, its old server's kick (a ban) logged after the new join:

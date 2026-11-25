@@ -767,6 +767,11 @@ pub struct JoinAnswer {
     /// status 12, "Unable to join Game 311", every time. Counted as ended so the accounts try another server. Set by
     /// the join check, which knows the target.
     pub server_gone: bool,
+    /// A bare "Unable to join Game 211" (no words of a ban) at a place that isn't the game's start place, asked again
+    /// at the start place, which answered this status without a 211: not a ban. A game's ban holds for the whole
+    /// game, while a 211 at one of its other places came back for a join to a full server (Blox Fruits' Third Sea).
+    /// Set by the join check, which knows the game.
+    pub start_status: Option<i32>,
 }
 
 static JOIN_CODE: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new(r"Unable to join Game (\d+)").unwrap());
@@ -786,7 +791,7 @@ impl JoinAnswer {
     /// Roblox refuses the account this game, for good: a status its client counts as a join error
     /// (FStringGameJoinStatusConsideredError, "12;29;30;31;32;33;" in 0.744), not a wait. Includes `banned`.
     pub fn refused(&self) -> bool {
-        !self.server_gone && matches!(self.status, Some(12) | Some(29..=33))
+        !self.server_gone && matches!(self.start_status.or(self.status), Some(12) | Some(29..=33))
     }
 
     /// The number in "Unable to join Game 211": what the window turns into its own error.
@@ -796,10 +801,20 @@ impl JoinAnswer {
     }
 
     /// The game or its moderators banned the account: status 12, "Unable to join Game 211" (seen 2026-10-21 with
-    /// the window's Join Error 600, "You were banned by this experience or its moderators"). Words about a ban count too.
+    /// the window's Join Error 600, "You were banned by this experience or its moderators"), unless the game's start
+    /// place lets the account in (`start_status`). Words about a ban count too.
     pub fn banned(&self) -> bool {
-        (self.status == Some(12) && self.code() == Some(211))
-            || self.message.as_deref().is_some_and(|m| contains_ci(m, "banned") || m.to_lowercase().contains(&"bị cấm".to_lowercase()))
+        (self.status == Some(12) && self.code() == Some(211) && self.start_status.is_none()) || self.says_banned()
+    }
+
+    /// Status 12, "Unable to join Game 211", with no words of a ban and no reason from the game: alone, not proof of
+    /// a ban (see `start_status`).
+    pub fn bare_211(&self) -> bool {
+        self.status == Some(12) && self.code() == Some(211) && !self.says_banned() && self.reason().is_none()
+    }
+
+    fn says_banned(&self) -> bool {
+        self.message.as_deref().is_some_and(|m| contains_ci(m, "banned") || m.to_lowercase().contains(&"bị cấm".to_lowercase()))
     }
 
     /// The game's own words: after "Moderation message:", or a message or reason in statusData; None otherwise
@@ -916,7 +931,7 @@ pub fn join_check(cookie: &str, place_id: i64, job_id: Option<&str>, realm: &str
             data = Some(if raw.chars().count() > 400 { raw.chars().take(400).collect() } else { raw });
         }
     }
-    Ok(JoinAnswer { http: res.status as i32, status, message, data, queue_position: queue, challenge, server_gone: false })
+    Ok(JoinAnswer { http: res.status as i32, status, message, data, queue_position: queue, challenge, server_gone: false, start_status: None })
 }
 
 /// A public server's address (joinScript › UdmuxEndpoints › Address, else MachineAddress), from the join answer
