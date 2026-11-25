@@ -2713,6 +2713,7 @@
   "pf.medalAge": "{n} ປີໃນ Roblox, ຕັ້ງແຕ່ {d}",
   "pf.medalGames": "ຫຼິ້ນແລ້ວ {n} ເກມ, ນັບຈາກເຄື່ອງໝາຍ Roblox",
   "pf.medalGamesMore": "ຫຼິ້ນແລ້ວຫຼາຍກວ່າ {n} ເກມ, ນັບຈາກເຄື່ອງໝາຍ Roblox",
+  "pf.medalHours": "ຫຼິ້ນ {n} ຊົ່ວໂມງ, ນັບຕັ້ງແຕ່ {d}",
   "picker.empty.favorites": "ບັນຊີຂອງເຈົ້າຍັງບໍ່ໄດ້ມັກເກມໃດໃນ Roblox.",
   "picker.empty.pinned": "ປັກໝຸດເກມດ້ວຍ ☆ ເພື່ອເກັບໄວ້ຢູ່ນີ້.",
   "picker.empty.popular": "ຕອນນີ້ບໍ່ມີເກມຍອດນິຍົມ.",

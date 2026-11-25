@@ -2812,6 +2812,7 @@
   "pf.medalAge1": "1 ano no Roblox, desde {d}",
   "pf.medalGames": "{n} jogos jogados, contados pelos emblemas do Roblox",
   "pf.medalGamesMore": "Mais de {n} jogos jogados, contados pelos emblemas do Roblox",
+  "pf.medalHours": "{n} horas jogadas, contadas desde {d}",
   "picker.empty.favorites": "Suas contas ainda não favoritaram nenhum jogo no Roblox.",
   "picker.empty.pinned": "Fixe jogos com ☆ para mantê-los aqui.",
   "picker.empty.popular": "Os jogos populares não estão disponíveis agora.",

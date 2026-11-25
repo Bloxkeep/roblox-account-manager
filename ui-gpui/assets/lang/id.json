@@ -2766,6 +2766,7 @@
   "pf.medalAge1": "1 tahun di Roblox, sejak {d}",
   "pf.medalGames": "Sudah memainkan {n} game, dihitung dari lencana Roblox",
   "pf.medalGamesMore": "Sudah memainkan lebih dari {n} game, dihitung dari lencana Roblox",
+  "pf.medalHours": "{n} jam bermain, dihitung sejak {d}",
   "picker.empty.favorites": "Akunmu belum memfavoritkan game apa pun di Roblox.",
   "picker.empty.pinned": "Sematkan game dengan ☆ agar ada di sini.",
   "picker.empty.popular": "Game populer belum tersedia saat ini.",

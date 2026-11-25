@@ -2898,6 +2898,8 @@
   "pf.medalGames#few": "Zagrano w {n} gry, liczone według odznak Roblox",
   "pf.medalGamesMore": "Zagrano w ponad {n} gier, liczone według odznak Roblox",
   "pf.medalGamesMore#few": "Zagrano w ponad {n} gry, liczone według odznak Roblox",
+  "pf.medalHours": "{n} godzin gry, liczone od {d}",
+  "pf.medalHours#few": "{n} godziny gry, liczone od {d}",
   "picker.empty.favorites": "Twoje konta nie dodały jeszcze żadnych gier do ulubionych w Roblox.",
   "picker.empty.pinned": "Przypinaj gry gwiazdką ☆, aby trzymać je tutaj.",
   "picker.empty.popular": "Popularne gry są teraz niedostępne.",

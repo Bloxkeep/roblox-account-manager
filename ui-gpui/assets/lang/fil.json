@@ -3704,6 +3704,7 @@
   "pf.medalAge1": "1 taon sa Roblox, mula {d}",
   "pf.medalGames": "Nakapaglaro ng {n} laro, bilang mula sa mga badge sa Roblox",
   "pf.medalGamesMore": "Nakapaglaro ng mahigit {n} laro, bilang mula sa mga badge sa Roblox",
+  "pf.medalHours": "{n} oras na paglalaro, bilang mula {d}",
   "pf.months": "{n} buwan",
   "pf.months1": "1 buwan",
   "pf.id": "Roblox ID",

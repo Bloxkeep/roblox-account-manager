@@ -210,7 +210,7 @@ impl App {
             });
         }
         self.refresh_robux_if_due(Stamp::utc_now()); // alongside those, not after them
-        self.check_screen_time();
+        self.refresh_screen_time_if_due(Stamp::utc_now()); // hours played, kept day by day (screen_time.rs)
         self.on_vault_unlocked();
         self.add_locked_activity(); // what happened while locked (a window closed) is in the log at once, also if Bloxkeep quits next
     }
@@ -449,27 +449,5 @@ impl App {
         self.on_password_changed(next);
         self.remember_vault(&vault, false); // its new id: backups from now on carry it
         Ok(json!(true))
-    }
-}
-
-impl App {
-    /// Once a run, at the first unlock: Roblox's screen time for the first signed-in account, written to error.log as
-    /// Roblox answers it (its status and the start of its body: minutes and game ids). What it holds decides how
-    /// Bloxkeep can count hours played.
-    fn check_screen_time(self: &Rc<Self>) {
-        static DONE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-        let Some(vault) = self.vault_ref() else { return };
-        let Some(account) = vault.data().accounts.iter().find(|a| App::has_robux(a) && crate::core::roblox_api::realm::normalize(Some(&a.realm)) == crate::core::roblox_api::realm::GLOBAL).cloned() else { return };
-        if DONE.swap(true, std::sync::atomic::Ordering::Relaxed) {
-            return;
-        }
-        crate::core::rt::spawn(async move {
-            let (cookie, user_id) = (account.cookie.clone(), account.user_id);
-            let said = match crate::core::rt::blocking(move || crate::core::roblox_api::get_screen_time(&cookie, user_id, &crate::core::base::Cancel::new())).await {
-                Ok(answers) => answers.iter().zip(["week", "week by game"]).map(|((status, body), what)| format!("{what}: {status} {}", body.chars().take(900).collect::<String>())).collect::<Vec<_>>().join(" | "),
-                Err(e) => format!("not reached: {}", App::log_kind_of(&e)),
-            };
-            crate::core::log::write(&format!("Screen time check: {said}"));
-        });
     }
 }

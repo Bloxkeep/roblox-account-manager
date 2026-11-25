@@ -2714,6 +2714,7 @@
   "pf.medalAge": "{n} yıldır Roblox'ta, {d} tarihinden beri",
   "pf.medalGames": "{n} oyun oynadı, Roblox rozetlerinden sayıldı",
   "pf.medalGamesMore": "{n} oyundan fazla oynadı, Roblox rozetlerinden sayıldı",
+  "pf.medalHours": "{n} saat oynadı, {d} tarihinden beri sayıldı",
   "picker.empty.favorites": "Hesapların henüz Roblox'ta hiçbir oyunu favorilere eklemedi.",
   "picker.empty.pinned": "Burada tutmak için oyunları ☆ ile sabitle.",
   "picker.empty.popular": "Popüler oyunlar şu an kullanılamıyor.",

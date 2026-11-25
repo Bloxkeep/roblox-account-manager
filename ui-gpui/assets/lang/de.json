@@ -2766,6 +2766,7 @@
   "pf.medalAge1": "1 Jahr auf Roblox, seit {d}",
   "pf.medalGames": "{n} Spiele gespielt, gezählt nach Roblox-Abzeichen",
   "pf.medalGamesMore": "Über {n} Spiele gespielt, gezählt nach Roblox-Abzeichen",
+  "pf.medalHours": "{n} Stunden gespielt, gezählt seit {d}",
   "picker.empty.favorites": "Deine Konten haben auf Roblox noch keine Spiele favorisiert.",
   "picker.empty.pinned": "Hefte Spiele mit ☆ an, um sie hier zu behalten.",
   "picker.empty.popular": "Beliebte Spiele sind gerade nicht verfügbar.",

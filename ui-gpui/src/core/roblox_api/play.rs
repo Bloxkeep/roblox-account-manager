@@ -37,20 +37,30 @@ fn get_client_assertion(cookie: &str, ct: &Cancel, realm: &str) -> Res<Option<St
     }
 }
 
-/// The account's Robux via its own cookie (economy …/v1/users/{id}/currency; 401 without a sign-in, checked on
-/// both hosts 2026-10-19). None when Roblox didn't say; 429 fails, so a round stops there.
-/// Roblox's screen time of the signed-in account, as its own Settings page reads it (Privacy, Screen time): the
-/// last week's, then the week's by game. Each the answer's status and body as given (numbers of minutes and game
-/// ids, nothing secret).
-pub fn get_screen_time(cookie: &str, user_id: i64, ct: &Cancel) -> Res<[(u16, String); 2]> {
-    let ask = |what: &str| -> Res<(u16, String)> {
-        let url = format!("https://apis.roblox.com/parental-controls-api/v1/parental-controls/{what}?userId={user_id}");
-        let res = send(&request("GET", &url, Some(cookie), false, realm::GLOBAL), ct)?;
-        Ok((res.status, res.text()))
-    };
-    Ok([ask("get-weekly-screentime")?, ask("get-top-weekly-screentime-by-universe")?])
+/// The minutes the signed-in account played on each of the last 7 days, as its own Settings page reads them (Privacy,
+/// Screen time): (days ago, minutes), 0 today. Roblox keeps no longer record anyone can read. None when Roblox didn't
+/// say (a VNG account, an answer of another shape); 429 fails, so a round stops there.
+pub fn get_daily_screen_time(cookie: &str, user_id: i64, ct: &Cancel) -> Res<Option<Vec<(i64, i64)>>> {
+    let url = format!("https://apis.roblox.com/parental-controls-api/v1/parental-controls/get-weekly-screentime?userId={user_id}");
+    let res = send(&request("GET", &url, Some(cookie), false, realm::GLOBAL), ct)?;
+    if res.status == 429 {
+        return Err(rate_limited_by(&res));
+    }
+    if !res.is_success() {
+        return Ok(None);
+    }
+    Ok(read_daily_screen_time(&res.text()))
 }
 
+/// {"dailyScreentimes":[{"daysAgo":0,"minutesPlayed":302},…]} as (days ago, minutes); None for anything else.
+pub(crate) fn read_daily_screen_time(body: &str) -> Option<Vec<(i64, i64)>> {
+    let v: Value = serde_json::from_str(body).ok()?;
+    let days = v.get("dailyScreentimes")?.as_array()?;
+    Some(days.iter().filter_map(|d| Some((d.get("daysAgo")?.as_i64()?, d.get("minutesPlayed")?.as_i64()?))).filter(|(ago, m)| (0..7).contains(ago) && *m >= 0).collect())
+}
+
+/// The account's Robux via its own cookie (economy …/v1/users/{id}/currency; 401 without a sign-in, checked on
+/// both hosts 2026-10-19). None when Roblox didn't say; 429 fails, so a round stops there.
 pub fn get_robux(cookie: &str, realm: &str, user_id: i64, ct: &Cancel) -> Res<Option<i64>> {
     let realm = realm::normalize(Some(realm));
     let req = request("GET", &format!("{}/v1/users/{user_id}/currency", realm::api(realm, "economy")), Some(cookie), false, realm);

@@ -113,6 +113,9 @@ pub struct Data {
     /// The games each user has played, by their Roblox id, as their badges tell (roblox::games_played): the count and
     /// whether all their badges were read; None while counted or when Roblox didn't tell. Counted once a run.
     played: std::collections::HashMap<i64, Option<(i64, bool)>>,
+    /// The minutes the account played as Bloxkeep has kept them from Roblox's Screen time (core screen_time.rs), and
+    /// the first day kept ("2026-11-25"), by Roblox id: asked each time its own profile is read.
+    hours: std::collections::HashMap<i64, (i64, String)>,
 }
 
 impl Data {
@@ -390,6 +393,7 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
     let ask = crate::pages::avatar::ticket();
     r.profile.load_ask = ask;
     count_games(r, user, cookie.clone(), cx);
+    ask_hours(r, user, cx);
     let rx = roblox::run(move || roblox::profile(&cookie, user));
     reply(rx, cx, move |r, got, cx| {
         // Overtaken (another account, or asked again since): dropped.
@@ -414,6 +418,22 @@ fn count_games(r: &mut Root, user: i64, cookie: String, cx: &mut Context<Root>) 
         r.profile.played.insert(user, got.ok());
         cx.notify();
     });
+}
+
+/// The hours the account has played, as kept from Roblox's Screen time, for the badge under its name.
+fn ask_hours(r: &mut Root, user: i64, cx: &mut Context<Root>) {
+    let Some(link) = r.link.clone() else { return };
+    let rx = link.call("screenTime", json!({ "userId": user }));
+    cx.spawn(async move |this, cx| {
+        let Some(got) = rx.await.ok().and_then(Result::ok) else { return };
+        let minutes = got.get("minutes").and_then(serde_json::Value::as_i64).unwrap_or(0);
+        let since = got.get("since").and_then(serde_json::Value::as_str).unwrap_or_default().to_string();
+        let _ = this.update(cx, |r, cx| {
+            r.profile.hours.insert(user, (minutes, since));
+            cx.notify();
+        });
+    })
+    .detach();
 }
 
 /// Opens a Roblox user's profile in the Roblox tab's Hồ sơ (a friend's, from their card), over the account's own.
@@ -1995,7 +2015,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                 .when(own, |d| d.child(div().text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(FACE)).child(hello.trim_end_matches([',', ' ']).to_string())))
                 .child(title)
                 .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(if own && root.hides_names() { root.i18n.tv("pf.joined", &[("d", &day(&p.joined))]) } else { format!("@{} · {}", p.name, root.i18n.tv("pf.joined", &[("d", &day(&p.joined))])) }))
-                .when_some(crate::pages::medals::row(root, &p.joined, root.profile.played.get(&user).copied().flatten(), cx), |d, m| d.child(m))
+                .when_some(crate::pages::medals::row(root, &p.joined, own.then(|| root.profile.hours.get(&user)).flatten(), root.profile.played.get(&user).copied().flatten(), cx), |d, m| d.child(m))
                 .when_some(here_line(root, user, own, cx), |d, l| d.child(l))
                 .when_some(about, |d, t| d.child(div().pt(px(4.)).text_size(px(T_M)).text_color(c(TEXT_2)).truncate().child(t))),
         )

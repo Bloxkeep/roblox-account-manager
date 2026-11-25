@@ -780,6 +780,10 @@ impl App {
             self.refresh_robux_if_due(now);
             Ok(())
         });
+        self.step("RefreshScreenTimeIfDue(now)", || {
+            self.refresh_screen_time_if_due(now);
+            Ok(())
+        });
         self.step("TickDiscord(now, players)", || {
             self.tick_discord(now, &players);
             Ok(())

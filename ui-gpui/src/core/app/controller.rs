@@ -1062,6 +1062,7 @@ impl App {
             "gameLooks" => done(self.game_looks(a).await),
             "playedGames" => done(self.played_games()),
             "playSessions" => done(self.play_sessions_raw()),
+            "screenTime" => done(self.screen_time_of(long_of(a, "userId"))),
             "wikiGame" => done(self.wiki_game(&str_of(a, "id")).await),
             "wikiOpen" => done(self.open_wiki_link(&str_of(a, "url"))),
             "wikiApi" => done(App::wiki_api(a).await),

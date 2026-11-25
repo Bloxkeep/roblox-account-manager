@@ -2583,6 +2583,7 @@
   "pf.medalAge": "อยู่ใน Roblox {n} ปี ตั้งแต่ {d}",
   "pf.medalGames": "เล่นมาแล้ว {n} เกม นับจากตรา Roblox",
   "pf.medalGamesMore": "เล่นมาแล้วกว่า {n} เกม นับจากตรา Roblox",
+  "pf.medalHours": "เล่นไป {n} ชั่วโมง นับตั้งแต่ {d}",
   "picker.empty.favorites": "บัญชีของคุณยังไม่ได้เพิ่มเกมไหนในรายการโปรดบน Roblox",
   "picker.empty.pinned": "ปักหมุดเกมด้วย ☆ เพื่อเก็บไว้ที่นี่",
   "picker.empty.popular": "ตอนนี้ไม่มีเกมยอดนิยม",

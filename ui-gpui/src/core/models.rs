@@ -515,6 +515,10 @@ pub struct VaultData {
     pub play_sessions: Vec<PlaySession>,
     /// Statistics › Activity, oldest first (see AppController.Activity.cs); missing in older vaults.
     pub activity: Vec<ActivityEntry>,
+    /// The minutes each account played on each day, as Roblox's Screen time tells them (it keeps the last 7 days only,
+    /// so they are kept here as they come: app/screen_time.rs), by Roblox user id and local day ("2026-11-25");
+    /// missing in older vaults.
+    pub screen_time: std::collections::BTreeMap<i64, std::collections::BTreeMap<String, i64>>,
     /// Scheduled runs whose stop is still to come when the app closes; armed again at the next unlock.
     pub scheduled_runs: Vec<ScheduledRunState>,
     /// Settings › Discord (see AppController.Discord.cs); kept here because the webhook link is a secret.
@@ -536,6 +540,7 @@ impl Default for VaultData {
             waiting_rejoins: Vec::new(),
             play_sessions: Vec::new(),
             activity: Vec::new(),
+            screen_time: Default::default(),
             scheduled_runs: Vec::new(),
             discord: DiscordSettings::default(),
             phone: PhoneSettings::default(),

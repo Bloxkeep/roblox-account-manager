@@ -68,6 +68,7 @@ pub mod roblox_words;
 pub mod robux;
 pub mod saved_servers;
 pub mod schedule;
+pub mod screen_time;
 pub mod server_hop;
 pub mod settings;
 pub mod sign_ins;
