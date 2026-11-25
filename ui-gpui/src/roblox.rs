@@ -90,7 +90,13 @@ pub(crate) fn signed(cookie: &str) -> String {
 }
 
 fn get(url: &str, cookie: Option<&str>) -> Result<Value, String> {
-    let out = get_once(url, cookie);
+    let mut out = get_once(url, cookie);
+    // Roblox's servers fail a read now and then (500, 502, 503, 504) that a second ask a moment later answers; a read
+    // is safe to ask again, so it gets one more try before the page shows the failure.
+    if out.as_ref().is_err_and(|why| matches!(why.as_str(), "Roblox 500" | "Roblox 502" | "Roblox 503" | "Roblox 504")) {
+        std::thread::sleep(std::time::Duration::from_millis(800));
+        out = get_once(url, cookie);
+    }
     // (One that got no answer is in error.log already, with its real error.)
     if let Err(why) = &out {
         if why != crate::net::UNREACHABLE {

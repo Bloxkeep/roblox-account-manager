@@ -147,7 +147,8 @@ fn den(name: &str, universe: i64) -> Result<Option<(String, Vec<Code>, bool)>, S
                 if code.is_empty() || code.chars().count() > 60 {
                     return None;
                 }
-                let reward = MD.replace_all(c["description"].as_str().unwrap_or(""), "").trim().to_string();
+                // (Its rewards come in markdown or in HTML: "<strong>Garcello Skin</strong>, …".)
+                let reward = self::words(&MD.replace_all(c["description"].as_str().unwrap_or(""), ""));
                 let reward = LEAD.replace(&reward, "").trim().trim_end_matches('.').to_string();
                 let reward = reward.chars().next().map(|f| f.to_uppercase().collect::<String>() + &reward[f.len_utf8()..]).unwrap_or_default();
                 // ("check" set: Roblox Den has it down as likely gone; its own page counts only active codes without it,

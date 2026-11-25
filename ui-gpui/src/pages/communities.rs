@@ -214,7 +214,7 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
             .gap(px(8.))
             .child(div().px(px(4.)).flex().items_center().gap(px(8.)).child(div().text_size(px(T_SEC)).font_weight(FontWeight::SEMIBOLD).child(root.tr("nav.communities"))).when_some(count, |d, n| d.child(badge(n.to_string(), Tone::Muted))))
             .when_some(root.communities.search.as_ref(), |d, e| d.child(field(e, Some("search")).h(px(34.))))
-            .child(div().flex_1().min_h_0().child(crate::scrolled::body("cm-list", div().pb(px(4.)).child(rows))))
+            .child(div().flex_1().min_h_0().child(crate::scrolled::body("cm-list", div().pb(px(4.)).pr(px(14.)).child(rows))))
             .child(div().flex_none().flex().child(Button::new("cm-create", root.tr("club.create")).primary().small().wide().on_click(cx.listener(|r, _, _, _| r.send("openRobloxPage", json!({ "kind": "groupCreate" })))))),
     );
     let main: AnyElement = match open {
