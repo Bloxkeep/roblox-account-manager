@@ -976,6 +976,8 @@ impl App {
                 let kind = str_of(a, "kind");
                 let url = if kind == "trades" {
                     "https://www.roblox.com/trades".to_string()
+                } else if kind == "groupCreate" {
+                    "https://www.roblox.com/communities/create".to_string()
                 } else if kind == "event" {
                     // (A game's event: its id is a long number Roblox writes as text.)
                     let id: String = str_of(a, "id").chars().filter(char::is_ascii_digit).collect();

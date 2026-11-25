@@ -38,6 +38,7 @@ pub mod clips;
 pub mod home;
 pub mod import_vault;
 pub mod inbox;
+pub mod communities;
 pub mod mods;
 pub mod owned;
 pub mod rsettings;

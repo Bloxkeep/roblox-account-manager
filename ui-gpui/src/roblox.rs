@@ -2698,6 +2698,17 @@ pub struct Group {
     pub role: String,
     pub members: i64,
     pub pic: String,
+    /// Roblox's verified mark.
+    pub verified: bool,
+}
+
+/// A role of a community, as its page's members list picks them: how high it stands and how many hold it.
+#[derive(Clone, Debug, Default)]
+pub struct ClubRole {
+    pub id: i64,
+    pub name: String,
+    pub rank: i64,
+    pub members: i64,
 }
 
 /// A game a community made.
@@ -2724,7 +2735,12 @@ pub struct Club {
     pub shout: String,
     pub members: i64,
     pub pic: String,
-    pub roles: Vec<(String, i64)>,
+    /// When it was made (Unix seconds; 0: not said) and whether Roblox marks it verified.
+    pub created: i64,
+    pub verified: bool,
+    /// Its cover photo (1440×456; empty: it has none), as Roblox's community page draws it over its top.
+    pub cover: String,
+    pub roles: Vec<ClubRole>,
     pub games: Vec<ClubGame>,
     /// Its games that aren't public (private, or not open yet), which Roblox's community page leaves out but its games
     /// list gives anyone (accessFilter=1, "All"; checked 2026-11-24: one community 22 games of which 6 public, another
@@ -2767,16 +2783,29 @@ fn games_pages(url: &str, pages: usize) -> (Vec<Value>, bool) {
 
 pub fn club(id: i64) -> Result<Club, String> {
     let d = get(&format!("https://groups.roblox.com/v1/groups/{id}"), None)?;
-    let mut roles: Vec<(i64, String, i64)> = get(&format!("https://groups.roblox.com/v1/groups/{id}/roles"), None)
+    let mut roles: Vec<ClubRole> = get(&format!("https://groups.roblox.com/v1/groups/{id}/roles"), None)
         .ok()
         .and_then(|d| d.get("roles").and_then(Value::as_array).cloned())
         .unwrap_or_default()
         .iter()
         // (Rank 0 is the guest; the "base" role doubles the members' own.)
         .filter(|v| int(v, "rank") > 0 && v.get("isBase").and_then(Value::as_bool) != Some(true))
-        .map(|v| (int(v, "rank"), text(v, "name"), int(v, "memberCount")))
+        .map(|v| ClubRole { id: int(v, "id"), name: text(v, "name"), rank: int(v, "rank"), members: int(v, "memberCount") })
         .collect();
-    roles.sort_by_key(|r| std::cmp::Reverse(r.0));
+    roles.sort_by_key(|r| std::cmp::Reverse(r.rank));
+    // (Its day of making is only in the v2 list of communities.)
+    let made = get(&format!("https://groups.roblox.com/v2/groups?groupIds={id}"), None).ok().and_then(|d| d.pointer("/data/0").cloned()).unwrap_or_default();
+    // Its cover photo: the profile platform names it (an image asset), as Roblox's community page asks it.
+    let cover = post(
+        "https://apis.roblox.com/profile-platform-api/v1/profiles/get",
+        &serde_json::json!({ "profileType": "Community", "profileId": id.to_string(), "components": [{ "component": "CoverPhoto" }] }),
+        None,
+    )
+    .ok()
+    .and_then(|p| p.pointer("/components/CoverPhoto/coverPhotoId").and_then(Value::as_i64))
+    .filter(|a| *a > 0)
+    .and_then(|a| thumbs("assets?size=1440x456&assetIds=", &[a]).remove(&a))
+    .unwrap_or_default();
     // The public ones and all of them, asked at once; the rest of "all" is what isn't public. (Two lists, not one:
     // "all" in pages of 100 could leave a public one out past the pages read.)
     let (public, every) = both(
@@ -2796,10 +2825,135 @@ pub fn club(id: i64) -> Result<Club, String> {
         shout: d.pointer("/shout/body").and_then(Value::as_str).unwrap_or_default().trim().to_string(),
         members: int(&d, "memberCount"),
         pic: thumbs("groups/icons?size=150x150&groupIds=", &[id]).remove(&id).unwrap_or_default(),
-        roles: roles.into_iter().map(|r| (r.1, r.2)).collect(),
+        created: crate::time::iso_secs(&text(&made, "created")).unwrap_or(0),
+        verified: d.get("hasVerifiedBadge").and_then(Value::as_bool) == Some(true),
+        cover,
+        roles,
         games,
         hidden,
     })
+}
+
+/// A page of a community's members who hold `role` (10, newest first, as Roblox's community page shows them), with
+/// their faces; the marks for the pages before and after it (empty: none).
+pub fn club_members(group: i64, role: i64, cursor: &str) -> Result<(Vec<Friend>, String, String), String> {
+    let mut url = format!("https://groups.roblox.com/v1/groups/{group}/roles/{role}/users?limit=10&sortOrder=Desc");
+    if !cursor.is_empty() {
+        url += &format!("&cursor={}", enc(cursor));
+    }
+    let d = get(&url, None)?;
+    let mut list: Vec<Friend> = d
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|v| int(v, "userId") > 0)
+        .map(|v| {
+            let name = text(v, "username");
+            let display = text(v, "displayName");
+            Friend { id: int(v, "userId"), display: if display.is_empty() { name.clone() } else { display }, name, ..Default::default() }
+        })
+        .collect();
+    let ids: Vec<i64> = list.iter().map(|f| f.id).collect();
+    let mut got = faces(&ids);
+    for f in &mut list {
+        f.face = got.remove(&f.id).unwrap_or_default();
+    }
+    Ok((list, text(&d, "previousPageCursor"), text(&d, "nextPageCursor")))
+}
+
+/// The communities a community calls its allies (Roblox's Affiliates), as search hits with their icons, and how many
+/// there are in all.
+pub fn club_allies(group: i64) -> Result<(Vec<ClubHit>, i64), String> {
+    let d = get(&format!("https://groups.roblox.com/v1/groups/{group}/relationships/allies?model.startRowIndex=0&model.maxRows=50"), None)?;
+    let mut list: Vec<ClubHit> = d
+        .get("relatedGroups")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|v| int(v, "id") > 0)
+        .map(|v| ClubHit {
+            id: int(v, "id"),
+            name: text(v, "name"),
+            about: text(v, "description").trim().to_string(),
+            members: int(v, "memberCount"),
+            pic: String::new(),
+            verified: v.get("hasVerifiedBadge").and_then(Value::as_bool) == Some(true),
+        })
+        .collect();
+    let ids: Vec<i64> = list.iter().map(|h| h.id).collect();
+    let got = thumbs("groups/icons?size=150x150&groupIds=", &ids);
+    for h in &mut list {
+        h.pic = got.get(&h.id).cloned().unwrap_or_default();
+    }
+    Ok((list, int(&d, "totalGroupCount")))
+}
+
+/// What a community sells (its Store), a page of 30, newest first, as the Marketplace lists things.
+pub fn club_store(group: i64, cursor: &str) -> Result<(Vec<Ware>, String), String> {
+    catalog("", cursor, &format!("&CreatorTargetId={group}&CreatorType=2&SortType=3"))
+}
+
+/// What an account may do in a community it is in: its role's name and rank, and each permission Roblox's API lists
+/// for that role (groups.roblox.com/v1/groups/{id}/membership, signed in), by part, in the API's order.
+#[derive(Clone, Debug, Default)]
+pub struct ClubPerms {
+    pub role: String,
+    pub rank: i64,
+    pub parts: Vec<(&'static str, Vec<(&'static str, bool)>)>,
+}
+
+/// The parts of a role's permissions and their names, as GroupPermissionsModel lists them (Roblox's Groups API v1).
+pub const CLUB_PERMS: [(&str, &str, &[&str]); 4] = [
+    ("members", "groupMembershipPermissions", &["changeRank", "inviteMembers", "removeMembers", "banMembers"]),
+    ("posts", "groupPostsPermissions", &["viewStatus", "postToStatus"]),
+    ("manage", "groupManagementPermissions", &["manageRelationships", "viewAuditLogs", "bypassSlowmode", "viewCommunityAnalytics"]),
+    ("economy", "groupEconomyPermissions", &["spendGroupFunds", "advertiseGroup", "createItems", "manageItems", "addGroupPlaces", "manageGroupGames", "viewGroupPayouts", "viewAnalytics"]),
+];
+
+/// The account's role and permissions in a community; None: it isn't in it.
+pub fn club_perms(group: i64, cookie: &str) -> Result<Option<ClubPerms>, String> {
+    // BLOXKEEP_SHOT_PERMS=1: a hidden shot's account is a member, with some of each part.
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_PERMS").is_ok() {
+        let parts = CLUB_PERMS.iter().map(|(part, _, names)| (*part, names.iter().enumerate().map(|(i, n)| (*n, i % 3 == 0)).collect())).collect();
+        return Ok(Some(ClubPerms { role: "Member".into(), rank: 1, parts }));
+    }
+    let d = get(&format!("https://groups.roblox.com/v1/groups/{group}/membership"), Some(cookie))?;
+    let Some(role) = d.pointer("/userRole/role").filter(|r| int(r, "rank") > 0) else { return Ok(None) };
+    let p = d.get("permissions").cloned().unwrap_or_default();
+    // (A permission Roblox doesn't send is left out, and a part with none.)
+    let parts = CLUB_PERMS
+        .iter()
+        .map(|(part, key, names)| (*part, names.iter().filter_map(|n| p.get(*key).and_then(|g| g.get(*n)).and_then(Value::as_bool).map(|on| (*n, on))).collect::<Vec<_>>()))
+        .filter(|(_, l)| !l.is_empty())
+        .collect();
+    Ok(Some(ClubPerms { role: text(role, "name"), rank: int(role, "rank"), parts }))
+}
+
+/// The communities a user is in, with their rank's name there and their icons (Roblox shows anyone's).
+pub fn clubs_of(user: i64) -> Result<Vec<Group>, String> {
+    let d = get(&format!("https://groups.roblox.com/v2/users/{user}/groups/roles"), None)?;
+    let mut groups: Vec<Group> = d
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|v| {
+            let g = v.get("group")?;
+            Some(Group { id: int(g, "id"), name: text(g, "name"), role: v.get("role").map(|r| text(r, "name")).unwrap_or_default(), members: int(g, "memberCount"), pic: String::new(), verified: g.get("hasVerifiedBadge").and_then(Value::as_bool) == Some(true) })
+        })
+        .filter(|g| g.id > 0)
+        .collect();
+    // (The account's primary one first, as its profile lists them.)
+    let primary = primary_club(user).ok().flatten();
+    groups.sort_by_key(|g| Some(g.id) != primary);
+    let ids: Vec<i64> = groups.iter().map(|g| g.id).collect();
+    let got = thumbs("groups/icons?size=150x150&groupIds=", &ids);
+    for g in &mut groups {
+        g.pic = got.get(&g.id).cloned().unwrap_or_default();
+    }
+    Ok(groups)
 }
 
 /// The communities each user is in, with their rank's name there, asked once since the app opened.
@@ -2940,7 +3094,7 @@ pub fn profile(cookie: &str, user: i64) -> Result<Profile, String> {
             .iter()
             .filter_map(|v| {
                 let g = v.get("group")?;
-                Some(Group { id: int(g, "id"), name: text(g, "name"), role: v.get("role").map(|r| text(r, "name")).unwrap_or_default(), members: int(g, "memberCount"), pic: String::new() })
+                Some(Group { id: int(g, "id"), name: text(g, "name"), role: v.get("role").map(|r| text(r, "name")).unwrap_or_default(), members: int(g, "memberCount"), pic: String::new(), verified: g.get("hasVerifiedBadge").and_then(Value::as_bool) == Some(true) })
             })
             .filter(|g| g.id > 0)
             .collect();

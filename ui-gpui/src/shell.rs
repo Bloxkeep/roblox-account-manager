@@ -171,6 +171,7 @@ pub struct Root {
     pub rset: pages::rsettings::Data,
     /// The private servers the accounts own (pages/owned.rs).
     pub owned: pages::owned::Data,
+    pub communities: pages::communities::Data,
     /// Roblox › Mods, and its search box.
     pub mods: pages::mods::Data,
     pub mods_q: Entity<InputState>,
@@ -728,6 +729,7 @@ impl Root {
             inbox: Default::default(),
             rset: Default::default(),
             owned: Default::default(),
+            communities: Default::default(),
             rset_about,
             rs_pin,
             mods: Default::default(),
@@ -1153,6 +1155,7 @@ impl Root {
         pages::games::settle_words(self, window, cx);
         pages::rsettings::settle(self, window, cx);
         pages::wiki::settle(self, window, cx);
+        pages::communities::settle(self, window, cx);
         pages::accounts::settle_job(window, cx);
         // Settings left (or the app locked): typed passwords emptied, the Discord link hidden again.
         pages::settings::settle(self, window, cx);
@@ -1686,6 +1689,11 @@ impl Root {
                 })
                 .detach();
             }
+        }
+        // BLOXKEEP_SHOT_CLUBS=<Roblox user>: on Roblox › Communities, listing that user's communities.
+        #[cfg(feature = "shot")]
+        if std::env::var("BLOXKEEP_SHOT_CLUBS").is_ok() {
+            self.games.view = pages::games::View::Communities;
         }
         // BLOXKEEP_SHOT_OWNED=file.json: on the accounts' own private servers, answered from that file (pages/owned.rs).
         #[cfg(feature = "shot")]
@@ -2235,6 +2243,7 @@ impl Root {
                 pages::games::View::Settings => pages::rsettings::want(self, &link, cx),
                 pages::games::View::Mods => pages::mods::want(self, cx),
                 pages::games::View::Servers => pages::owned::want(self, &link, cx),
+                pages::games::View::Communities => pages::communities::want(self, &link, cx),
                 _ => {}
             }
         }

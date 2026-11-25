@@ -454,11 +454,11 @@ pub fn want_sign(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>)
         return;
     }
     #[cfg(feature = "shot")]
-    if r.friends.sign.is_none() && (std::env::var("BLOXKEEP_SHOT_FRIENDS").is_ok() || std::env::var("BLOXKEEP_SHOT_AVATAR").is_ok() || std::env::var("BLOXKEEP_SHOT_PROFILE").is_ok() || std::env::var("BLOXKEEP_SHOT_INBOX").is_ok() || std::env::var("BLOXKEEP_SHOT_CART").is_ok()) {
+    if r.friends.sign.is_none() && (std::env::var("BLOXKEEP_SHOT_FRIENDS").is_ok() || std::env::var("BLOXKEEP_SHOT_AVATAR").is_ok() || std::env::var("BLOXKEEP_SHOT_PROFILE").is_ok() || std::env::var("BLOXKEEP_SHOT_INBOX").is_ok() || std::env::var("BLOXKEEP_SHOT_CART").is_ok() || std::env::var("BLOXKEEP_SHOT_CLUBS").is_ok()) {
         // A hidden shot: the mock's first account, with the friends from the file (roblox.rs) or the avatar of the
         // Roblox user BLOXKEEP_SHOT_AVATAR names (an avatar is public).
         let first = r.friends.account.clone().or(able_ref(r).first().map(|a| s(a, "id").to_string())).unwrap_or_default();
-        let user = std::env::var("BLOXKEEP_SHOT_AVATAR").or(std::env::var("BLOXKEEP_SHOT_PROFILE")).ok().and_then(|v| v.parse().ok()).unwrap_or(0);
+        let user = std::env::var("BLOXKEEP_SHOT_AVATAR").or(std::env::var("BLOXKEEP_SHOT_PROFILE")).or(std::env::var("BLOXKEEP_SHOT_CLUBS")).ok().and_then(|v| v.parse().ok()).unwrap_or(0);
         r.friends.asked_sign = true;
         r.friends.sign = Some(Some((first, user, String::new())));
     }

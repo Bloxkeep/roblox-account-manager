@@ -70,6 +70,8 @@ pub enum View {
     Mods,
     /// The private servers the accounts own, all of them together (pages/owned.rs).
     Servers,
+    /// The account's communities, a list and the one picked (pages/communities.rs).
+    Communities,
 }
 
 thread_local! {
@@ -140,11 +142,12 @@ pub fn views(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
     let news = root.state.pointer("/feeds/unread").and_then(Value::as_i64).unwrap_or(0).max(0) as usize;
     let fresh = root.profile.watch.iter().any(|w| w.fresh);
     // (view, icon, words, a count beside it and its colour, a dot)
-    let items: [(View, &str, &str, usize, u32, bool); 9] = [
+    let items: [(View, &str, &str, usize, u32, bool); 10] = [
         (View::Games, "grid", "news.title", news, FACE, false),
         (View::Friends, "users", "nav.friends", in_game, OK, false),
         (View::Avatar, "user", "nav.avatar", 0, OK, false),
         (View::Profile, "userGo", "nav.profile", 0, OK, false),
+        (View::Communities, "shield", "nav.communities", 0, OK, false),
         (View::Shop, "tag", "nav.shop", 0, OK, fresh),
         (View::Inbox, "message", "nav.inbox", unread, FACE, false),
         (View::Servers, "bookmark", "inv.title", 0, OK, false),
@@ -197,7 +200,7 @@ pub fn views(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
             let pills = &bounds[usize::from(sliding)..];
             let Some(first) = pills.first() else { return };
             let origin = first.left() - px(4.);
-            let now: Vec<(f32, f32)> = pills.iter().take(9).map(|b| (f32::from(b.left() - origin), f32::from(b.size.width))).collect();
+            let now: Vec<(f32, f32)> = pills.iter().take(10).map(|b| (f32::from(b.left() - origin), f32::from(b.size.width))).collect();
             let moved = VIEW_SPOTS.with(|s| {
                 let mut s = s.borrow_mut();
                 let moved = *s != now;
@@ -3079,6 +3082,7 @@ pub fn games(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
         None if root.games.view == View::Settings => crate::pages::rsettings::page(root, width, cx).into_any_element(),
         None if root.games.view == View::Mods => crate::pages::mods::page(root, width, cx).into_any_element(),
         None if root.games.view == View::Servers => crate::pages::owned::page(root, width, cx).into_any_element(),
+        None if root.games.view == View::Communities => crate::pages::communities::page(root, width, cx).into_any_element(),
         None => match root.games.home_library {
             Some(tab) => shell.child(super::home::library(root, tab, width, cx)).into_any_element(),
             None => shell.child(grid(root, &all, width, cx)).into_any_element(),

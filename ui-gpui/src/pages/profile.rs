@@ -20,7 +20,7 @@ use crate::{
         deco,
         friends,
     },
-    roblox::{self, Club, Free, Friend, Offer, Profile, Ware},
+    roblox::{self, Club, ClubHit, ClubPerms, Free, Friend, Offer, Profile, Ware},
     shell::Root,
     theme::*,
 };
@@ -155,6 +155,28 @@ struct ClubView {
     friends: Option<(i64, Option<Result<Vec<Friend>, String>>)>,
     /// What the account looked through is to it (Roblox's own Join button), for that account.
     me: Option<ClubMe>,
+    /// Opened from the Communities list (shown there, beside it), not over the profile.
+    listed: bool,
+    more: ClubMore,
+}
+
+/// What a community's page reads as it is looked at, each part once (None: not asked; Some(None): on its way).
+#[derive(Default)]
+struct ClubMore {
+    /// The page's tab: 0 About, 1 Store, 2 Experiences, 3 Affiliates (Roblox's community page has the same).
+    tab: u8,
+    /// The members list (Roblox's Members, a role at a time): the role picked (its id; 0 until the page is in), which
+    /// page of it is shown (0: the first) and that page with the marks for the pages before and after it.
+    role: i64,
+    page: usize,
+    members: Option<Option<Result<(Vec<Friend>, String, String), String>>>,
+    /// The role picker's list is open.
+    roles_open: bool,
+    store: Option<Option<Result<(Vec<Ware>, String), String>>>,
+    store_busy: bool,
+    allies: Option<Option<Result<(Vec<ClubHit>, i64), String>>>,
+    /// The signed account's role there and what it may do, for that account.
+    perms: Option<(i64, Option<Result<Option<ClubPerms>, String>>)>,
 }
 
 /// An account's standing in a community as Roblox's community page shows it to that account: "join", "pending",
@@ -228,8 +250,7 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     // (A person opened before the sign-in was in: whether they are followed, or blocked, is asked now.)
     ask_follow(r, cx);
     ask_block(r, cx);
-    ask_club_friends(r, cx);
-    ask_club_me(r, cx);
+    club_asks(r, cx);
     if let Some(user) = r.profile.person.as_ref().map(|p| p.0) {
         ask_where(r, user, cx);
     }
@@ -542,9 +563,14 @@ fn folk_page(root: &Root, which: &str, got: &Option<Result<Vec<Friend>, String>>
 }
 
 /// Opens a community's page in the profile's place: its page is read, then which of the app's accounts are in it.
-fn open_club(r: &mut Root, id: i64, name: String, cx: &mut Context<Root>) {
+pub fn open_club(r: &mut Root, id: i64, name: String, listed: bool, cx: &mut Context<Root>) {
     let ask = crate::pages::avatar::ticket();
-    r.profile.club = Some(ClubView { id, ask, name, got: None, mine: None, friends: None, me: None });
+    r.profile.club = Some(ClubView { id, ask, name, got: None, mine: None, friends: None, me: None, listed, more: ClubMore::default() });
+    // BLOXKEEP_SHOT_CLUB_TAB=1|2|3: a hidden shot's community page opens on that tab.
+    #[cfg(feature = "shot")]
+    if let (Some(v), Some(tab)) = (r.profile.club.as_mut(), std::env::var("BLOXKEEP_SHOT_CLUB_TAB").ok().and_then(|t| t.parse().ok())) {
+        v.more.tab = tab;
+    }
     ask_club_me(r, cx);
     // Every account with a Roblox id, whatever its sign-in's state: membership is public.
     let users: Vec<i64> = r.accounts().iter().filter_map(|a| a["userId"].as_i64().filter(|u| *u > 0)).collect();
@@ -554,6 +580,7 @@ fn open_club(r: &mut Root, id: i64, name: String, cx: &mut Context<Root>) {
         let shown = this.update(cx, |r, cx| match &mut r.profile.club {
             Some(c) if c.ask == ask => {
                 c.got = Some(got);
+                club_more(r, cx);
                 cx.notify();
                 true
             }
@@ -579,7 +606,122 @@ pub fn show_club(r: &mut Root, id: i64, name: String, cx: &mut Context<Root>) {
     r.games.view = crate::pages::games::View::Profile;
     r.profile.person = None;
     r.profile.folk = None;
-    open_club(r, id, name, cx);
+    open_club(r, id, name, false, cx);
+    cx.notify();
+}
+
+/// Whether a community is open in the Communities list (`listed`) or over the profile, and which.
+pub fn club_shown(r: &Root, listed: bool) -> Option<i64> {
+    r.profile.club.as_ref().filter(|c| c.listed == listed).map(|c| c.id)
+}
+
+/// What the community open asks for the account looked through: what it is to it, its friends in it, and what the
+/// page's tab shows.
+pub fn club_asks(r: &mut Root, cx: &mut Context<Root>) {
+    ask_club_friends(r, cx);
+    ask_club_me(r, cx);
+    club_more(r, cx);
+}
+
+/// The parts of the community's page its tab shows, each asked once: the members of the role picked and the account's
+/// own role (About), what it sells (Store), its allies (Affiliates).
+fn club_more(r: &mut Root, cx: &mut Context<Root>) {
+    let signed = friends::signed(r);
+    let Some(ClubView { id, ask, got: Some(Ok(club)), more, .. }) = r.profile.club.as_mut() else { return };
+    let (id, ask) = (*id, *ask);
+    // (Roblox's page starts on its lowest role, where the members are.)
+    if more.role == 0 {
+        more.role = club.roles.last().map(|x| x.id).unwrap_or(0);
+    }
+    let want_members = more.tab == 0 && more.role != 0 && more.members.is_none();
+    let want_perms = more.tab == 0 && signed.as_ref().is_some_and(|s| (!s.2.is_empty() || cfg!(feature = "shot")) && more.perms.as_ref().is_none_or(|p| p.0 != s.1));
+    let want_store = more.tab == 1 && more.store.is_none();
+    let want_allies = more.tab == 3 && more.allies.is_none();
+    if want_members {
+        ask_members(r, String::new(), 0, cx);
+    }
+    if want_perms && let Some((_, user, cookie)) = signed {
+        if let Some(v) = r.profile.club.as_mut() {
+            v.more.perms = Some((user, None));
+        }
+        let rx = roblox::run(move || roblox::club_perms(id, &cookie));
+        reply(rx, cx, move |r, got, cx| {
+            if let Some(p) = r.profile.club.as_mut().filter(|c| c.ask == ask).and_then(|c| c.more.perms.as_mut().filter(|p| p.0 == user)) {
+                p.1 = Some(got);
+                cx.notify();
+            }
+        });
+    }
+    if want_store {
+        if let Some(v) = r.profile.club.as_mut() {
+            v.more.store = Some(None);
+        }
+        store_page(r, cx);
+    }
+    if want_allies {
+        if let Some(v) = r.profile.club.as_mut() {
+            v.more.allies = Some(None);
+        }
+        let rx = roblox::run(move || roblox::club_allies(id));
+        reply(rx, cx, move |r, got, cx| {
+            if let Some(v) = r.profile.club.as_mut().filter(|c| c.ask == ask) {
+                v.more.allies = Some(Some(got));
+                cx.notify();
+            }
+        });
+    }
+}
+
+/// A page of the picked role's members: `cursor` Roblox's mark for it (empty: the first), `page` its number.
+fn ask_members(r: &mut Root, cursor: String, page: usize, cx: &mut Context<Root>) {
+    let Some(v) = r.profile.club.as_mut() else { return };
+    let (id, ask, role) = (v.id, v.ask, v.more.role);
+    v.more.members = Some(None);
+    v.more.page = page;
+    let rx = roblox::run(move || roblox::club_members(id, role, &cursor));
+    reply(rx, cx, move |r, got, cx| {
+        if let Some(v) = r.profile.club.as_mut().filter(|c| c.ask == ask && c.more.role == role && c.more.page == page) {
+            v.more.members = Some(Some(got));
+            cx.notify();
+        }
+    });
+}
+
+/// The Store's next page (its first while nothing of it is in).
+fn store_page(r: &mut Root, cx: &mut Context<Root>) {
+    let Some(v) = r.profile.club.as_mut() else { return };
+    if v.more.store_busy {
+        return;
+    }
+    let cursor = match &v.more.store {
+        Some(Some(Ok((_, next)))) if next.is_empty() => return,
+        Some(Some(Ok((_, next)))) => next.clone(),
+        _ => String::new(),
+    };
+    let (id, ask) = (v.id, v.ask);
+    v.more.store_busy = true;
+    let rx = roblox::run(move || roblox::club_store(id, &cursor));
+    reply(rx, cx, move |r, got, cx| {
+        let Some(v) = r.profile.club.as_mut().filter(|c| c.ask == ask) else { return };
+        v.more.store_busy = false;
+        match (got, &mut v.more.store) {
+            (Ok((list, next)), Some(Some(Ok((have, at))))) => {
+                have.extend(list);
+                *at = next;
+            }
+            (got, store) => *store = Some(Some(got)),
+        }
+        cx.notify();
+    });
+}
+
+/// Another tab of the community's page.
+fn club_tab(r: &mut Root, tab: u8, cx: &mut Context<Root>) {
+    if let Some(v) = r.profile.club.as_mut() {
+        v.more.tab = tab;
+        v.more.roles_open = false;
+    }
+    club_more(r, cx);
     cx.notify();
 }
 
@@ -724,6 +866,11 @@ fn club_actions(root: &Root, view: &ClubView, cx: &mut Context<Root>) -> Option<
 /// The communities a search found (the Roblox tab's search, as Roblox's Search › Communities lists them), as the
 /// profile's Communities shelf draws its cards: the icon, the name with Roblox's verified mark, the members and its words.
 pub fn club_hits(root: &Root, hits: &[roblox::ClubHit], inner: f32, cx: &mut Context<Root>) -> Div {
+    club_cards(root, hits, inner, false, cx)
+}
+
+/// `club_hits`; `listed`: a press opens the community in the Communities list (an ally of the one open there).
+fn club_cards(root: &Root, hits: &[roblox::ClubHit], inner: f32, listed: bool, cx: &mut Context<Root>) -> Div {
     let (_, card_w) = grid_fit(inner, 360., GRID_GAP);
     div().flex().flex_wrap().gap(px(GRID_GAP)).children(hits.iter().map(|h| {
         let (id, name) = (h.id, h.name.clone());
@@ -737,7 +884,12 @@ pub fn club_hits(root: &Root, hits: &[roblox::ClubHit], inner: f32, cx: &mut Con
             .items_center()
             .gap(px(12.))
             .cursor_pointer()
-            .on_click(cx.listener(move |r, _, _, cx| show_club(r, id, name.clone(), cx)))
+            .on_click(cx.listener(move |r, _, _, cx| if listed {
+                open_club(r, id, name.clone(), true, cx);
+                cx.notify();
+            } else {
+                show_club(r, id, name.clone(), cx);
+            }))
             .child(div().size(px(44.)).flex_none().rounded(px(R_M)).bg(c(RAISED_2)).overflow_hidden().map(|d| match pic {
                 Some(f) => d.child(img(f).size_full().object_fit(ObjectFit::Cover)),
                 None => d.flex().items_center().justify_center().child(icon("users", 18., c(MUTED))),
@@ -826,8 +978,8 @@ fn leave_club(root: &mut Root, id: i64, user: i64, account: &str, cx: &mut Conte
                     if let Some(members) = &mut view.mine {
                         members.retain(|(u, _)| *u != user);
                     } else {
-                        let name = view.name.clone();
-                        open_club(r, id, name, cx);
+                        let (name, listed) = (view.name.clone(), view.listed);
+                        open_club(r, id, name, listed, cx);
                     }
                 }
                 r.toast = Some((r.tr("club.left"), "ok".into()));
@@ -999,9 +1151,11 @@ pub fn shot_club(r: &mut Root, cx: &mut Context<Root>) {
                 mine: Some(vec![(member, "Member".into())]),
                 friends: None,
                 me: None,
+                listed: false,
+                more: ClubMore::default(),
             });
         } else {
-            open_club(r, id, String::new(), cx);
+            open_club(r, id, String::new(), false, cx);
         }
     }
     if let (None, Some(id)) = (&r.profile.person, std::env::var("BLOXKEEP_SHOT_PERSON").ok().and_then(|v| v.parse().ok())) {
@@ -1009,8 +1163,9 @@ pub fn shot_club(r: &mut Root, cx: &mut Context<Root>) {
     }
 }
 
-/// A community's page: what it is, which of the app's accounts are in it (Roblox's page tells that of one account at
-/// a time), the games it made (Open game: the game's page here) and its ranks.
+/// A community's page, as Roblox's own has it: its head (icon, name, owner, when it was made, members, Join), then
+/// About (its words, its members a role at a time, the account's own role and what it may do there, the app's
+/// accounts in it and the account's friends), Store, Experiences (its games, the ones not public too) and Affiliates.
 fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let id = view.id;
     let inner = width - 2. * (PAGE_X);
@@ -1019,14 +1174,45 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
         Some(Err(why)) => return div().flex_1().flex().flex_col().child(empty_note(root.i18n.tv("club.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]))).into_any_element(),
         Some(Ok(c)) => c,
     };
+    let more = &view.more;
     let pic = (!club.pic.is_empty()).then(|| images::pic_sq(&club.pic, 72., cx)).flatten();
-    let title = |key: &str| div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(root.tr(key));
-    let who = surface()
+    let mut facts: Vec<String> = Vec::new();
+    if !club.owner.is_empty() {
+        facts.push(root.i18n.tv("club.by", &[("name", &format!("@{}", club.owner))]));
+    }
+    if club.created > 0 {
+        facts.push(root.i18n.tv("club.since", &[("d", &day(&crate::time::iso(club.created)))]));
+    }
+    // (How many are in it stands on its own at the right, over Join, as Roblox's page has it.)
+    let count = div()
+        .flex_none()
+        .flex()
+        .flex_col()
+        .items_end()
+        .child(div().text_size(px(T_FIG)).font_weight(FontWeight::BOLD).font_features(tnum()).child(thousands(club.members)))
+        .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("club.members")));
+    // Its cover photo over the top, where it has one (Roblox's community page has it so), the icon standing over its
+    // lower edge.
+    let has_cover = !club.cover.is_empty();
+    let cover_h = (inner * 456. / 1440.).round().min(260.);
+    let cover = has_cover.then(|| images::pic_pair(&club.cover, inner, cover_h, cx)).flatten();
+    let head = div()
         .p(px(16.))
         .flex()
-        .items_start()
+        .flex_wrap()
+        .items_center()
         .gap(px(16.))
-        .child(div().relative().size(px(72.)).flex_none().rounded(px(R_L)).bg(c(RAISED_2)).overflow_hidden().when_some(pic, |d, f| d.child(img(f).absolute().inset_0().size_full().object_fit(ObjectFit::Cover))))
+        .child(
+            div()
+                .relative()
+                .size(px(72.))
+                .flex_none()
+                .rounded(px(R_L))
+                .bg(c(RAISED_2))
+                .overflow_hidden()
+                .when(has_cover, |d| d.top(px(-40.)).mb(px(-40.)).border_2().border_color(c(PANEL)))
+                .when_some(pic, |d, f| d.child(img(f).absolute().inset_0().size_full().object_fit(ObjectFit::Cover))),
+        )
         .child(
             div()
                 .flex_1()
@@ -1034,13 +1220,108 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
                 .flex()
                 .flex_col()
                 .gap(px(6.))
-                .child(div().text_size(px(T_TITLE)).font_weight(FontWeight::BOLD).truncate().child(club.name.clone()))
-                .child(div().text_size(px(T_M)).text_color(c(MUTED)).truncate().child(if club.owner.is_empty() { root.i18n.tv("pf.members", &[("n", &thousands(club.members))]) } else { format!("@{} · {}", club.owner, root.i18n.tv("pf.members", &[("n", &thousands(club.members))])) }))
-                .when(!club.about.is_empty(), |d| d.child(div().max_h(px(80.)).overflow_hidden().text_size(px(T_M)).text_color(c(TEXT_2)).line_height(px(20.)).child(club.about.clone())))
-                .when(!club.shout.is_empty(), |d| d.child(div().mt(px(4.)).px(px(12.)).py(px(9.)).rounded(px(R_M)).bg(c(INSET)).text_size(px(T_M)).text_color(c(TEXT)).line_height(px(20.)).child(club.shout.clone()))),
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.))
+                        .min_w_0()
+                        .child(div().min_w_0().text_size(px(T_FIG)).font_weight(FontWeight::BOLD).truncate().child(club.name.clone()))
+                        .when(club.verified, |d| d.child(icon("creatorVerified", 18., rgb(0x335fff).into()))),
+                )
+                .child(div().text_size(px(T_M)).text_color(c(MUTED)).truncate().child(facts.join(" · "))),
         )
+        .child(count)
         .children(club_actions(root, view, cx))
         .child(IconButton::new("club-open", "external").size(34.).tip(root.tr("shop.open")).on_click(cx.listener(move |r, _, _, _| r.send("openRobloxPage", json!({ "kind": "group", "id": id })))));
+    let who = surface()
+        .overflow_hidden()
+        .flex()
+        .flex_col()
+        .when(has_cover, |d| {
+            d.child(div().w_full().h(px(cover_h)).flex_none().overflow_hidden().bg(c(RAISED_2)).when_some(cover, |d, (src, key)| d.child(fade_in(img(src).size_full().object_fit(ObjectFit::Cover), &key))))
+        })
+        .child(head);
+
+    // The tabs, as Roblox's page has them.
+    let tabs = div().flex().flex_wrap().gap(px(6.)).children(
+        [("club.tab.about", None), ("club.tab.store", None), ("club.tab.games", Some(club.games.len() + club.hidden.len())), ("club.tab.allies", match &more.allies {
+            Some(Some(Ok((_, n)))) => Some(*n as usize),
+            _ => None,
+        })]
+        .into_iter()
+        .enumerate()
+        .map(|(i, (key, count))| {
+            let on = more.tab as usize == i;
+            // (The game page's tabs: the one shown a yellow ring on a faint yellow ground.)
+            let base = hot(("club-tab", i)).h(px(TOOL_H)).px(px(12.)).flex().flex_none().items_center().gap(px(8.)).rounded(px(R_M)).border_1().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).cursor_pointer();
+            let base = if on { base.tones(ca(FACE, 0.10), ca(FACE, 0.14)).edge(c(FACE), c(FACE)).text_color(c(TEXT)) } else { base.tones(ca(WHITE, 0.), ca(WHITE, 0.06)).edge(ca(WHITE, 0.), ca(WHITE, 0.)).text_color(c(TEXT_2)) };
+            base.child(root.tr(key))
+                .when_some(count.filter(|n| *n > 0), |d, n| d.child(div().font_features(tnum()).opacity(0.6).child(thousands(n as i64))))
+                .on_click(cx.listener(move |r, _, _, cx| club_tab(r, i as u8, cx)))
+        }),
+    );
+
+    let body: Vec<AnyElement> = match more.tab {
+        1 => vec![club_store(root, more, inner, cx)],
+        2 => club_games(root, club, inner, cx),
+        3 => vec![club_allies(root, more, view.listed, inner, cx)],
+        _ => club_about(root, view, club, inner, cx),
+    };
+
+    div()
+        .flex_1()
+        .min_h_0()
+        .flex()
+        .flex_col()
+        .child(
+            crate::scrolled::body("club-body",
+                div()
+                    .px(px(PAGE_X))
+                    .pb(px(24.))
+                    .flex()
+                    .flex_col()
+                    .gap(px(14.))
+                    .child(who)
+                    .child(tabs)
+                    .children(body),
+            ),
+        )
+        .into_any_element()
+}
+
+/// The community opened in the Communities list, its page `width` wide (nothing while none is).
+pub fn listed_club(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
+    match root.profile.club.as_ref().filter(|c| c.listed) {
+        Some(view) => club_page(root, view, width, cx),
+        None => div().into_any_element(),
+    }
+}
+
+/// The About tab: the community's words and shout, its members, the account's role there, the app's accounts in it and
+/// the account's friends in it.
+fn club_about(root: &Root, view: &ClubView, club: &Club, inner: f32, cx: &mut Context<Root>) -> Vec<AnyElement> {
+    let id = view.id;
+    let title = |key: &str| club_title(root.tr(key));
+    // (Each part in a block of its own, as Roblox's page has them; the members' row the width inside one.)
+    let inner = inner - 32.;
+    let mut out: Vec<AnyElement> = Vec::new();
+    out.push(
+        club_block()
+            .gap(px(10.))
+            .child(title("club.desc"))
+            .child(if club.about.is_empty() {
+                div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("club.descNone"))
+            } else {
+                div().text_size(px(T_M)).text_color(c(TEXT_2)).line_height(px(21.)).child(club.about.clone())
+            })
+            .when(!club.shout.is_empty(), |d| d.child(div().px(px(12.)).py(px(9.)).rounded(px(R_M)).bg(c(INSET)).text_size(px(T_M)).text_color(c(TEXT)).line_height(px(20.)).child(club.shout.clone())))
+            .into_any_element(),
+    );
+    if !club.roles.is_empty() {
+        out.push(club_members(root, &view.more, club, inner, cx));
+    }
+    out.extend(club_role(root, &view.more, inner));
 
     let mine: AnyElement = match &view.mine {
         None => div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("av.reading")).into_any_element(),
@@ -1090,66 +1371,288 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
             }))
             .into_any_element(),
     };
+    out.push(club_block().child(title("club.mine")).child(mine).into_any_element());
+    out.extend(club_friends(root, view, cx).map(|d| club_block().child(d).into_any_element()));
+    out
+}
 
-    let games = game_tiles(root, &club.games, inner, "club-game", cx);
-    let hidden = game_board(root, &club.hidden, inner, "club-hidden", true, cx);
+/// A part of a community's page: a block with its title and what it holds.
+fn club_block() -> Div {
+    surface().p(px(16.)).flex().flex_col().gap(px(12.))
+}
 
-    let roles = div().flex().flex_col().children(club.roles.iter().map(|(name, count)| {
-        div()
-            .h(px(38.))
-            .flex()
-            .items_center()
-            .justify_between()
-            .border_b_1()
+fn club_title(words: String) -> Div {
+    div().text_size(px(T_SEC)).font_weight(FontWeight::SEMIBOLD).child(words)
+}
+
+/// Roblox's Members, as its page has them: the title with how many are in it, the role picked (a list of the roles,
+/// each with how many hold it) and which ten of how many are shown, a row of ten faces (a press opens their profile),
+/// and the page's number between the pages before and after.
+fn club_members(root: &Root, more: &ClubMore, club: &Club, inner: f32, cx: &mut Context<Root>) -> AnyElement {
+    let role = club.roles.iter().find(|x| x.id == more.role).or(club.roles.last());
+    let open = more.roles_open;
+    let words = role.map(|x| format!("{} ({})", x.name, thousands(x.members))).unwrap_or_default();
+    let mut picker = div().relative().flex_none().child(
+        tool("club-role", None, open).child(div().max_w(px(240.)).truncate().child(words)).child(tool_chev()).on_click(cx.listener(|r, _, _, cx| {
+            if let Some(v) = r.profile.club.as_mut() {
+                v.more.roles_open = !v.more.roles_open;
+            }
+            cx.notify();
+        })),
+    );
+    if super::accounts::pop_alive("club-role", open) {
+        let mut rows = div().id("club-role-list").max_h(px(300.)).overflow_y_scroll().flex().flex_col();
+        for (i, x) in club.roles.iter().enumerate() {
+            let (on, rid) = (Some(x.id) == role.map(|r| r.id), x.id);
+            rows = rows.child(
+                menu_row(("club-role-row", i))
+                    .flex_none()
+                    .text_color(if on { c(TEXT) } else { c(TEXT_2) })
+                    .child(div().min_w_0().flex_1().truncate().child(x.name.clone()))
+                    .child(div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(thousands(x.members)))
+                    .child(div().w(px(14.)).flex_none().when(on, |d| d.child(icon("check", 14., c(TEXT)))))
+                    .on_click(cx.listener(move |r, _, _, cx| {
+                        if let Some(v) = r.profile.club.as_mut() {
+                            v.more.roles_open = false;
+                            if v.more.role != rid {
+                                v.more.role = rid;
+                                v.more.members = None;
+                            }
+                        }
+                        club_more(r, cx);
+                        cx.notify();
+                    })),
+            );
+        }
+        let panel = div()
+            .id("club-role-box")
+            .occlude()
+            .w(px(280.))
+            .p(px(6.))
+            .rounded(px(R_M))
+            .bg(c(RAISED))
+            .border_1()
             .border_color(c(LINE))
-            .child(div().text_size(px(T_M)).text_color(c(TEXT_2)).truncate().child(name.clone()))
-            .child(div().text_size(px(T_M)).text_color(c(MUTED)).font_features(tnum()).child(thousands(*count)))
-    }));
+            .shadow_lg()
+            .on_mouse_down_out(cx.listener(|r, _, _, cx| {
+                if let Some(v) = r.profile.club.as_mut().filter(|v| v.more.roles_open) {
+                    v.more.roles_open = false;
+                    cx.notify();
+                }
+            }))
+            .child(rows);
+        picker = picker.child(popup(PopAt::BelowLeft(TOOL_H + 4.), "club-role-pop", open, panel));
+    }
 
-    div()
-        .flex_1()
-        .min_h_0()
+    let got = more.members.as_ref().and_then(|m| m.as_ref());
+    let (prev, next, shown) = match got {
+        Some(Ok((list, prev, next))) => (prev.clone(), next.clone(), list.len()),
+        _ => (String::new(), String::new(), 0),
+    };
+    let page = more.page;
+    let total = role.map(|x| x.members).unwrap_or(0).max((page * 10 + shown) as i64);
+    let showing = (shown > 0).then(|| {
+        div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(root.i18n.tv("club.showing", &[("a", &thousands((page * 10 + 1) as i64)), ("b", &thousands((page * 10 + shown) as i64)), ("n", &thousands(total))]))
+    });
+    let head = div()
         .flex()
         .flex_col()
+        .gap(px(10.))
+        .child(div().flex().items_center().gap(px(8.)).child(club_title(root.tr("club.members"))).child(badge(thousands(club.members), Tone::Muted)))
         .child(
-            crate::scrolled::body("club-body", 
-                div()
-                    .px(px(PAGE_X))
-                    .pb(px(24.))
-                    .flex()
-                    .flex_col()
-                    .gap(px(26.))
-                    .child(who)
-                    .child(div().flex().flex_col().gap(px(12.)).child(title("club.mine")).child(mine))
-                    .children(club_friends(root, view, cx))
-                    .when(!games.is_empty(), |d| d.child(div().flex().flex_col().gap(px(12.)).child(title("news.title")).child(div().flex().flex_wrap().gap(px(GAP)).children(games))))
-                    // Its games that aren't public: Roblox's community page leaves them out (RoValra and others show
-                    // them the same way, from the same list).
-                    .when(!hidden.is_empty(), |d| {
-                        d.child(
-                            div()
-                                .flex()
-                                .flex_col()
-                                .gap(px(12.))
-                                .child(
-                                    div()
-                                        .flex()
-                                        .flex_col()
-                                        .gap(px(2.))
-                                        .child(div().flex().items_center().gap(px(8.)).child(title("club.hidden")).child(div().text_size(px(T_H)).text_color(c(MUTED)).font_features(tnum()).child(club.hidden.len().to_string())))
-                                        .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("club.hiddenNote"))),
-                                )
-                                .child(div().flex().flex_wrap().gap(px(GAP)).children(hidden)),
+            div()
+                .flex()
+                .flex_wrap()
+                .items_center()
+                .gap(px(10.))
+                .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("club.role")))
+                .child(picker)
+                .child(div().flex_1())
+                .children(showing),
+        );
+
+    // A row of ten faces as Roblox's page has them: small, their names under them.
+    const FACE_W: f32 = 72.;
+    let body: AnyElement = match got {
+        None => div().h(px(104.)).flex().child(empty_note(root.tr("av.reading"))).into_any_element(),
+        Some(Err(why)) => div().h(px(104.)).flex().child(empty_note(root.i18n.tv("club.membersFailed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]))).into_any_element(),
+        Some(Ok((list, _, _))) if list.is_empty() => div().h(px(80.)).flex().child(empty_note(root.tr("club.membersNone"))).into_any_element(),
+        Some(Ok((list, _, _))) => {
+            // (As many to a row as fit, ten at most: the gaps share what is left, so a full row reaches both edges.)
+            // (A few pixels kept back: the scroll bar's lane and rounding must not push the last one down a row.)
+            let room = inner - 12.;
+            let fit = ((room + 4.) / (FACE_W + 4.)).floor().clamp(1., 10.);
+            // (Ten that don't fit one row share the rows evenly: five and five, not nine and one.)
+            let cols = (10. / (10. / fit).ceil()).ceil();
+            let gap = if cols >= 2. { ((room - cols * FACE_W) / (cols - 1.)).floor().clamp(4., 40.) } else { 4. };
+            div()
+                .flex()
+                .flex_wrap()
+                .gap_x(px(gap))
+                .gap_y(px(12.))
+                .children(list.iter().enumerate().map(|(n, f)| {
+                    let user = f.id;
+                    let face = (!f.face.is_empty()).then(|| images::pic_sq(&f.face, 48., cx)).flatten();
+                    let initial = f.display.chars().next().unwrap_or('?').to_uppercase().to_string();
+                    hot(("club-member", n))
+                        .w(px(FACE_W))
+                        .py(px(8.))
+                        .flex()
+                        .flex_col()
+                        .items_center()
+                        .gap(px(6.))
+                        .rounded(px(R_M))
+                        .cursor_pointer()
+                        .tones(ca(WHITE, 0.), ca(WHITE, 0.06))
+                        .on_click(cx.listener(move |r, _, _, cx| {
+                            open_person(r, user, cx);
+                            cx.notify();
+                        }))
+                        .child(
+                            div().relative().size(px(48.)).flex_none().rounded_full().overflow_hidden().bg(c(RAISED_2))
+                                .flex().items_center().justify_center().text_size(px(T_M)).text_color(c(MUTED)).child(initial)
+                                .when_some(face, |d, pic| d.child(img(pic).absolute().inset_0().size_full())),
                         )
-                    })
-                    .when(!club.roles.is_empty(), |d| d.child(div().flex().flex_col().gap(px(6.)).child(title("club.roles")).child(roles))),
-            ),
-        )
-        .into_any_element()
+                        .child(div().w_full().px(px(4.)).text_center().text_size(px(T_S)).text_color(c(TEXT_2)).truncate().child(f.display.clone()))
+                }))
+                .into_any_element()
+        }
+    };
+    // The page's number between the pages before and after (Roblox's own marks for them).
+    let pages = (total + 9) / 10;
+    let pager = (shown > 0).then(|| {
+        div()
+            .flex()
+            .justify_center()
+            .items_center()
+            .gap(px(8.))
+            .child(IconButton::new("club-members-prev", "chevronLeft").size(28.).disabled(prev.is_empty()).on_click(cx.listener(move |r, _, _, cx| {
+                ask_members(r, prev.clone(), page.saturating_sub(1), cx);
+                cx.notify();
+            })))
+            .child(div().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(root.i18n.tv("club.pageOf", &[("p", &thousands(page as i64 + 1)), ("n", &thousands(pages.max(1)))])))
+            .child(IconButton::new("club-members-next", "chevronRight").size(28.).disabled(next.is_empty()).on_click(cx.listener(move |r, _, _, cx| {
+                ask_members(r, next.clone(), page + 1, cx);
+                cx.notify();
+            })))
+    });
+    club_block().child(head).child(body).children(pager).into_any_element()
+}
+
+/// Your Role & Permissions: the signed account's role in the community, then each of its permissions there in columns
+/// by part (a tick or a cross), as Roblox's API lists them for that role. Nothing when it isn't in it (or it couldn't be
+/// read).
+fn club_role(root: &Root, more: &ClubMore, inner: f32) -> Option<AnyElement> {
+    let (_, user, _) = friends::signed(root)?;
+    let perms = more.perms.as_ref().filter(|p| p.0 == user)?;
+    let Some(Ok(Some(p))) = &perms.1 else { return None };
+    let head = div()
+        .flex()
+        .items_center()
+        .gap(px(10.))
+        .child(club_title(root.tr("club.yourRole")))
+        .child(badge(p.role.clone(), Tone::Ok))
+        .child(div().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(root.i18n.tv("club.rank", &[("n", &p.rank.to_string())])));
+    // (Columns side by side, as many as fit, four at most.)
+    let room = inner - 12.;
+    let cols = ((room + 32.) / (210. + 32.)).floor().clamp(1., 4.);
+    let col_w = ((room - 32. * (cols - 1.)) / cols).floor();
+    let parts = div().flex().flex_wrap().gap_x(px(32.)).gap_y(px(16.)).children(p.parts.iter().map(|(part, list)| {
+        div()
+            .w(px(col_w))
+            .flex_none()
+            .flex()
+            .flex_col()
+            .gap(px(6.))
+            .child(div().text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(OK)).child(root.tr(&format!("club.part.{part}"))))
+            .children(list.iter().map(|(name, on)| {
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.))
+                    .text_size(px(T_S))
+                    .text_color(if *on { c(TEXT) } else { c(MUTED) })
+                    .child(icon(if *on { "check" } else { "x" }, 12., if *on { c(OK) } else { c(BAD) }))
+                    .child(div().min_w_0().truncate().child(root.tr(&format!("club.p.{name}"))))
+            }))
+    }));
+    Some(club_block().child(head).child(parts).into_any_element())
+}
+
+/// The Store tab: what the community sells, as the Marketplace's tiles (a press opens it there), and Show more while
+/// Roblox has another page.
+fn club_store(root: &Root, more: &ClubMore, inner: f32, cx: &mut Context<Root>) -> AnyElement {
+    match more.store.as_ref().and_then(|s| s.as_ref()) {
+        None => div().h(px(160.)).flex().child(empty_note(root.tr("av.reading"))).into_any_element(),
+        Some(Err(why)) => div().h(px(160.)).flex().child(empty_note(root.i18n.tv("club.storeFailed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]))).into_any_element(),
+        Some(Ok((list, _))) if list.is_empty() => div().h(px(160.)).flex().child(empty_note(root.tr("club.storeNone"))).into_any_element(),
+        Some(Ok((list, next))) => {
+            let (_, tile_w) = ware_fit(inner);
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(14.))
+                .child(div().ml(px(-6.)).flex().flex_wrap().gap(px(SGAP)).children(list.iter().enumerate().map(|(n, w)| collected_tile(root, n, w, tile_w, cx))))
+                .when(!next.is_empty(), |d| {
+                    d.child(div().flex().justify_center().child(Button::new("club-store-more", root.tr("gp.more")).small().disabled(more.store_busy).on_click(cx.listener(|r, _, _, cx| {
+                        store_page(r, cx);
+                        cx.notify();
+                    }))))
+                })
+                .into_any_element()
+        }
+    }
+}
+
+/// The Experiences tab: the community's games, then the ones that aren't public.
+fn club_games(root: &Root, club: &Club, inner: f32, cx: &mut Context<Root>) -> Vec<AnyElement> {
+    let title = |key: &str| div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(root.tr(key));
+    let games = game_tiles(root, &club.games, inner, "club-game", cx);
+    let hidden = game_board(root, &club.hidden, inner, "club-hidden", true, cx);
+    let mut out: Vec<AnyElement> = Vec::new();
+    if games.is_empty() && hidden.is_empty() {
+        out.push(div().h(px(160.)).flex().child(empty_note(root.tr("club.gamesNone"))).into_any_element());
+    }
+    if !games.is_empty() {
+        out.push(div().flex().flex_wrap().gap(px(GAP)).children(games).into_any_element());
+    }
+    // Its games that aren't public: Roblox's community page leaves them out (RoValra and others show them the same
+    // way, from the same list).
+    if !hidden.is_empty() {
+        out.push(
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(12.))
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(2.))
+                        .child(div().flex().items_center().gap(px(8.)).child(title("club.hidden")).child(div().text_size(px(T_H)).text_color(c(MUTED)).font_features(tnum()).child(club.hidden.len().to_string())))
+                        .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("club.hiddenNote"))),
+                )
+                .child(div().flex().flex_wrap().gap(px(GAP)).children(hidden))
+                .into_any_element(),
+        );
+    }
+    out
+}
+
+/// The Affiliates tab: the communities it calls its allies, as the search's community cards (a press opens one here).
+fn club_allies(root: &Root, more: &ClubMore, listed: bool, inner: f32, cx: &mut Context<Root>) -> AnyElement {
+    match more.allies.as_ref().and_then(|s| s.as_ref()) {
+        None => div().h(px(160.)).flex().child(empty_note(root.tr("av.reading"))).into_any_element(),
+        Some(Err(why)) => div().h(px(160.)).flex().child(empty_note(root.i18n.tv("club.alliesFailed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]))).into_any_element(),
+        Some(Ok((list, _))) if list.is_empty() => div().h(px(160.)).flex().child(empty_note(root.tr("club.alliesNone"))).into_any_element(),
+        Some(Ok((list, _))) => club_cards(root, list, inner, listed, cx).into_any_element(),
+    }
 }
 
 pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let pf = &root.profile;
+    // (One opened in the Communities list stays there.)
+    let over = pf.club.as_ref().filter(|c| !c.listed);
     let (able, viewer) = friends::looking_ref(root);
     // Roblox's own page of what is shown: the person's when one is open.
     let user = pf.person.as_ref().map(|p| p.0).unwrap_or(pf.of);
@@ -1165,10 +1668,10 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
         .child(crate::pages::games::brand(root))
         // Back, beside the logo while a person's page or a community's is over the profile (the owner's mock-up,
         // 2026-11-15: it was a row of its own under the header, pushing the page down).
-        .when(pf.person.is_some() || pf.club.is_some(), |d| {
+        .when(pf.person.is_some() || over.is_some(), |d| {
             d.child(Button::new("pf-back", root.tr("wiki.back")).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {
                 // (The community first: it may have been opened from the person's page.)
-                if r.profile.club.is_some() {
+                if r.profile.club.as_ref().is_some_and(|c| !c.listed) {
                     r.profile.club = None;
                 } else if r.profile.folk.is_some() {
                     r.profile.folk = None;
@@ -1181,7 +1684,7 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
         .relative().child(crate::pages::games::island(root, cx))
         .child(div().flex_1())
         // (A community's page has its own way out to roblox.com, and nothing of the profile's to read again.)
-        .when(viewer.is_some() && pf.club.is_none() && pf.folk.is_none() && pf.person.is_none(), |d| {
+        .when(viewer.is_some() && over.is_none() && pf.folk.is_none() && pf.person.is_none(), |d| {
             d.child(IconButton::new("pf-refresh", "refresh").size(34.).busy(pf.loading).tip(root.tr("fr.refresh")).on_click(cx.listener(|r, _, _, cx| r.again(cx, |r| (r.profile.loading, &mut r.profile.got), load))))
         })
         // A person's profile: follow them, or no longer (shown once Roblox said which it is).
@@ -1225,11 +1728,11 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                     .on_click(cx.listener(move |r, _, window, cx| block_move(r, who, !on, name.clone(), window, cx))),
             )
         })
-        .when((matches!(pf.got, Some(Ok(_))) || matches!(pf.person, Some((_, Some(Ok(_)))))) && pf.club.is_none() && pf.folk.is_none(), |d| {
+        .when((matches!(pf.got, Some(Ok(_))) || matches!(pf.person, Some((_, Some(Ok(_)))))) && over.is_none() && pf.folk.is_none(), |d| {
             d.child(IconButton::new("pf-open", "external").size(34.).tip(root.tr("shop.open")).on_click(cx.listener(move |r, _, _, _| r.send("openProfile", json!({ "userId": user })))))
         });
 
-    let body: AnyElement = if let Some(view) = &pf.club {
+    let body: AnyElement = if let Some(view) = over {
         club_page(root, view, width, cx)
     } else if let Some((which, got)) = &pf.folk {
         folk_page(root, which, got, width, cx)
@@ -1590,7 +2093,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                 .gap(px(12.))
                 .cursor_pointer()
                 .on_click(cx.listener(move |r, _, _, cx| {
-                    open_club(r, id, name.clone(), cx);
+                    open_club(r, id, name.clone(), false, cx);
                     cx.notify();
                 }))
                 .child(div().size(px(44.)).flex_none().rounded(px(R_M)).bg(c(RAISED_2)).overflow_hidden().map(|d| match pic {
