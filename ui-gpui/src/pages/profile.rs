@@ -674,11 +674,12 @@ fn club_more(r: &mut Root, cx: &mut Context<Root>) {
 
 /// A page of the picked role's members: `cursor` Roblox's mark for it (empty: the first), `page` its number.
 fn ask_members(r: &mut Root, cursor: String, page: usize, cx: &mut Context<Root>) {
+    let cookie = friends::signed(r).map(|(_, _, k)| k).unwrap_or_default();
     let Some(v) = r.profile.club.as_mut() else { return };
     let (id, ask, role) = (v.id, v.ask, v.more.role);
     v.more.members = Some(None);
     v.more.page = page;
-    let rx = roblox::run(move || roblox::club_members(id, role, &cursor));
+    let rx = roblox::run(move || roblox::club_members(id, role, &cursor, &cookie));
     reply(rx, cx, move |r, got, cx| {
         if let Some(v) = r.profile.club.as_mut().filter(|c| c.ask == ask && c.more.role == role && c.more.page == page) {
             v.more.members = Some(Some(got));

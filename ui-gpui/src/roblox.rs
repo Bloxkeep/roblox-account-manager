@@ -2835,13 +2835,15 @@ pub fn club(id: i64) -> Result<Club, String> {
 }
 
 /// A page of a community's members who hold `role` (10, newest first, as Roblox's community page shows them), with
-/// their faces; the marks for the pages before and after it (empty: none).
-pub fn club_members(group: i64, role: i64, cursor: &str) -> Result<(Vec<Friend>, String, String), String> {
+/// their faces; the marks for the pages before and after it (empty: none). Asked signed in (`cookie`, empty: not), as
+/// Roblox's page asks it: newer communities answer a list asked without a sign-in with 400 "The user is invalid or does
+/// not exist" (Runworks, 265114249), older ones (Roblox, 7) answer it either way.
+pub fn club_members(group: i64, role: i64, cursor: &str, cookie: &str) -> Result<(Vec<Friend>, String, String), String> {
     let mut url = format!("https://groups.roblox.com/v1/groups/{group}/roles/{role}/users?limit=10&sortOrder=Desc");
     if !cursor.is_empty() {
         url += &format!("&cursor={}", enc(cursor));
     }
-    let d = get(&url, None)?;
+    let d = get(&url, (!cookie.is_empty()).then_some(cookie))?;
     let mut list: Vec<Friend> = d
         .get("data")
         .and_then(Value::as_array)
