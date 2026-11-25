@@ -1726,7 +1726,7 @@ pub fn pulse_edges(b: crate::beat::Beat, hex: u32, power: f32, r: f32) -> AnyEle
         let hit = (0.25 + 0.75 * b.bass).min(1.) * beat_light(&b);
         let mut p = Pen { w: window, cx, o: bounds.origin };
         // One zone: a short stretch of an edge (x, y, w, h), lit for the band at `u`.
-        let mut zone = |p: &mut Pen, x: f32, y: f32, zw: f32, zh: f32, u: f32| {
+        let zone = |p: &mut Pen, x: f32, y: f32, zw: f32, zh: f32, u: f32| {
             let v = ((0.45 * band_at(&b, u) + 0.55 * hit) * power).min(1.);
             if v < 0.03 {
                 return;

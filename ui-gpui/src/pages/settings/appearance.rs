@@ -377,7 +377,7 @@ pub fn appearance(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let theme_head = if super::finding() { div() } else { theme_head };
     let langs = super::chips(root, cx, "s-lang", crate::lang::picker_items(), &root.i18n.lang, |r, v, _| r.send("setLanguage", json!({ "language": v })));
     let hide = flag(&root.state, "hideNames");
-    let mut more = vec![row(root.tr("set.language"), None, langs)];
+    let mut more = vec![super::spotted(root, "language", row(root.tr("set.language"), None, langs))];
     more.push(row(
         root.tr("set.hideNames"),
         Some(root.tr("set.hideNamesDesc")),

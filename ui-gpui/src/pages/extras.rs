@@ -231,12 +231,16 @@ pub fn open_feedback(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) 
 
 // ───────────────────────── what's new ─────────────────────────
 
-/// Where a headline's button leads: a place by its name, a part of Settings ("settings:perf"), or Bloxkeep on GitHub.
+/// Where a headline's button leads: a place by its name, a part of Settings ("settings:perf", or a row in it brought
+/// into view, "settings:appearance:language"), or Bloxkeep on GitHub.
 fn go_to(r: &mut Root, target: &str) {
-    if let Some(part) = target.strip_prefix("settings:") {
+    if let Some(rest) = target.strip_prefix("settings:") {
+        let (part, spot) = rest.split_once(':').unwrap_or((rest, ""));
         if let Some(p) = crate::pages::settings::Part::ALL.into_iter().find(|p| p.key() == part) {
             r.settings.part = p;
         }
+        r.settings.scroll.set_offset(point(px(0.), px(0.)));
+        r.settings.spot = (!spot.is_empty()).then(|| (spot.to_string(), std::time::Instant::now(), Default::default()));
         r.go(Page::Settings);
     } else if target == "github" {
         r.send("openGitHub", json!({}));

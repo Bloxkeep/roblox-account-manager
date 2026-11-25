@@ -1,5 +1,109 @@
 [
   {
+    "version": "1.1.5",
+    "date": "2026-11-25",
+    "highlights": [
+      {
+        "icon": "globe",
+        "go": "settings:appearance:language",
+        "en": [
+          "14 new languages",
+          "Bloxkeep now speaks Spanish, French, German, Russian, Japanese, Korean, Thai and more. Change it in Settings › Appearance › Language.",
+          "Change language"
+        ],
+        "vi": [
+          "Thêm 14 ngôn ngữ",
+          "Bloxkeep giờ có tiếng Tây Ban Nha, Pháp, Đức, Nga, Nhật, Hàn, Thái và nhiều thứ tiếng khác. Đổi trong Cài đặt › Giao diện › Ngôn ngữ.",
+          "Đổi ngôn ngữ"
+        ]
+      },
+      {
+        "icon": "music",
+        "en": [
+          "Move with the music",
+          "Your picture and banner pulse with the beat of the song playing. Plus 5 new banner themes and 6 new rings."
+        ],
+        "vi": [
+          "Hồ sơ nhún theo nhạc",
+          "Ảnh đại diện và banner nhún theo nhịp bài đang phát. Có thêm 5 theme banner và 6 viền mới."
+        ]
+      },
+      {
+        "icon": "memory",
+        "en": [
+          "A new Clean RAM",
+          "See the RAM in use and how much each clean frees, and let it clean on its own."
+        ],
+        "vi": [
+          "Dọn RAM mới",
+          "Xem RAM đang dùng, mỗi lần dọn được bao nhiêu, và để nó tự dọn."
+        ]
+      }
+    ],
+    "new": {
+      "en": [
+        "Paste a list of cookies to add many accounts at once.",
+        "Import accounts from Roblox Account Manager.",
+        "See an account's violations and appeal them in Bloxkeep.",
+        "Set a Roblox account's content maturity.",
+        "Search communities across Roblox, with their members and unlisted games.",
+        "VNG accounts get the full Roblox tab.",
+        "The profile song can play a whole playlist.",
+        "Adjust your avatar's accessories, as on Roblox.",
+        "Search the Console.",
+        "Pick how Roblox windows open and whether they minimize after joining, for each Preset too."
+      ],
+      "vi": [
+        "Dán danh sách cookie để thêm nhiều tài khoản một lần.",
+        "Nhập tài khoản từ Roblox Account Manager.",
+        "Xem vi phạm của tài khoản và gửi kháng nghị ngay trong Bloxkeep.",
+        "Chỉnh mức độ nội dung cho tài khoản Roblox.",
+        "Tìm cộng đồng trên toàn Roblox, xem thành viên và game chưa công khai.",
+        "Tài khoản VNG dùng được đầy đủ tab Roblox.",
+        "Nhạc hồ sơ phát được cả danh sách bài.",
+        "Chỉnh phụ kiện cho avatar như trên Roblox.",
+        "Tìm kiếm trong Console.",
+        "Chọn kiểu mở cửa sổ Roblox và có thu nhỏ sau khi vào game không, mỗi Preset chỉnh riêng được."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Long lists scroll more smoothly and use less RAM.",
+        "The mouse wheel scrolls smoothly, as in a browser.",
+        "The 3D avatar's lighting and moves look more like Roblox.",
+        "A new look for the status bar.",
+        "Online accounts show Roblox's blue dot."
+      ],
+      "vi": [
+        "Danh sách dài cuộn mượt hơn và tốn ít RAM hơn.",
+        "Lăn chuột cuộn mượt như trên trình duyệt.",
+        "Avatar 3D có ánh sáng và động tác giống Roblox hơn.",
+        "Thanh trạng thái đổi kiểu mới.",
+        "Tài khoản đang online có chấm xanh như trên Roblox."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Windows with a RAM limit froze or dropped when changing servers.",
+        "Error 211 was sometimes shown as a ban.",
+        "Arrange after opening missed some windows.",
+        "Minimized windows opened full screen after a rejoin.",
+        "Columns in the accounts list didn't line up.",
+        "Hovering some rows reacted slowly.",
+        "Game clips covered the sound button."
+      ],
+      "vi": [
+        "Cửa sổ có giới hạn RAM bị đơ hoặc văng khi đổi server.",
+        "Lỗi 211 đôi khi bị báo nhầm là bị ban.",
+        "Sắp xếp sau khi mở bỏ sót cửa sổ.",
+        "Cửa sổ đang thu nhỏ bị phóng to sau khi vào lại game.",
+        "Các cột trong danh sách tài khoản bị lệch.",
+        "Rê chuột lên một số dòng phản hồi chậm.",
+        "Clip game che mất nút âm thanh."
+      ]
+    }
+  },
+  {
     "version": "1.1.4",
     "date": "2026-11-22",
     "new": {

@@ -155,6 +155,45 @@ pub struct Data {
     pub look: appearance::Look,
     /// Settings was the page shown when Root's data last changed (`settle` notices it being left).
     pub here: bool,
+    /// A row to bring into view and light up once (a What's new button's place, "settings:appearance:language"): its
+    /// name, when it was asked, and whether the page has been scrolled to it yet.
+    pub spot: Option<(String, std::time::Instant, std::rc::Rc<std::cell::Cell<bool>>)>,
+}
+
+/// `el`, the row named `key`: when it is the row asked for (`Data::spot`), the page is scrolled to put it a little
+/// under the view's top on the first frame it is laid out, and it lights up in the accent colour, fading over 1.6 s.
+pub(crate) fn spotted(root: &Root, key: &str, el: AnyElement) -> AnyElement {
+    let Some((_, at, done)) = root.settings.spot.clone().filter(|s| s.0 == key && s.1.elapsed().as_secs_f32() < 3.) else {
+        return el;
+    };
+    let scroll = root.settings.scroll.clone();
+    let place = canvas(
+        move |bounds, window, _| {
+            if done.get() {
+                return;
+            }
+            let view = scroll.bounds();
+            // (The page not laid out yet: the next frame.)
+            if view.size.height <= px(1.) {
+                window.refresh();
+                return;
+            }
+            let off = scroll.offset();
+            let y = (off.y - (bounds.origin.y - view.origin.y - px(24.))).min(px(0.)).max(-scroll.max_offset().y);
+            scroll.set_offset(point(off.x, y));
+            done.set(true);
+            window.refresh();
+        },
+        |_, _, _, _| {},
+    )
+    .absolute()
+    .inset_0();
+    let light = div().absolute().inset_0().bg(c(FACE)).with_animation(
+        SharedString::from(format!("spot-{key}-{at:?}")),
+        Animation::new(std::time::Duration::from_millis(1600)).with_easing(ease_out_quint()),
+        |d, t| d.opacity(0.16 * (1. - t)),
+    );
+    div().relative().child(el).child(place).child(light).into_any_element()
 }
 
 fn st(root: &Root) -> &Value {
