@@ -444,7 +444,7 @@ pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &m
                 .filter(|(path, _)| !failed.borrow().contains(path))
                 .map(|(_, v)| (v, picture.as_ref().map(|(_, shape)| *shape).unwrap_or(16. / 10.)));
             // Its name and words, then its picture or clip whole at the card's width, then its button. (The picture used to
-            // lead; after a feature without one it read as the one above's, the owner's shot of 1.1.2, 2026-11-20.)
+            // lead; after a feature without one it read as the one above's.)
             let words = div().min_w_0().flex().flex_col().items_start().gap(px(6.))
                 .child(div().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(title))
                 .child(div().text_size(px(T_M)).line_height(px(20.)).text_color(c(TEXT_2)).child(text));

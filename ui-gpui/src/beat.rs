@@ -1,0 +1,417 @@
+// The song's beat, for the profile that moves with its music: the sound the music app (or Bloxkeep's own profile song)
+// sends to the speakers, read through Windows' process loopback (only that program and the ones it started, so a game's
+// sound never counts), cut into bands on one small thread. Where Windows has no process loopback (before Windows 10
+// 2004), what all the speakers play is read instead.
+//
+// It runs only while a profile with its beat on is drawn and a song plays: the drawing asks (`listen`) each frame, and
+// the thread ends 1.5 s after the last ask, letting go of Windows' sound. What it keeps: 1,024 samples, a 1,024-point
+// FFT and its window (about 20 KB in all); a look about 90 times a second.
+#![cfg_attr(not(any(feature = "core", feature = "shot")), allow(dead_code))]
+
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
+use crate::media::Player;
+use crate::threads::Hold;
+
+/// The bands, low to high (40 Hz to 14 kHz, evenly on a log scale).
+pub const BANDS: usize = 32;
+
+/// What the song does now, each 0 to 1.
+#[derive(Clone, Copy, Default)]
+pub struct Beat {
+    pub bands: [f32; BANDS],
+    pub bass: f32,
+    pub mid: f32,
+    pub high: f32,
+    pub level: f32,
+    /// 1 at a beat (a kick of the bass), falling to 0 in about a third of a second.
+    pub kick: f32,
+    /// The beats counted so far: a new one starts a burst.
+    pub beats: u32,
+}
+
+/// Whose sound: the music app's, or Bloxkeep's own (the profile's song file plays in Bloxkeep).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Source {
+    Own,
+    App(Player),
+}
+
+struct Shared {
+    want: Option<(Source, Instant)>,
+    running: bool,
+    out: Beat,
+    beat_at: Option<Instant>,
+}
+
+static SHARED: Mutex<Shared> = Mutex::new(Shared { want: None, running: false, out: Beat { bands: [0.; BANDS], bass: 0., mid: 0., high: 0., level: 0., kick: 0., beats: 0 }, beat_at: None });
+
+/// The song's beat now, from `src`'s sound; asked each frame it is drawn (the reading starts on the first ask and stops
+/// a moment after the last).
+pub fn listen(src: Source) -> Beat {
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_BEAT").is_ok() {
+        return made_up();
+    }
+    let mut s = SHARED.hold();
+    s.want = Some((src, Instant::now()));
+    if !s.running {
+        s.running = true;
+        #[cfg(all(windows, any(feature = "core", feature = "shot")))]
+        if crate::threads::own("Song beat", win::run).is_err() {
+            s.running = false;
+        }
+    }
+    let mut b = s.out;
+    b.kick = s.beat_at.map_or(0., |t| (-t.elapsed().as_secs_f32() / 0.16).exp());
+    b
+}
+
+/// A song made up for the screen shots: 124 beats a minute, the bands rolling.
+#[cfg(feature = "shot")]
+fn made_up() -> Beat {
+    let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| (d.as_millis() % 1_000_000) as f32 / 1000.).unwrap_or(0.);
+    let t = std::env::var("BLOXKEEP_SHOT_BEAT").ok().and_then(|v| v.parse::<f32>().ok()).filter(|v| *v > 0.).unwrap_or(t);
+    let period = 60. / 124.;
+    let since = t.rem_euclid(period);
+    let kick = (-since / 0.16).exp();
+    let mut bands = [0f32; BANDS];
+    for (i, b) in bands.iter_mut().enumerate() {
+        let u = i as f32 / BANDS as f32;
+        let low = (1. - u * 2.5).max(0.) * (0.45 + 0.55 * kick);
+        let roll = 0.5 + 0.5 * (t * 3.1 + i as f32 * 0.7).sin() * (t * 1.7 + i as f32 * 0.31).cos();
+        *b = (low + (0.55 - u * 0.35) * roll).clamp(0., 1.);
+    }
+    let avg = |r: std::ops::Range<usize>| bands[r.clone()].iter().sum::<f32>() / r.len() as f32;
+    Beat { bass: avg(0..6), mid: avg(6..19), high: avg(19..BANDS), level: avg(0..BANDS), kick, beats: (t / period) as u32, bands }
+}
+
+/// The bands from a frame of sound (`ring`, oldest first, already windowed into `re`): see `Ear`.
+struct Ear {
+    rate: f32,
+    win: Vec<f32>,
+    re: Vec<f32>,
+    im: Vec<f32>,
+    edges: [(usize, usize); BANDS],
+    peak: f32,
+    smooth: [f32; BANDS],
+    history: [f32; 43],
+    hist_at: usize,
+    last_beat: Option<Instant>,
+}
+
+const N: usize = 1024;
+
+impl Ear {
+    fn new(rate: f32) -> Ear {
+        let win = (0..N).map(|i| 0.5 - 0.5 * (std::f32::consts::TAU * i as f32 / (N - 1) as f32).cos()).collect();
+        let bin = rate / N as f32;
+        let mut edges = [(1, 2); BANDS];
+        let (lo, hi) = (40f32, 14_000f32.min(rate / 2. - bin));
+        for (b, e) in edges.iter_mut().enumerate() {
+            let f0 = lo * (hi / lo).powf(b as f32 / BANDS as f32);
+            let f1 = lo * (hi / lo).powf((b + 1) as f32 / BANDS as f32);
+            let a = ((f0 / bin).floor() as usize).max(1);
+            *e = (a, ((f1 / bin).ceil() as usize).max(a + 1).min(N / 2));
+        }
+        Ear { rate, win, re: vec![0.; N], im: vec![0.; N], edges, peak: 1e-4, smooth: [0.; BANDS], history: [0.; 43], hist_at: 0, last_beat: None }
+    }
+
+    /// One look at the last N samples (`ring` from `at`, round): the bands, and a beat when the bass jumps.
+    fn look(&mut self, ring: &[f32], at: usize) -> (Beat, bool) {
+        for i in 0..N {
+            self.re[i] = ring[(at + i) % N] * self.win[i];
+            self.im[i] = 0.;
+        }
+        fft(&mut self.re, &mut self.im);
+        let mag = |i: usize, re: &[f32], im: &[f32]| (re[i] * re[i] + im[i] * im[i]).sqrt();
+        let mut raw = [0f32; BANDS];
+        for (b, &(a, z)) in self.edges.iter().enumerate() {
+            raw[b] = (a..z).map(|i| mag(i, &self.re, &self.im)).fold(0., f32::max);
+        }
+        let top = raw.iter().copied().fold(0., f32::max);
+        // (Loud or quiet, the song fills the range: the loudest band of the last few seconds is the top.)
+        self.peak = (self.peak * 0.997).max(top).max(1e-4);
+        let mut out = Beat::default();
+        for b in 0..BANDS {
+            let db = 20. * (raw[b] / self.peak).max(1e-6).log10();
+            let v = ((db + 48.) / 48.).clamp(0., 1.);
+            let s = &mut self.smooth[b];
+            *s += (v - *s) * if v > *s { 0.6 } else { 0.14 };
+            out.bands[b] = *s;
+        }
+        let avg = |r: std::ops::Range<usize>| out.bands[r.clone()].iter().sum::<f32>() / r.len() as f32;
+        out.bass = avg(0..6);
+        out.mid = avg(6..19);
+        out.high = avg(19..BANDS);
+        out.level = avg(0..BANDS);
+        // A beat: the bass's strength well over its last half second's, and not too soon after the last.
+        let bin = self.rate / N as f32;
+        let energy: f32 = (1..((160. / bin).ceil() as usize).max(2)).map(|i| mag(i, &self.re, &self.im).powi(2)).sum::<f32>() / (self.peak * self.peak);
+        let mean = self.history.iter().sum::<f32>() / self.history.len() as f32;
+        self.history[self.hist_at] = energy;
+        self.hist_at = (self.hist_at + 1) % self.history.len();
+        let beat = energy > mean * 1.45 && energy > 0.02 && out.bass > 0.3 && self.last_beat.is_none_or(|t| t.elapsed() > Duration::from_millis(230));
+        if beat {
+            self.last_beat = Some(Instant::now());
+        }
+        (out, beat)
+    }
+}
+
+/// A radix-2 FFT in place (N a power of two).
+fn fft(re: &mut [f32], im: &mut [f32]) {
+    let n = re.len();
+    let mut j = 0;
+    for i in 1..n {
+        let mut bit = n >> 1;
+        while j & bit != 0 {
+            j ^= bit;
+            bit >>= 1;
+        }
+        j |= bit;
+        if i < j {
+            re.swap(i, j);
+            im.swap(i, j);
+        }
+    }
+    let mut len = 2;
+    while len <= n {
+        let ang = -std::f32::consts::TAU / len as f32;
+        let (ws, wc) = ang.sin_cos();
+        for start in (0..n).step_by(len) {
+            let (mut cr, mut ci) = (1f32, 0f32);
+            for k in 0..len / 2 {
+                let (a, b) = (start + k, start + k + len / 2);
+                let (tr, ti) = (re[b] * cr - im[b] * ci, re[b] * ci + im[b] * cr);
+                re[b] = re[a] - tr;
+                im[b] = im[a] - ti;
+                re[a] += tr;
+                im[a] += ti;
+                (cr, ci) = (cr * wc - ci * ws, cr * ws + ci * wc);
+            }
+        }
+        len <<= 1;
+    }
+}
+
+/// What the thread is asked for now: the source, or None when nobody asked for 1.5 s (it ends, and says so).
+fn wanted() -> Option<Source> {
+    let mut s = SHARED.hold();
+    match s.want {
+        Some((src, at)) if at.elapsed() < Duration::from_millis(1500) => Some(src),
+        _ => {
+            s.running = false;
+            s.out = Beat::default();
+            s.beat_at = None;
+            None
+        }
+    }
+}
+
+fn give(b: Beat, beat: bool) {
+    let mut s = SHARED.hold();
+    let beats = s.out.beats + u32::from(beat);
+    s.out = Beat { beats, ..b };
+    if beat {
+        s.beat_at = Some(Instant::now());
+    }
+}
+
+#[cfg(all(windows, any(feature = "core", feature = "shot")))]
+mod win {
+    use super::*;
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::Media::Audio::*;
+    use windows::Win32::System::Com::StructuredStorage::PROPVARIANT;
+    use windows::Win32::System::Com::{BLOB, CLSCTX_ALL, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx, CoTaskMemFree};
+    use windows::Win32::System::Variant::VT_BLOB;
+    use windows::core::{Interface, implement};
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Threading::{CreateEventW, SetEvent, WaitForSingleObject};
+
+    /// A Windows event, closed when dropped.
+    struct Event(windows_sys::Win32::Foundation::HANDLE);
+    impl Event {
+        fn new() -> Option<Event> {
+            let h = unsafe { CreateEventW(std::ptr::null(), 0, 0, std::ptr::null()) };
+            (!h.is_null()).then_some(Event(h))
+        }
+    }
+    impl Drop for Event {
+        fn drop(&mut self) {
+            unsafe { CloseHandle(self.0) };
+        }
+    }
+
+    /// Told when Windows has made the process loopback's sound client.
+    #[implement(IActivateAudioInterfaceCompletionHandler)]
+    struct Made(usize);
+    impl IActivateAudioInterfaceCompletionHandler_Impl for Made_Impl {
+        fn ActivateCompleted(&self, _: windows::core::Ref<'_, IActivateAudioInterfaceAsyncOperation>) -> windows::core::Result<()> {
+            unsafe { SetEvent(self.0 as _) };
+            Ok(())
+        }
+    }
+
+    /// A sound client that reads `pid`'s sound (and its children's), as 48 kHz float stereo.
+    fn process_client(pid: u32) -> windows::core::Result<(IAudioClient, f32, u16, bool)> {
+        let params = AUDIOCLIENT_ACTIVATION_PARAMS {
+            ActivationType: AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK,
+            Anonymous: AUDIOCLIENT_ACTIVATION_PARAMS_0 { ProcessLoopbackParams: AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS { TargetProcessId: pid, ProcessLoopbackMode: PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE } },
+        };
+        let mut pv = PROPVARIANT::default();
+        // (The blob points at `params`, alive till the end; the PROPVARIANT owns nothing and is never cleared.)
+        unsafe {
+            let inner = &mut *pv.Anonymous.Anonymous;
+            inner.vt = VT_BLOB;
+            inner.Anonymous.blob = BLOB { cbSize: std::mem::size_of::<AUDIOCLIENT_ACTIVATION_PARAMS>() as u32, pBlobData: &params as *const _ as *mut u8 };
+        }
+        let done = Event::new().ok_or_else(windows::core::Error::from_win32)?;
+        let handler: IActivateAudioInterfaceCompletionHandler = Made(done.0 as usize).into();
+        let op = unsafe { ActivateAudioInterfaceAsync(VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK, &IAudioClient::IID, Some(&pv), &handler)? };
+        unsafe { WaitForSingleObject(done.0, 5000) };
+        let mut hr = windows::core::HRESULT(0);
+        let mut made: Option<windows::core::IUnknown> = None;
+        unsafe { op.GetActivateResult(&mut hr, &mut made)? };
+        hr.ok()?;
+        let client: IAudioClient = made.ok_or_else(windows::core::Error::empty)?.cast()?;
+        let fmt = WAVEFORMATEX { wFormatTag: 3, nChannels: 2, nSamplesPerSec: 48_000, nAvgBytesPerSec: 48_000 * 8, nBlockAlign: 8, wBitsPerSample: 32, cbSize: 0 };
+        unsafe { client.Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK | AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM, 200_000, 0, &fmt, None)? };
+        Ok((client, 48_000., 2, true))
+    }
+
+    /// What all the speakers play (Windows without process loopback): its own mix's format.
+    fn speakers_client() -> windows::core::Result<(IAudioClient, f32, u16, bool)> {
+        unsafe {
+            let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)?;
+            let client: IAudioClient = devices.GetDefaultAudioEndpoint(eRender, eConsole)?.Activate(CLSCTX_ALL, None)?;
+            let fmt = client.GetMixFormat()?;
+            let (rate, ch, float) = ((*fmt).nSamplesPerSec as f32, (*fmt).nChannels, (*fmt).wBitsPerSample == 32);
+            let done = client.Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK, 200_000, 0, fmt, None);
+            CoTaskMemFree(Some(fmt as *const _));
+            done?;
+            Ok((client, rate, ch, float))
+        }
+    }
+
+    fn say(what: &str, e: &dyn std::fmt::Display) {
+        static SAID: Mutex<String> = Mutex::new(String::new());
+        let line = format!("Song beat, {what}: {e}");
+        let mut said = SAID.hold();
+        if *said != line {
+            #[cfg(feature = "core")]
+            crate::core::log::write(&line);
+            *said = line;
+        }
+    }
+
+    pub(super) fn run() {
+        unsafe {
+            let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+        }
+        let mut no_process_loopback = false;
+        while let Some(src) = wanted() {
+            let pid = match src {
+                Source::Own => Some(std::process::id()),
+                Source::App(p) => crate::media::pid_of(p),
+            };
+            let Some(pid) = pid else {
+                std::thread::sleep(Duration::from_millis(500));
+                continue;
+            };
+            let client = if no_process_loopback { speakers_client() } else { process_client(pid) };
+            let client = match client {
+                Ok(c) => c,
+                Err(e) if !no_process_loopback => {
+                    say("reading the music app's own sound (the speakers' instead)", &e);
+                    no_process_loopback = true;
+                    continue;
+                }
+                Err(e) => {
+                    say("reading the speakers", &e);
+                    std::thread::sleep(Duration::from_secs(2));
+                    continue;
+                }
+            };
+            if let Err(e) = read(client, src) {
+                say("reading", &e);
+                std::thread::sleep(Duration::from_millis(500));
+            }
+        }
+    }
+
+    /// Reads the client's sound until it isn't wanted (or another source is), a look each 512 samples.
+    fn read((client, rate, channels, float): (IAudioClient, f32, u16, bool), src: Source) -> windows::core::Result<()> {
+        let tick = Event::new().ok_or_else(windows::core::Error::from_win32)?;
+        let evented = unsafe { client.SetEventHandle(HANDLE(tick.0)) }.is_ok();
+        let capture: IAudioCaptureClient = unsafe { client.GetService()? };
+        unsafe { client.Start()? };
+        let mut ear = Ear::new(rate);
+        let mut ring = vec![0f32; N];
+        let (mut at, mut fresh) = (0usize, 0usize);
+        let mut asked = Instant::now();
+        let mut heard = Instant::now();
+        let channels = channels.max(1) as usize;
+        let result = loop {
+            if evented {
+                unsafe { WaitForSingleObject(tick.0, 60) };
+            } else {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            loop {
+                let size = match unsafe { capture.GetNextPacketSize() } {
+                    Ok(s) => s,
+                    Err(_) => break,
+                };
+                if size == 0 {
+                    break;
+                }
+                let (mut data, mut frames, mut flags) = (std::ptr::null_mut(), 0u32, 0u32);
+                if unsafe { capture.GetBuffer(&mut data, &mut frames, &mut flags, None, None) }.is_err() {
+                    break;
+                }
+                let silent = flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32 != 0 || data.is_null();
+                for f in 0..frames as usize {
+                    let mut v = 0f32;
+                    if !silent {
+                        for c in 0..channels {
+                            let i = f * channels + c;
+                            v += unsafe { if float { *(data as *const f32).add(i) } else { *(data as *const i16).add(i) as f32 / 32768. } };
+                        }
+                    }
+                    ring[at] = v / channels as f32;
+                    at = (at + 1) % N;
+                    fresh += 1;
+                }
+                unsafe { capture.ReleaseBuffer(frames)? };
+                heard = Instant::now();
+            }
+            // (No sound comes while the song is paused: the bands fall as silence would.)
+            if heard.elapsed() > Duration::from_millis(40) {
+                for _ in 0..(rate * 0.012) as usize {
+                    ring[at] = 0.;
+                    at = (at + 1) % N;
+                    fresh += 1;
+                }
+                heard = Instant::now();
+            }
+            while fresh >= 512 {
+                fresh -= 512;
+                let (b, beat) = ear.look(&ring, at);
+                give(b, beat);
+            }
+            if asked.elapsed() > Duration::from_millis(100) {
+                asked = Instant::now();
+                if wanted() != Some(src) {
+                    break Ok(());
+                }
+            }
+        };
+        unsafe {
+            let _ = client.Stop();
+        }
+        result
+    }
+}

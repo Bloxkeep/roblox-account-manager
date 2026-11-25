@@ -1329,6 +1329,22 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
     let avatar_size = if inner < 620. { 92. } else { 136. };
     // Their decorations (own profile): the theme over the banner and the ring round the picture (pages/deco.rs).
     let (deco_theme, deco_ring) = if own { deco::shown(user) } else { ("none", "none") };
+    // Moving with their song (own profile, its pulse on, motion not turned down in Windows): beat.rs reads the song's
+    // sound only while this is drawn and a song plays.
+    let power = if own && !cx.reduce_motion() { deco::power(deco::pulse(user)) } else { 0. };
+    let beat_now = (power > 0.).then(|| profile_media::playing_now(root, user, cx)).flatten().map(|(src, hex)| (crate::beat::listen(src), hex, power));
+    // The banner's picture leans in and shakes at each beat: drawn a little larger than the banner, moved by a few px.
+    let shake = beat_now.map(|(b, _, power)| {
+        let t = deco::seconds();
+        let z = 5. + 20. * b.kick * b.bass.max(0.4) * power;
+        (z, (t * 61.).sin() * 7. * b.kick * power, (t * 47.).cos() * 4. * b.kick * power)
+    });
+    // (And the picture bounces with the bass.)
+    let grow = beat_now.map_or(0., |(b, _, power)| avatar_size * 0.07 * b.kick * b.bass.max(0.3) * power);
+    let shaken = move |el: AnyElement| match shake {
+        Some((z, sx, sy)) => div().absolute().left(px(-z + sx)).right(px(-z - sx)).top(px(-z * 0.6 + sy)).bottom(px(-z * 0.6 - sy)).child(el).into_any_element(),
+        None => el,
+    };
     #[cfg(feature = "shot")]
     let deco_open = own && (root.profile.deco_open || std::env::var("BLOXKEEP_SHOT_DECO_OPEN").is_ok());
     #[cfg(not(feature = "shot"))]
@@ -1450,7 +1466,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
         .border_color(c(LINE))
         .child(div().relative().w_full().h(px(banner_h)).overflow_hidden()
             .bg(c(RAISED_2))
-            .when_some(banner, |d, (src, key)| d.child(fade_in(img(src).size_full().object_fit(ObjectFit::Cover), &key)))
+            .when_some(banner, |d, (src, key)| d.child(shaken(fade_in(img(src).size_full().object_fit(ObjectFit::Cover), &key).into_any_element())))
             .when_some(placed, |d, p| d.child(p.el))
             // Being moved: a drag slides the picture under the banner, as far as it runs past it each way.
             .when(moving, |d| {
@@ -1487,10 +1503,11 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                             }))),
                     ))
             })
-            .when_some(banner_gif, |d, path| d.child(img(std::path::PathBuf::from(path)).size_full().object_fit(ObjectFit::Cover)))
+            .when_some(banner_gif, |d, path| d.child(shaken(img(std::path::PathBuf::from(path)).size_full().object_fit(ObjectFit::Cover).into_any_element())))
             .when(!tiles.is_empty(), |d| d.child(div().absolute().inset_0().flex().justify_end().gap(px(2.)).children(tiles)))
             .when(deco_theme != "none", |d| d.child(deco::theme("pf-deco-banner", deco_theme, 0.)))
-            .when(deco_theme != "none" || deco_ring != "none" || deco_open, |d| d.child(deco::clock("pf-deco-clock")))
+            .when_some(beat_now, |d, (b, hex, power)| d.child(deco::pulse_banner(b, hex, power)))
+            .when(deco_theme != "none" || deco_ring != "none" || deco_open || beat_now.is_some(), |d| d.child(deco::clock("pf-deco-clock")))
             .when(own, |d| d.child(div().absolute().right(px(12.)).top(px(12.)).flex().gap(px(6.))
                 .when(can_move && !moving, |d| d.child(IconButton::new("pf-move-banner", "grip").glass().tip(root.tr("pf.media.move"))
                     .on_click(cx.listener(move |r, _, _, cx| { r.profile.banner_move = true; cx.notify(); }))))
@@ -1519,13 +1536,14 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                 .when(song_in_head, |d| d.child(profile_media::card(root, user, 400., PANEL, song_art.clone(), cx)))
                 .children(side),
         )
+        .when_some(beat_now, |d, (b, hex, power)| d.child(pulse_box(b, hex, power, banner_h, avatar_size)))
         .when(deco_ring != "none", |d| d.child(ring_box(deco_ring, banner_h, avatar_size, false)))
         .child(
             div()
                 .absolute()
-                .left(px(22.))
-                .top(px(banner_h - avatar_size * 0.60))
-                .size(px(avatar_size))
+                .left(px(22. - grow / 2.))
+                .top(px(banner_h - avatar_size * 0.60 - grow / 2.))
+                .size(px(avatar_size + grow))
                 .rounded_full()
                 .border_4()
                 .border_color(c(RAISED))
@@ -1641,6 +1659,18 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
 // ───────────────────────── Marketplace ─────────────────────────
 
 /// The front shelf when nothing was asked yet.
+/// The song round the picture, behind it, in the ring's box.
+fn pulse_box(b: crate::beat::Beat, hex: u32, power: f32, banner_h: f32, avatar_size: f32) -> AnyElement {
+    let room = avatar_size * 0.6;
+    div()
+        .absolute()
+        .left(px(22. - room))
+        .top(px(banner_h - avatar_size * 0.60 - room))
+        .size(px(avatar_size + room * 2.))
+        .child(deco::pulse_ring(b, hex, power, avatar_size / 2.))
+        .into_any_element()
+}
+
 /// A ring's part (behind the picture or over it) in a box round the picture, roomy enough for what flies round it.
 fn ring_box(id: &'static str, banner_h: f32, avatar_size: f32, front: bool) -> AnyElement {
     let room = avatar_size * 0.6;
@@ -1664,7 +1694,7 @@ fn deco_button(root: &Root, user: i64, open: bool, cx: &mut Context<Root>) -> An
         let on = picked.theme == id && !picked.season;
         div()
             .id(("pf-deco-theme", i))
-            .w(px(128.))
+            .w(px(100.))
             .p(px(4.))
             .pb(px(6.))
             .rounded(px(R_M))
@@ -1673,7 +1703,7 @@ fn deco_button(root: &Root, user: i64, open: bool, cx: &mut Context<Root>) -> An
             .bg(if on { ca(FACE, 0.08) } else { ca(WHITE, 0.04) })
             .hover(|d| d.bg(ca(WHITE, 0.08)))
             .cursor_pointer()
-            .child(div().relative().w_full().h(px(60.)).rounded(px(R_S)).overflow_hidden().bg(rgb(0x221d29)).child(deco::theme(format!("pf-deco-mini-{id}"), id, 0.42)))
+            .child(div().relative().w_full().h(px(50.)).rounded(px(R_S)).overflow_hidden().bg(rgb(0x221d29)).child(deco::theme(format!("pf-deco-mini-{id}"), id, 0.36)))
             .child(div().mt(px(6.)).mx(px(2.)).text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).truncate().child(root.tr(&format!("pf.deco.t.{id}"))))
             .on_click(cx.listener(move |_, _, _, cx| {
                 deco::keep(user, deco::Pick { theme: id, ring, season: false });
@@ -1685,7 +1715,7 @@ fn deco_button(root: &Root, user: i64, open: bool, cx: &mut Context<Root>) -> An
         let on = picked.ring == id && !picked.season;
         div()
             .id(("pf-deco-ring", i))
-            .w(px(62.))
+            .w(px(56.))
             .py(px(5.))
             .flex()
             .flex_col()
@@ -1697,7 +1727,7 @@ fn deco_button(root: &Root, user: i64, open: bool, cx: &mut Context<Root>) -> An
             .bg(if on { ca(FACE, 0.08) } else { ca(WHITE, 0.) })
             .hover(|d| d.bg(ca(WHITE, 0.06)))
             .cursor_pointer()
-            .child(div().relative().size(px(52.)).child(deco::ring_tile(id)))
+            .child(div().relative().size(px(46.)).child(deco::ring_tile(id)))
             .child(div().text_size(px(11.)).text_color(c(if on { TEXT } else { MUTED })).truncate().child(root.tr(&format!("pf.deco.r.{id}"))))
             .on_click(cx.listener(move |_, _, _, cx| {
                 deco::keep(user, deco::Pick { ring: id, season: false, ..deco::pick(user) });
@@ -1708,7 +1738,7 @@ fn deco_button(root: &Root, user: i64, open: bool, cx: &mut Context<Root>) -> An
     let menu = div()
         .id("pf-deco-menu")
         .occlude()
-        .w(px(436.))
+        .w(px(560.))
         .px(px(16.))
         .pt(px(14.))
         .pb(px(16.))
@@ -1725,10 +1755,10 @@ fn deco_button(root: &Root, user: i64, open: bool, cx: &mut Context<Root>) -> An
             }
         }))
         .child(title("pf.deco.themes"))
-        .child(div().flex().flex_wrap().gap(px(8.)).children(themes))
+        .child(div().flex().flex_wrap().gap(px(7.)).children(themes))
         .child(line())
         .child(title("pf.deco.rings"))
-        .child(div().flex().flex_wrap().gap(px(4.)).children(rings))
+        .child(div().flex().flex_wrap().gap(px(2.)).children(rings))
         .child(line())
         .child(
             div()
@@ -1749,6 +1779,29 @@ fn deco_button(root: &Root, user: i64, open: bool, cx: &mut Context<Root>) -> An
                     deco::keep(user, deco::Pick { season: *on, ..deco::pick(user) });
                     cx.refresh_windows();
                 })),
+        )
+        .child(line())
+        // Moving with the song: off, or how strongly.
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(12.))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .gap(px(2.))
+                        .child(div().text_size(px(T_M)).child(root.tr("pf.deco.pulse")))
+                        .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("pf.deco.pulseSub"))),
+                )
+                .child(deco::PULSES.iter().fold(Segmented::new("pf-deco-pulse", deco::pulse(user)), |s, &v| s.item(v, root.tr(&format!("pf.deco.pulse.{v}"))))
+                    .on_select(move |v, _, cx| {
+                        deco::keep_pulse(user, v);
+                        cx.refresh_windows();
+                    })),
         );
     div()
         .relative()

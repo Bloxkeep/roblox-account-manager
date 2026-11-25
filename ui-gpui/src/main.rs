@@ -14,6 +14,7 @@
 
 mod ask;
 mod assets;
+mod beat;
 mod calendar;
 // The C# app moved to Rust (src/core/), compiled only with `--features core` until it is joined to the window.
 #[cfg(feature = "core")]
