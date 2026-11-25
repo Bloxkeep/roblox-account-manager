@@ -5078,12 +5078,14 @@ impl Root {
         let body = if f.locked {
             div().size_full().child(pages::lock::lock(self, window, cx))
         } else if self.lost {
+            pages::lock::let_go(window);
             panel().size_full().flex().flex_col().items_center().justify_center().gap(px(10.)).child(
                 icon("power", 30., c(WARN)).flex_none().mb(px(6.)),
             )
             .child(div().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(self.tr("ui.lost")))
             .child(div().text_size(px(T_L)).text_color(c(MUTED)).child(self.tr("ui.lostSub")))
         } else {
+            pages::lock::let_go(window);
             if page == Page::Home {
                 div().size_full().child(pages::home::home(self, main_w, cx))
             } else if page == Page::Accounts {

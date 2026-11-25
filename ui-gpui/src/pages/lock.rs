@@ -380,6 +380,17 @@ thread_local! {
     static DOT_TILES: std::cell::RefCell<Option<(u32, Vec<std::sync::Arc<RenderImage>>)>> = const { std::cell::RefCell::new(None) };
 }
 
+/// The dots' pictures let go once the lock screen is gone (unlocked, they were kept as long as the app ran).
+pub fn let_go(window: &mut Window) {
+    DOT_TILES.with(|t| {
+        if let Some((_, old)) = t.borrow_mut().take() {
+            for o in old {
+                let _ = window.drop_image(o);
+            }
+        }
+    });
+}
+
 /// A block of DOT_BLOCK × DOT_BLOCK dots `side` pixels square, `scale` pixels a point, at faintness `a`.
 fn dot_tile(side: u32, scale: f32, a: f32) -> Option<RenderImage> {
     let mut px_buf = vec![0u8; (side * side * 4) as usize];

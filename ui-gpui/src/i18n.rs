@@ -1,15 +1,54 @@
 // The interface's words: assets/i18n.json, made from wwwroot/i18n.js (tools/i18n.mjs), the same words the web page has.
 // English is the default and the fallback; {name} placeholders are filled from the vars. Some words carry the page's
 // little markup (<b>, <span class="sep">): `t` drops it, `rich` (rich.rs) draws it.
-use std::{collections::HashMap, path::Path, sync::Arc};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::{Arc, LazyLock, Mutex, OnceLock, Weak},
+};
 
 type Words = HashMap<String, String>;
+
+/// Where the languages added later are read from (lang/<code>.json's "words"), set by `from_assets`.
+static LATER_DIR: OnceLock<PathBuf> = OnceLock::new();
+/// The languages added later read so far, kept while a copy of the words shows one (the windows' and the tray's copies
+/// share it): only the language shown is in memory, not all fourteen (some 7 MB).
+static LATER: LazyLock<Mutex<HashMap<&'static str, Weak<Words>>>> = LazyLock::new(Default::default);
+/// The last language asked for by `t_in` (another than the one shown: Discord's messages), kept so a run of them reads
+/// its file once.
+static ASKED: Mutex<Option<Arc<Words>>> = Mutex::new(None);
+
+#[derive(serde::Deserialize)]
+struct LaterFile {
+    #[serde(default)]
+    words: Words,
+}
+
+/// A language added later's words, read from its file the first time (None for English and Vietnamese, which the
+/// app's own files carry, and before `from_assets`).
+fn later(code: &'static str) -> Option<Arc<Words>> {
+    if matches!(code, "en" | "vi") {
+        return None;
+    }
+    let dir = LATER_DIR.get()?;
+    let mut read = LATER.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(w) = read.get(code).and_then(Weak::upgrade) {
+        return Some(w);
+    }
+    let text = std::fs::read_to_string(dir.join(format!("lang/{code}.json"))).ok()?;
+    let words = Arc::new(serde_json::from_str::<LaterFile>(&text).ok()?.words);
+    read.retain(|_, w| w.strong_count() > 0);
+    read.insert(code, Arc::downgrade(&words));
+    Some(words)
+}
 
 /// Every language's words by key (English the fallback), shared by the windows' copies.
 #[derive(Default, Clone)]
 pub struct I18n {
     en: Arc<Words>,
     others: Arc<HashMap<&'static str, Words>>,
+    /// The words of the language shown when it is one added later (`later`).
+    shown: Option<Arc<Words>>,
     /// The language shown (lang.rs's code).
     pub lang: &'static str,
     /// Shown in Vietnamese: what only Vietnamese has (its own wiki words, its way of writing a span).
@@ -24,24 +63,19 @@ impl I18n {
         me
     }
 
-    /// Every language's words from the app's assets folder: the page's (i18n.json), 1.1's (words.json) and the
-    /// languages added later (lang/<code>.json's "words").
+    /// The words from the app's assets folder: the page's (i18n.json) and 1.1's (words.json), English and Vietnamese;
+    /// a language added later (lang/<code>.json's "words") is read when it is shown.
     pub fn from_assets(assets: &Path) -> Self {
         let mut me = Self::load(&std::fs::read_to_string(assets.join("i18n.json")).unwrap_or_default());
         me.add(&std::fs::read_to_string(assets.join("words.json")).unwrap_or_default());
-        for l in crate::lang::ALL.iter().filter(|l| !matches!(l.code, "en" | "vi")) {
-            let Ok(text) = std::fs::read_to_string(assets.join(format!("lang/{}.json", l.code))) else { continue };
-            let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else { continue };
-            if let Some(words) = v.get("words").and_then(|w| serde_json::from_value::<Words>(w.clone()).ok()) {
-                Arc::make_mut(&mut me.others).entry(l.code).or_default().extend(words);
-            }
-        }
+        // (The languages added later are read when shown: `later`.)
+        let _ = LATER_DIR.set(assets.to_path_buf());
         me
     }
 
     /// Each text in the language shown with its English one: Settings' search finds a row by either (app.js's data-en).
     pub fn en_by_own(&self) -> HashMap<String, String> {
-        let Some(own) = self.others.get(self.lang) else { return HashMap::new() };
+        let Some(own) = self.others.get(self.lang).or(self.shown.as_deref()) else { return HashMap::new() };
         own.iter().filter_map(|(k, v)| self.en.get(k).map(|e| (plain(v), plain(e)))).collect()
     }
 
@@ -66,13 +100,21 @@ impl I18n {
     pub fn set_language(&mut self, lang: &str) {
         self.lang = crate::lang::known(lang);
         self.vietnamese = self.lang == "vi";
+        self.shown = if self.others.contains_key(self.lang) { None } else { later(self.lang) };
         // (Numbers, times and dates follow: lang.rs.)
         crate::lang::set(self.lang);
     }
 
     /// The words of the language shown for a key, None when it has none (English's are used then).
     fn own(&self, lang: &str, key: &str) -> Option<&String> {
-        if lang == "en" { None } else { self.others.get(lang).and_then(|w| w.get(key)) }
+        if lang == "en" {
+            return None;
+        }
+        match self.others.get(lang) {
+            Some(w) => w.get(key),
+            None if lang == self.lang => self.shown.as_ref().and_then(|w| w.get(key)),
+            None => None,
+        }
     }
 
     /// Whether the language shown has its own words for a key (a count's forms: a language without one uses the key).
@@ -120,7 +162,15 @@ impl I18n {
 
     /// The words for a key in a language picked for it (Discord's messages may be in another one), as plain text.
     pub fn t_in(&self, lang: &str, key: &str) -> String {
-        plain(self.own(crate::lang::known(lang), key).or_else(|| self.en.get(key)).map(String::as_str).unwrap_or(key))
+        let lang = crate::lang::known(lang);
+        if lang != self.lang && !self.others.contains_key(lang) {
+            if let Some(words) = later(lang) {
+                let said = plain(words.get(key).or_else(|| self.en.get(key)).map(String::as_str).unwrap_or(key));
+                *ASKED.lock().unwrap_or_else(|e| e.into_inner()) = Some(words);
+                return said;
+            }
+        }
+        plain(self.own(lang, key).or_else(|| self.en.get(key)).map(String::as_str).unwrap_or(key))
     }
 
     /// The words for a key, as plain text.

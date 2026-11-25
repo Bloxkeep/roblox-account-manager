@@ -51,19 +51,34 @@ impl Said {
     }
 }
 
-/// The languages added after Vietnamese (lang.rs): English sentence -> theirs, from assets/lang/<code>.json's "core".
+/// The languages added after Vietnamese (lang.rs): English sentence -> theirs, from assets/lang/<code>.json's "core";
+/// a language is read the first time a sentence is asked in it (the app's, Discord's), not all fourteen at the start.
 static MORE: LazyLock<std::sync::RwLock<HashMap<&'static str, HashMap<String, Said>>>> = LazyLock::new(Default::default);
+static MORE_DIR: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
 
-/// Reads every added language's sentences from the app's assets folder (once, at the start).
+#[derive(serde::Deserialize)]
+struct MoreFile {
+    #[serde(default)]
+    core: HashMap<String, Said>,
+}
+
+/// Where the added languages' sentences are read from (the app's assets folder), at the start.
 pub fn load_more(assets: &std::path::Path) {
-    let mut more = MORE.write().unwrap_or_else(|e| e.into_inner());
-    for l in crate::lang::ALL.iter().filter(|l| !matches!(l.code, "en" | "vi")) {
-        let Ok(text) = std::fs::read_to_string(assets.join(format!("lang/{}.json", l.code))) else { continue };
-        let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else { continue };
-        if let Some(core) = v.get("core").and_then(|c| serde_json::from_value::<HashMap<String, Said>>(c.clone()).ok()) {
-            more.insert(l.code, core);
-        }
+    let _ = MORE_DIR.set(assets.to_path_buf());
+}
+
+/// A language's sentences read in, if they aren't yet (an empty set when it has no file, so it is read once).
+fn read_more(code: &'static str) {
+    if MORE.read().unwrap_or_else(|e| e.into_inner()).contains_key(code) {
+        return;
     }
+    let Some(dir) = MORE_DIR.get() else { return };
+    let core = std::fs::read_to_string(dir.join(format!("lang/{code}.json")))
+        .ok()
+        .and_then(|text| serde_json::from_str::<MoreFile>(&text).ok())
+        .map(|f| f.core)
+        .unwrap_or_default();
+    MORE.write().unwrap_or_else(|e| e.into_inner()).entry(code).or_insert(core);
 }
 
 /// `L.T(english)`: in the app's language.
@@ -82,10 +97,12 @@ fn said_in(english: &str, language: &str, form: Plural) -> String {
         if let Some(vi) = VI.get(english) {
             return (*vi).to_string();
         }
-    } else if language != "en"
-        && let Some(own) = MORE.read().unwrap_or_else(|e| e.into_inner()).get(crate::lang::known(language)).and_then(|m| m.get(english))
-    {
-        return own.by(form).to_string();
+    } else if language != "en" {
+        let code = crate::lang::known(language);
+        read_more(code);
+        if let Some(own) = MORE.read().unwrap_or_else(|e| e.into_inner()).get(code).and_then(|m| m.get(english)) {
+            return own.by(form).to_string();
+        }
     }
     english.to_string()
 }
@@ -173,12 +190,14 @@ pub fn each(text: &str) -> (String, Vec<(&'static str, String)>) {
     let english = match language().as_str() {
         "en" => text.to_string(),
         "vi" => PAIRS.iter().find(|p| p.1 == text).map(|p| p.0.to_string()).unwrap_or_else(|| text.to_string()),
-        own => MORE
-            .read()
+        own => {
+            read_more(crate::lang::known(own));
+            MORE.read()
             .unwrap_or_else(|e| e.into_inner())
             .get(crate::lang::known(own))
             .and_then(|m| m.iter().find(|(_, v)| v.says(text)).map(|(k, _)| k.clone()))
-            .unwrap_or_else(|| text.to_string()),
+            .unwrap_or_else(|| text.to_string())
+        }
     };
     let all = others().map(|c| (c, t_in(&english, c))).collect();
     (english, all)
