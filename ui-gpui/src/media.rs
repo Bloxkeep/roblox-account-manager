@@ -148,7 +148,11 @@ mod win {
     use windows::core::Interface;
 
     /// The last song's key and its picture's file, so the picture is read once per song, not every few seconds.
-    static COVER: Mutex<Option<(String, Option<String>)>> = Mutex::new(None);
+    /// The song's picture saved (None: none read yet) and when it was last asked for.
+    static COVER: Mutex<Option<(String, Option<String>, std::time::Instant)>> = Mutex::new(None);
+    /// A song without a picture yet is asked again this long after: Spotify names a new song first and gives its
+    /// picture a moment later (Windows' own media flyout shows none either meanwhile).
+    const COVER_AGAIN: std::time::Duration = std::time::Duration::from_secs(2);
     /// The last failure said, so error.log gets it once and not every poll.
     static SAID: Mutex<String> = Mutex::new(String::new());
     /// The one session manager, kept between polls (see `music`).
@@ -277,8 +281,9 @@ mod win {
     fn cover(s: &Session, key: &str) -> Option<String> {
         {
             let c = COVER.lock().unwrap_or_else(|p| p.into_inner());
-            if let Some((k, file)) = c.as_ref()
+            if let Some((k, file, asked)) = c.as_ref()
                 && k == key
+                && (file.is_some() || asked.elapsed() < COVER_AGAIN)
             {
                 return file.clone();
             }
@@ -320,20 +325,21 @@ mod win {
         };
         let mut c = COVER.lock().unwrap_or_else(|p| p.into_inner());
         // The last song's picture file goes when the song changes.
-        if let Some((_, Some(old))) = c.as_ref()
+        if let Some((_, Some(old), _)) = c.as_ref()
             && Some(old) != file.as_ref()
         {
             let _ = std::fs::remove_file(old);
         }
-        *c = Some((key.to_string(), file.clone()));
+        *c = Some((key.to_string(), file.clone(), std::time::Instant::now()));
         file
     }
 
     pub fn now() -> Option<Playing> {
         let fresh = CHANGED.swap(false, Ordering::SeqCst);
+        // (A song still without its picture is read again soon: the picture may come late, without a word.)
         if !fresh
             && let Some((last, at)) = LAST.lock().unwrap_or_else(|p| p.into_inner()).clone()
-            && at.elapsed() < CHECK
+            && at.elapsed() < if last.as_ref().is_some_and(|p| p.cover.is_none()) { COVER_AGAIN } else { CHECK }
         {
             return last.map(|mut p| {
                 p.volume = volume_of(p.player);
