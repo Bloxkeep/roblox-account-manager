@@ -4626,7 +4626,14 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
             .flex_col()
             .gap(px(18.))
             .pb(px(28.))
-            .child(hero(root, all, game, details, &open, &name, place, width, cx))
+            // (Made only near the view: scrolled down to the servers, it was made again on every frame of the scroll.
+            // Kept made while one of its menus is open or its link box has the keys.)
+            .child({
+                let sig = crate::near::sig((open.id.as_str(), width.to_bits()));
+                let keep = root.games.region_menu || root.gpv.menu || root.games.switching;
+                let focus = root.games.link_box.as_ref().map(|e| e.read(cx).focus_handle(cx));
+                crate::near::away_in(&root.games.page_scroll, "gm-hero", sig, keep, focus, || hero(root, all, game, details, &open, &name, place, width, cx).into_any_element())
+            })
             .children(details.and_then(|d| community_panel(root, int(d, "creatorGroupId"), cx))
                 .map(|panel| div().px(px(PAGE_X)).child(panel)))
             .when_some(root.games.picking.as_ref().filter(|(g, _)| *g == open.id).map(|(_, p)| p.clone()), |d, ticked| {

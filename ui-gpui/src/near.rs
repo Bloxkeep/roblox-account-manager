@@ -400,6 +400,54 @@ pub fn tiles_in(scroll: Option<&ScrollHandle>, id: &'static str, items: usize, t
         }))
 }
 
+/// One block of a page's scroll (a game page's head) made only while it is near the view: away from it, an empty
+/// room as tall as it was last drawn. `sig`: what the block is (another game, another width): a new one is made
+/// wherever it is, to be measured. `keep`: made wherever it is (one of its menus open); `focus`: also while this box
+/// in it has the keys (a link being typed).
+pub fn away_in(scroll: &ScrollHandle, id: &'static str, sig: u64, keep: bool, focus: Option<FocusHandle>, make: impl FnOnce() -> AnyElement) -> AnyElement {
+    let tall = tall_of(id);
+    let known = {
+        let mut t = tall.borrow_mut();
+        if t.sig != sig {
+            t.sig = sig;
+            t.h.clear();
+        }
+        // (`h[1]`: the box had the keys as the block was last painted.)
+        t.h.get(&0).copied().filter(|_| !t.h.contains_key(&1))
+    };
+    let mark = at(id);
+    let (from, to) = band(&mark, Some(scroll));
+    let col = div().w_full().flex().flex_col().child(mark_el(mark, Some(scroll.clone())));
+    if let Some(h) = known.filter(|h| !keep && (*h < from || to < 0.)) {
+        return col.child(space(h)).into_any_element();
+    }
+    col.child(
+        div().relative().w_full().child(make()).child(
+            canvas(
+                move |b, window, cx| {
+                    let h = f32::from(b.size.height);
+                    let mut t = tall.borrow_mut();
+                    if t.sig != sig {
+                        return;
+                    }
+                    if focus.as_ref().is_some_and(|f| f.contains_focused(window, cx)) {
+                        t.h.insert(1, 1.);
+                    } else {
+                        t.h.remove(&1);
+                    }
+                    if t.h.insert(0, h).is_none_or(|old| (old - h).abs() > 0.5) {
+                        window.request_animation_frame();
+                    }
+                },
+                |_, _, _, _| {},
+            )
+            .absolute()
+            .inset_0(),
+        ),
+    )
+    .into_any_element()
+}
+
 /// A number for what a run's rows are, from anything hashable (their ids, their count, a filter).
 pub fn sig(of: impl std::hash::Hash) -> u64 {
     use std::hash::Hasher;
