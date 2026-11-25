@@ -51,7 +51,11 @@
         "The profile song can play a whole playlist.",
         "Adjust your avatar's accessories, as on Roblox.",
         "Search the Console.",
-        "Pick how Roblox windows open and whether they minimize after joining, for each Preset too."
+        "Pick how Roblox windows open and whether they minimize after joining, for each Preset too.",
+        "Control your PC from your phone in Watch remotely: rejoin, switch server, close, clean RAM or open a Preset.",
+        "See the servers you were in lately on a game's Servers tab, and join them again.",
+        "Copy a server's Job ID.",
+        "Profile badges for account age, hours played and games played."
       ],
       "vi": [
         "Dán danh sách cookie để thêm nhiều tài khoản một lần.",
@@ -63,7 +67,11 @@
         "Nhạc hồ sơ phát được cả danh sách bài.",
         "Chỉnh phụ kiện cho avatar như trên Roblox.",
         "Tìm kiếm trong Console.",
-        "Chọn kiểu mở cửa sổ Roblox và có thu nhỏ sau khi vào game không, mỗi Preset chỉnh riêng được."
+        "Chọn kiểu mở cửa sổ Roblox và có thu nhỏ sau khi vào game không, mỗi Preset chỉnh riêng được.",
+        "Ra lệnh từ điện thoại khi Xem từ xa: vào lại, đổi server, đóng, dọn RAM hoặc mở Preset.",
+        "Xem các server đã vào gần đây ở tab Server của game và vào lại.",
+        "Sao chép Job ID của server.",
+        "Huy hiệu hồ sơ theo tuổi tài khoản, số giờ chơi và số game đã chơi."
       ]
     },
     "improved": {
@@ -72,14 +80,18 @@
         "The mouse wheel scrolls smoothly, as in a browser.",
         "The 3D avatar's lighting and moves look more like Roblox.",
         "A new look for the status bar.",
-        "Online accounts show Roblox's blue dot."
+        "Online accounts show Roblox's blue dot.",
+        "The profile catches the beat more accurately.",
+        "Watch remotely comes in all 16 languages."
       ],
       "vi": [
         "Danh sách dài cuộn mượt hơn và tốn ít RAM hơn.",
         "Lăn chuột cuộn mượt như trên trình duyệt.",
         "Avatar 3D có ánh sáng và động tác giống Roblox hơn.",
         "Thanh trạng thái đổi kiểu mới.",
-        "Tài khoản đang online có chấm xanh như trên Roblox."
+        "Tài khoản đang online có chấm xanh như trên Roblox.",
+        "Hồ sơ bắt nhịp nhạc chính xác hơn.",
+        "Xem từ xa có đủ 16 ngôn ngữ."
       ]
     },
     "fixed": {
@@ -90,7 +102,8 @@
         "Minimized windows opened full screen after a rejoin.",
         "Columns in the accounts list didn't line up.",
         "Hovering some rows reacted slowly.",
-        "Game clips covered the sound button."
+        "Game clips covered the sound button.",
+        "CPU and RAM numbers on the status bar shifted as they changed."
       ],
       "vi": [
         "Cửa sổ có giới hạn RAM bị đơ hoặc văng khi đổi server.",
@@ -99,7 +112,8 @@
         "Cửa sổ đang thu nhỏ bị phóng to sau khi vào lại game.",
         "Các cột trong danh sách tài khoản bị lệch.",
         "Rê chuột lên một số dòng phản hồi chậm.",
-        "Clip game che mất nút âm thanh."
+        "Clip game che mất nút âm thanh.",
+        "Số CPU và RAM trên thanh trạng thái bị xê dịch khi đổi."
       ]
     }
   },
