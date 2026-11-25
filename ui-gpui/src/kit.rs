@@ -1313,7 +1313,8 @@ pub const GROUP_PIC: f32 = 44.;
 /// Facts on one line, a small dot between them, in muted tabular figures ("2 windows · 1.7 GB"); a fact with its own
 /// colour (a warning) keeps it.
 pub fn facts(parts: Vec<(String, Option<Hsla>)>) -> Div {
-    dotted(parts.into_iter().map(|(text, col)| div().flex_none().when_some(col, |d, col| d.text_color(col)).child(text).into_any_element()).collect())
+    // (As `dotted`, each fact's words straight in the room that carries its dot: no box of their own around them.)
+    dotted_with(parts.into_iter().map(|(text, col)| dot_room().when_some(col, |d, col| d.text_color(col)).child(text)))
         .text_size(px(T_M))
         .text_color(c(MUTED))
         .font_features(tnum())
@@ -1325,11 +1326,18 @@ pub fn facts(parts: Vec<(String, Option<Hsla>)>) -> Div {
 /// row is pulled left by that room and cut there: the first part of every line shows no dot. (With the dot as a
 /// part of its own, a line that wrapped ended on a dot: "3 playing · 1.6 GB ·" / "2 need a look".)
 pub fn dotted(parts: Vec<AnyElement>) -> Div {
-    const ROOM: f32 = 19.;
-    let mut row = div().flex().flex_wrap().items_center().gap_y(px(2.)).ml(px(-ROOM));
-    for part in parts {
-        row = row.child(div().flex_none().relative().pl(px(ROOM)).flex().items_center().child(sep().absolute().left(px(8.))).child(part));
-    }
+    dotted_with(parts.into_iter().map(|part| dot_room().child(part)))
+}
+
+/// The room at a dotted part's left, with its dot: what the part shows goes in it.
+const DOT_ROOM: f32 = 19.;
+fn dot_room() -> Div {
+    div().flex_none().relative().pl(px(DOT_ROOM)).flex().items_center().child(sep().absolute().left(px(8.)))
+}
+
+/// `dotted`'s line, of parts each already in its `dot_room`.
+fn dotted_with(parts: impl Iterator<Item = Div>) -> Div {
+    let row = div().flex().flex_wrap().items_center().gap_y(px(2.)).ml(px(-DOT_ROOM)).children(parts);
     // (Cut across only: cut both ways, a column short of room squeezed the line to half its height first, as a box
     // that hides what overflows may be shrunk to nothing: Home's hero in a narrow panel, the shots of 2026-11-18.)
     div().min_w_0().overflow_x_hidden().child(row)

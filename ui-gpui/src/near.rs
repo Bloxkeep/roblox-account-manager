@@ -25,8 +25,12 @@ pub const FROM: usize = 40;
 /// Runs of rows of one height in a page's scroll as long as this are cut: a row's height is known (given, or measured
 /// from the first row painted), so cutting changes nothing on the screen.
 pub const ROWS_FROM: usize = 8;
-/// Drawn beyond the view each way when the run's place now is reckoned from its page's scroll.
+/// Drawn beyond the view each way when the run's place now is reckoned from its page's scroll (on the side rows come
+/// in from while it scrolls: their pictures are asked for before they show).
 const MARGIN_IN: f32 = 160.;
+/// Drawn beyond the view on the side rows leave by while the page scrolls: every row kept there is made again on every
+/// frame of the scroll, for nothing.
+const BEHIND: f32 = 40.;
 /// Drawn beyond the view each way otherwise (no scroll handle, or nothing painted yet).
 const MARGIN: f32 = 900.;
 
@@ -76,20 +80,25 @@ fn band(mark: &Rc<Cell<Seen>>, scroll: Option<&ScrollHandle>) -> (f32, f32) {
     let mut s = mark.get();
     // (The offset as the page will clamp it: a glide past the end stops there.)
     let offset = |h: &ScrollHandle| f32::from(h.offset().y).clamp(-f32::from(h.max_offset().y).max(0.), 0.);
-    let (top, view, margin) = match (s.known, scroll) {
-        (true, Some(h)) => (s.top + (offset(h) - s.scrolled), s.view, MARGIN_IN),
-        (true, None) => (s.top, s.view, MARGIN),
+    let (top, view, (above, below)) = match (s.known, scroll) {
+        (true, Some(h)) => {
+            let moved = offset(h) - s.scrolled;
+            // (Scrolling, the full margin is the side rows come in from; the side they leave by keeps a little.)
+            let margins = if moved < 0. { (BEHIND, MARGIN_IN) } else if moved > 0. { (MARGIN_IN, BEHIND) } else { (MARGIN_IN, MARGIN_IN) };
+            (s.top + moved, s.view, margins)
+        }
+        (true, None) => (s.top, s.view, (MARGIN, MARGIN)),
         // Nothing painted yet: as if the run began the page's scroll.
         (false, Some(h)) if h.bounds().size.height > px(0.) => {
             let b = h.bounds();
-            (f32::from(b.origin.y) + offset(h), (f32::from(b.origin.y), f32::from(b.bottom())), MARGIN)
+            (f32::from(b.origin.y) + offset(h), (f32::from(b.origin.y), f32::from(b.bottom())), (MARGIN, MARGIN))
         }
-        (false, _) => (0., (0., 1200.), MARGIN),
+        (false, _) => (0., (0., 1200.), (MARGIN, MARGIN)),
     };
     s.guess = top;
-    s.margin = margin;
+    s.margin = above.min(below);
     mark.set(s);
-    (view.0 - margin - top, view.1 + margin - top)
+    (view.0 - above - top, view.1 + below - top)
 }
 
 /// The mark at a run's top (no height): notes where the run stands as it is painted, and asks for the next frame when

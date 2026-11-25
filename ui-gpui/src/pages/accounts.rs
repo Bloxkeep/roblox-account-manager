@@ -1287,11 +1287,11 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
                         .flex()
                         .items_start()
                         .gap(px(16.))
-                        .child(div().flex_1().min_w_0().child(list::rows(root, &own, inner - 356., cx)))
+                        .child(div().flex_1().min_w_0().child(list::rows(root, &shown, &own, inner - 356., cx)))
                         .child(list::detail(root, focus, cx)),
                 );
             } else {
-                body = body.child(list::rows(root, &own, inner, cx));
+                body = body.child(list::rows(root, &shown, &own, inner, cx));
             }
         }
     } else {
