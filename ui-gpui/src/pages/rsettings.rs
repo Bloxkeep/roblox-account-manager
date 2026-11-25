@@ -3,6 +3,7 @@
 // must be worth to change. Only what Roblox's published API docs (accountinformation, accountsettings) have; the rest
 // of Roblox's Settings (privacy, security, parental controls) is on Roblox's own page, opened in the account's website
 // window. All of it answers only that account's own sign-in, lent by the app; asked from here (roblox.rs).
+use gpui_kit::component::WindowExt as _;
 use gpui_kit::{prelude::*, *};
 use serde_json::json;
 use crate::time::now_secs as now;
@@ -82,6 +83,8 @@ pub struct Data {
     /// first five.
     violations: Option<Result<Vec<roblox::Violation>, String>>,
     vio_all: bool,
+    /// The appeal box open (its violation), as Roblox's own box.
+    appeal: Option<Appeal>,
     /// Where the account is signed in (Roblox's Settings › Security › Where you're logged in), None while read; every
     /// one shown or the first ten (Roblox's page shows ten, then Show more); the places being logged out now.
     places: Option<Result<roblox::Places, String>>,
@@ -103,6 +106,18 @@ pub struct Data {
     pin_at: Option<std::time::Instant>,
     unlocking: bool,
     pin_said: Option<String>,
+}
+
+/// An appeal being written: the violation, the kind sent (an appeal with a message, or a review of an item fixed
+/// since, in Roblox's words), whether Roblox takes it now (None while asked; false: it wants an ID check first, done
+/// on its page), and the send on its way or why it failed.
+struct Appeal {
+    of: roblox::Violation,
+    ty: String,
+    review: bool,
+    ok: Option<bool>,
+    busy: bool,
+    error: Option<String>,
 }
 
 impl Data {
@@ -154,14 +169,7 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
             cx.notify();
         }
     });
-    let c6 = cookie.clone();
-    let vio = roblox::run(move || roblox::violations(&c6, user));
-    reply(vio, cx, move |r, got, cx| {
-        if r.rset.of == user {
-            r.rset.violations = Some(got);
-            cx.notify();
-        }
-    });
+    load_violations(r, cx);
     let c4 = cookie.clone();
     let places = roblox::run(move || roblox::sessions(&c4).map(roblox::places));
     reply(places, cx, move |r, got, cx| {
@@ -332,6 +340,15 @@ fn left(root: &Root, secs: i64) -> String {
 pub fn settle(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     if let Some(words) = r.rset.fill.take() {
         r.rset_about.update(cx, |s, cx| s.set_value(words, window, cx));
+    }
+    // (BLOXKEEP_SHOT_APPEAL=1: a hidden shot of the appeal box, opened once for the first violation open to it.)
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_APPEAL").is_ok() {
+        static OPENED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        let first = r.rset.violations.as_ref().and_then(|l| l.as_ref().ok()).and_then(|l| l.iter().find(|v| v.appeal.is_some()).cloned());
+        if let Some(v) = first.filter(|_| !OPENED.swap(true, std::sync::atomic::Ordering::Relaxed)) {
+            start_appeal(r, v, false, window, cx);
+        }
     }
 }
 
@@ -987,10 +1004,27 @@ fn violations_card(root: &Root, cx: &mut Context<Root>) -> Div {
                 "accepted" => Some(badge(root.tr("rs.vioAccepted"), Tone::Ok).into_any_element()),
                 "inactive" => Some(badge(root.tr("rs.vioInactive"), Tone::Muted).into_any_element()),
                 "unavailable" => Some(badge(root.tr("rs.vioNoAppeal"), Tone::Muted).into_any_element()),
-                _ => v.appeal_by.map(|t| {
-                    div().text_size(px(T_M)).text_color(c(MUTED)).font_features(tnum()).whitespace_nowrap().child(root.i18n.tv("rs.vioBy", &[("t", &date(root, t))])).into_any_element()
-                }),
+                _ => None,
             };
+            // Open to appeal: until when, and Appeal (and Ask for review, where Roblox allows it) as Roblox's page has
+            // them; one it takes by its support form only opens its page.
+            let end = end.or_else(|| {
+                let by = v.appeal_by?;
+                let mut d = div().flex().items_center().gap(px(10.)).child(div().text_size(px(T_M)).text_color(c(MUTED)).font_features(tnum()).whitespace_nowrap().child(root.i18n.tv("rs.vioBy", &[("t", &date(root, by))])));
+                let busy = rs.appeal.is_some();
+                if v.how == "inline" && !v.name.is_empty() && (v.appeal.is_some() || v.review.is_some()) {
+                    for (review, ty) in [(true, &v.review), (false, &v.appeal)] {
+                        if ty.is_some() {
+                            let one = v.clone();
+                            let key = if review { "rs.apReview" } else { "rs.apSend" };
+                            d = d.child(Button::new((if review { "rs-ap-review" } else { "rs-ap" }, i), root.tr(key)).small().quiet().disabled(busy).on_click(cx.listener(move |r, _, window, cx| start_appeal(r, one.clone(), review, window, cx))));
+                        }
+                    }
+                } else {
+                    d = d.child(Button::new(("rs-ap-web", i), root.tr("rs.apSend")).small().quiet().icon_end("external").on_click(cx.listener(|r, _, _, _| open_status(r))));
+                }
+                Some(d.into_any_element())
+            });
             place_row(i, mark, root.tr(&format!("rs.vk.{}", v.kind)), (sub.join(" · "), None), end)
         })
         .collect();
@@ -1008,6 +1042,170 @@ fn violations_card(root: &Root, cx: &mut Context<Root>) -> Div {
         rows.push(div().px(px(20.)).py(px(10.)).border_t_1().border_color(c(LINE)).flex().justify_center().child(more).into_any_element());
     }
     card.children(rows)
+}
+
+fn load_violations(r: &mut Root, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = friends::signed(r) else { return };
+    let rx = roblox::run(move || roblox::violations(&cookie, user));
+    reply(rx, cx, move |r, got, cx| {
+        if r.rset.of == user {
+            r.rset.violations = Some(got);
+            cx.notify();
+        }
+    });
+}
+
+/// Roblox's own page of the account's standing, signed in as it (where an appeal it won't take here is made).
+fn open_status(r: &mut Root) {
+    if let Some((id, _, _)) = friends::signed(r) {
+        r.send("openAppeal", json!({ "id": id }));
+    }
+}
+
+/// Appeal (or Ask for review): Roblox's appeal box, asking Roblox meanwhile whether it takes the appeal now.
+fn start_appeal(r: &mut Root, v: roblox::Violation, review: bool, window: &mut Window, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = friends::signed(r) else { return };
+    let ty = if review { v.review.clone() } else { v.appeal.clone() };
+    let Some(ty) = ty else { return };
+    if r.rset.appeal.is_some() {
+        return;
+    }
+    let id = v.id.clone();
+    r.rset.appeal = Some(Appeal { of: v, ty, review, ok: None, busy: false, error: None });
+    let hint = r.tr("rs.apHint");
+    r.rs_appeal.update(cx, |st, cx| {
+        st.set_value("", window, cx);
+        st.set_placeholder(hint, window, cx);
+    });
+    let rx = roblox::run(move || roblox::appeal_ok(&cookie, user, &id));
+    cx.spawn_in(window, async move |this, cx| {
+        let got = rx.await;
+        let _ = this.update_in(cx, |r, window, _| {
+            if let Some(a) = r.rset.appeal.as_mut().filter(|_| r.rset.of == user) {
+                // (Not known: Roblox's page then shows the box as well, and Roblox says at Send.)
+                a.ok = Some(!matches!(got, Ok(Ok(false))));
+                window.refresh();
+            }
+        });
+    })
+    .detach();
+    let this = cx.weak_entity();
+    let keys = r.rs_appeal.read(cx).focus_handle(cx);
+    window.open_dialog(cx, move |dialog, _, cx| {
+        let Some(root) = this.upgrade() else { return dialog };
+        let r = root.read(cx);
+        let Some(a) = r.rset.appeal.as_ref() else { return dialog };
+        let what = r.tr(&format!("rs.vk.{}", a.of.kind));
+        let typed = r.rs_appeal.read(cx).value().to_string();
+        let n = typed.chars().count();
+        let (title, text) = if a.review {
+            (r.tr("rs.apReviewTitle"), r.i18n.tv("rs.apReviewText", &[("type", &what.to_lowercase())]))
+        } else {
+            (r.tr("rs.apTitle"), r.tr("rs.apText"))
+        };
+        let mut body = div().flex().flex_col().gap(px(14.)).child(div().text_size(px(T_M)).line_height(px(20.)).text_color(c(TEXT_2)).child(text));
+        let needs_id = a.ok == Some(false);
+        if needs_id {
+            body = body.child(form_error(r.tr("rs.apIdv")));
+        } else if !a.review {
+            body = body.child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(6.))
+                    .child(text_area(&r.rs_appeal))
+                    .child(div().flex().justify_end().text_size(px(T_S)).font_features(tnum()).text_color(c(if n > APPEAL_MAX { BAD } else { MUTED })).child(format!("{n}/{APPEAL_MAX}"))),
+            );
+        }
+        if let Some(why) = a.error.clone() {
+            body = body.child(form_error(why));
+        }
+        if !needs_id && !a.review {
+            body = body.child(div().text_size(px(T_S)).text_color(c(MUTED)).child(r.tr("rs.apOnce")));
+        }
+        let (cancel, go, shut) = (this.clone(), this.clone(), this.clone());
+        let mut foot = dialog_foot().child(Button::new("rs-ap-cancel", r.tr("common.cancel")).on_click(move |_, w, cx| {
+            let _ = cancel.update(cx, |r, _| r.rset.appeal = None);
+            w.close_dialog(cx);
+        }));
+        foot = if needs_id {
+            foot.child(Button::new("rs-ap-web", r.tr("rs.apOnRoblox")).primary().icon_end("external").on_click(move |_, w, cx| {
+                let _ = go.update(cx, |r, _| {
+                    r.rset.appeal = None;
+                    open_status(r);
+                });
+                w.close_dialog(cx);
+            }))
+        } else {
+            let can = a.ok.is_some() && !a.busy && (a.review || (n <= APPEAL_MAX && !typed.trim().is_empty()));
+            foot.child(Button::new("rs-ap-go", r.tr("rs.apGo")).primary().disabled(!can).on_click(move |_, w, cx| {
+                let _ = go.update(cx, |r, cx| send_appeal(r, w, cx));
+            }))
+        };
+        framed(dialog, title, r.tr("common.close"), move |_, w, cx| {
+            let _ = shut.update(cx, |r, _| r.rset.appeal = None);
+            w.close_dialog(cx);
+        })
+        .w(px(DIALOG_W))
+        .centered()
+        // (Only Cancel, Send and the × close it: a click beside it would throw away what was written.)
+        .overlay_closable(false)
+        .keyboard(false)
+        .child(dialog_body(body))
+        .footer(foot)
+    });
+    window.focus(&keys, cx);
+}
+
+/// Roblox's limit for an appeal's words.
+const APPEAL_MAX: usize = 1000;
+
+/// Send: the appeal goes, the box closes and the list is read again; a refusal is said in the box (Roblox's 403: it
+/// wants the identity checked first after all).
+fn send_appeal(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = friends::signed(r) else { return };
+    let message = r.rs_appeal.read(cx).value().trim().to_string();
+    let Some(a) = r.rset.appeal.as_mut().filter(|a| !a.busy) else { return };
+    a.busy = true;
+    a.error = None;
+    let (name, ty) = (a.of.name.clone(), a.ty.clone());
+    let message = if a.review { String::new() } else { message };
+    window.refresh();
+    let rx = roblox::run(move || roblox::send_appeal(&cookie, user, &name, &ty, &message));
+    cx.spawn_in(window, async move |this, cx| {
+        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
+        let _ = this.update_in(cx, |r, window, cx| {
+            if r.rset.of != user {
+                return;
+            }
+            if r.rset.appeal.is_none() {
+                return;
+            }
+            match got {
+                Ok(()) => {
+                    r.rset.appeal = None;
+                    window.close_dialog(cx);
+                    r.toast = Some((r.tr("rs.apSent"), "ok".into()));
+                    // (Its state is Roblox's to say now: read again.)
+                    r.rset.violations = None;
+                    load_violations(r, cx);
+                }
+                Err(why) => {
+                    let words = (why != "Roblox 403").then(|| r.i18n.tv("rs.apFailed", &[("why", crate::net::why_words(&r.i18n, &why).as_str())]));
+                    if let Some(a) = r.rset.appeal.as_mut() {
+                        a.busy = false;
+                        match words {
+                            None => a.ok = Some(false),
+                            Some(w) => a.error = Some(w),
+                        }
+                    }
+                }
+            }
+            window.refresh();
+            cx.notify();
+        });
+    })
+    .detach();
 }
 
 /// A day with its year, as the birthday row says one (this PC's clock).

@@ -4764,6 +4764,156 @@ pub fn reminder_of(d: &Value) -> Option<Reminder> {
     }
 }
 
+/// A violation on the account, as Roblox's Account status page lists it (moderation-appeal-service v1, the website's
+/// SafetyDashboard): what was moderated (`kind`: "behavior" when Roblox gives nothing more, "chat", "avatar", "look",
+/// "bundle", or the asset's: "audio", "image", "asset", "model", "experience", "accessory", "mesh", "plugin"), when,
+/// where its appeal stands (`state`: "denied", "accepted", "inactive", "unavailable", or "" while open or under
+/// appeal, where Roblox's list says nothing either), the rules broken (Roblox's VIOLATION_TYPE_… keys), and until when
+/// it may still be appealed, when it may. How (`how`): "inline" (an appeal sent from here: `appeal` and `review` hold
+/// Roblox's own words for the two kinds it allows, an appeal with a message, or "ask for review" of an item fixed
+/// since), "support" (Roblox has no details of it, and takes its appeal by its support form only), or "".
+/// `name` is what an appeal names it by.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Violation {
+    pub id: String,
+    pub name: String,
+    pub kind: &'static str,
+    pub at: Option<i64>,
+    pub state: &'static str,
+    pub rules: Vec<String>,
+    pub appeal_by: Option<i64>,
+    pub how: &'static str,
+    pub appeal: Option<String>,
+    pub review: Option<String>,
+}
+
+/// The account's violations, newest first (one page of 50; Roblox's page asks the same way).
+pub fn violations(cookie: &str, user: i64) -> Result<Vec<Violation>, String> {
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_NOTICES").is_ok() {
+        let day = 86_400;
+        let now = crate::time::now_secs();
+        return Ok(vec![
+            Violation {
+                id: "1".into(),
+                name: "v1".into(),
+                kind: "chat",
+                at: Some(now - 2 * day),
+                rules: vec!["VIOLATION_TYPE_PROFANITY".into()],
+                appeal_by: Some(now + 28 * day),
+                how: "inline",
+                appeal: Some("APPEAL".into()),
+                ..Default::default()
+            },
+            Violation { id: "2".into(), kind: "image", at: Some(now - 40 * day), state: "denied", rules: vec!["VIOLATION_TYPE_SPAM".into()], ..Default::default() },
+            Violation { id: "3".into(), kind: "behavior", at: Some(now - 200 * day), state: "inactive", ..Default::default() },
+        ]);
+    }
+    if cfg!(feature = "shot") {
+        return Ok(Vec::new());
+    }
+    let d = get(&format!("https://apis.roblox.com/moderation-appeal-service/v1/users/{user}/violations?page_size=50"), Some(cookie))?;
+    Ok(violations_of(&d, crate::time::now_secs()))
+}
+
+/// moderation-appeal-service's list answer, read as Roblox's page reads it (violations.ts, violationI18n.tsx), `now`
+/// to tell an appeal's time gone.
+pub fn violations_of(d: &Value, now: i64) -> Vec<Violation> {
+    let mut list: Vec<Violation> = d
+        .get("violations")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .map(|v| {
+            let content = v.get("content").filter(|c| c.is_object());
+            // Roblox's own reading: an asset, a bundle, an avatar (a profile too), a look, a chat; with neither content
+            // nor evidence it is "Your behavior". Evidence names its kind in words of Roblox's own (not ours): the same.
+            let kind = match content.map(|c| text(c, "content_type")).as_deref() {
+                Some("CONTENT_TYPE_ASSET") => match text(content.unwrap_or(&Value::Null), "asset_type").as_str() {
+                    "ASSET_TYPE_AUDIO" => "audio",
+                    "ASSET_TYPE_IMAGE" => "image",
+                    "ASSET_TYPE_MODEL" => "model",
+                    "ASSET_TYPE_EXPERIENCE" => "experience",
+                    "ASSET_TYPE_3D_ACCESSORY" => "accessory",
+                    "ASSET_TYPE_MESH" => "mesh",
+                    "ASSET_TYPE_PLUGIN" => "plugin",
+                    _ => "asset",
+                },
+                Some("CONTENT_TYPE_BUNDLE") => "bundle",
+                Some("CONTENT_TYPE_AVATAR" | "CONTENT_TYPE_USER_PROFILE") => "avatar",
+                Some("CONTENT_TYPE_LOOK") => "look",
+                Some("CONTENT_TYPE_CHAT") => "chat",
+                _ => "behavior",
+            };
+            let state = text(v, "state");
+            let by = v.get("appeal_by_time").and_then(Value::as_str).and_then(crate::time::iso_secs);
+            let tries = v.get("remaining_appeal_attempts").and_then(Value::as_i64).unwrap_or(0);
+            let open = matches!(state.as_str(), "VIOLATION_STATE_INITIATED" | "VIOLATION_STATE_APPEAL_DENIED");
+            let expired = by.is_none_or(|t| t <= now);
+            // "Limited": nothing to show of it (no content, no evidence of Roblox's platform with its parts).
+            let evidence = v.get("evidence").filter(|e| text(e, "type") == "platform" && e.get("elements").and_then(Value::as_array).is_some_and(|l| !l.is_empty()));
+            let limited = content.is_none() && evidence.is_none();
+            let how = if open && tries > 0 && !expired && !limited {
+                "inline"
+            } else if limited && !expired && state != "VIOLATION_STATE_INACTIVE" {
+                "support"
+            } else {
+                ""
+            };
+            let types: Vec<String> = v.get("allowed_appeal_types").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).map(str::to_string).collect();
+            let review = types.iter().find(|t| t.to_ascii_uppercase().contains("FIXED")).cloned();
+            let appeal = types.iter().find(|t| { let u = t.to_ascii_uppercase(); u.contains("APPEAL") && !u.contains("FIXED") && !u.contains("UNSPECIFIED") }).cloned();
+            let mut rules: Vec<String> = v
+                .get("abuse_type_keys")
+                .and_then(Value::as_object)
+                .map(|m| m.keys().filter(|k| !matches!(k.as_str(), "VIOLATION_TYPE_NONE" | "VIOLATION_TYPE_INVALID")).cloned().collect())
+                .unwrap_or_default();
+            rules.sort();
+            Violation {
+                id: text(v, "uid"),
+                name: text(v, "name"),
+                kind,
+                at: v.get("create_time").and_then(Value::as_str).and_then(crate::time::iso_secs),
+                state: match state.as_str() {
+                    "VIOLATION_STATE_APPEAL_DENIED" => "denied",
+                    "VIOLATION_STATE_APPEAL_ACCEPTED" => "accepted",
+                    "VIOLATION_STATE_INACTIVE" => "inactive",
+                    "VIOLATION_STATE_EDUCATIONAL_PASS" => "unavailable",
+                    _ => "",
+                },
+                rules,
+                appeal_by: by.filter(|_| !how.is_empty()),
+                how,
+                appeal,
+                review,
+            }
+        })
+        .collect();
+    list.sort_by_key(|v| std::cmp::Reverse(v.at.unwrap_or(0)));
+    list
+}
+
+/// Whether Roblox takes an appeal of the violation now: false when it wants the account's identity checked first (with
+/// an ID, on its own page).
+pub fn appeal_ok(cookie: &str, user: i64, id: &str) -> Result<bool, String> {
+    if cfg!(feature = "shot") {
+        return Ok(true);
+    }
+    let d = get(&format!("https://apis.roblox.com/moderation-appeal-service/v2/users/{user}/violations/{}/appeal-eligibility", enc(id)), Some(cookie))?;
+    Ok(d.get("isEligible").and_then(Value::as_bool).unwrap_or(true))
+}
+
+/// Sends an appeal of the violation, as Roblox's appeal box does: `kind` one of the kinds the violation allows (its
+/// `appeal` or `review`), `message` why (an appeal's; none to ask for review). Roblox answers 403 when it wants the
+/// identity checked first after all.
+pub fn send_appeal(cookie: &str, user: i64, name: &str, kind: &str, message: &str) -> Result<(), String> {
+    if cfg!(feature = "shot") {
+        return Ok(());
+    }
+    let body = serde_json::json!({ "appeal": { "violation": name, "message": message, "appeal_type": kind } });
+    send_text("POST", &format!("https://apis.roblox.com/moderation-appeal-service/v2/users/{user}/appeals"), &body, Some(cookie)).map(|_| ())
+}
+
 // ───────────────────────── a game's badges ─────────────────────────
 
 /// A game's badge as Roblox's game page lists it: what it is, its picture, and its figures (badges v1's statistics:
@@ -4904,100 +5054,6 @@ pub fn collection(user: i64) -> Vec<Ware> {
     let (details, pics) = both(|| post("https://catalog.roblox.com/v1/catalog/items/details", &serde_json::json!({ "items": items }), None).ok(), || thumbs("assets?size=420x420&assetIds=", &ids));
     for v in details.as_ref().and_then(|d| d.get("data")).and_then(Value::as_array).into_iter().flatten() {
         if let Some(w) = list.iter_mut().find(|w| w.id == int(v, "id")) {
-/// A violation on the account, as Roblox's Account status page lists it (moderation-appeal-service v1, the website's
-/// SafetyDashboard): what was moderated (`kind`: "behavior" when Roblox gives nothing more, "chat", "avatar", "look",
-/// "bundle", or the asset's: "audio", "image", "asset", "model", "experience", "accessory", "mesh", "plugin"), when,
-/// where its appeal stands (`state`: "denied", "accepted", "inactive", "unavailable", or "" while open or under
-/// appeal, where Roblox's list says nothing either), the rules broken (Roblox's VIOLATION_TYPE_… keys), and until when
-/// it may still be appealed, when it may.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Violation {
-    pub id: String,
-    pub kind: &'static str,
-    pub at: Option<i64>,
-    pub state: &'static str,
-    pub rules: Vec<String>,
-    pub appeal_by: Option<i64>,
-}
-
-/// The account's violations, newest first (one page of 50; Roblox's page asks the same way).
-pub fn violations(cookie: &str, user: i64) -> Result<Vec<Violation>, String> {
-    #[cfg(feature = "shot")]
-    if std::env::var("BLOXKEEP_SHOT_NOTICES").is_ok() {
-        let day = 86_400;
-        let now = crate::time::now_secs();
-        return Ok(vec![
-            Violation { id: "1".into(), kind: "chat", at: Some(now - 2 * day), state: "", rules: vec!["VIOLATION_TYPE_PROFANITY".into()], appeal_by: Some(now + 28 * day) },
-            Violation { id: "2".into(), kind: "image", at: Some(now - 40 * day), state: "denied", rules: vec!["VIOLATION_TYPE_SPAM".into()], appeal_by: None },
-            Violation { id: "3".into(), kind: "behavior", at: Some(now - 200 * day), state: "inactive", rules: vec![], appeal_by: None },
-        ]);
-    }
-    if cfg!(feature = "shot") {
-        return Ok(Vec::new());
-    }
-    let d = get(&format!("https://apis.roblox.com/moderation-appeal-service/v1/users/{user}/violations?page_size=50"), Some(cookie))?;
-    Ok(violations_of(&d, crate::time::now_secs()))
-}
-
-/// moderation-appeal-service's list answer, read as Roblox's page reads it (violations.ts, violationI18n.tsx), `now`
-/// to tell an appeal's time gone.
-pub fn violations_of(d: &Value, now: i64) -> Vec<Violation> {
-    let mut list: Vec<Violation> = d
-        .get("violations")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .map(|v| {
-            let content = v.get("content").filter(|c| c.is_object());
-            // Roblox's own reading: an asset, a bundle, an avatar (a profile too), a look, a chat; with neither content
-            // nor evidence it is "Your behavior". Evidence names its kind in words of Roblox's own (not ours): the same.
-            let kind = match content.map(|c| text(c, "content_type")).as_deref() {
-                Some("CONTENT_TYPE_ASSET") => match text(content.unwrap_or(&Value::Null), "asset_type").as_str() {
-                    "ASSET_TYPE_AUDIO" => "audio",
-                    "ASSET_TYPE_IMAGE" => "image",
-                    "ASSET_TYPE_MODEL" => "model",
-                    "ASSET_TYPE_EXPERIENCE" => "experience",
-                    "ASSET_TYPE_3D_ACCESSORY" => "accessory",
-                    "ASSET_TYPE_MESH" => "mesh",
-                    "ASSET_TYPE_PLUGIN" => "plugin",
-                    _ => "asset",
-                },
-                Some("CONTENT_TYPE_BUNDLE") => "bundle",
-                Some("CONTENT_TYPE_AVATAR" | "CONTENT_TYPE_USER_PROFILE") => "avatar",
-                Some("CONTENT_TYPE_LOOK") => "look",
-                Some("CONTENT_TYPE_CHAT") => "chat",
-                _ => "behavior",
-            };
-            let state = text(v, "state");
-            let by = v.get("appeal_by_time").and_then(Value::as_str).and_then(crate::time::iso_secs);
-            let tries = v.get("remaining_appeal_attempts").and_then(Value::as_i64).unwrap_or(0);
-            let open = matches!(state.as_str(), "VIOLATION_STATE_INITIATED" | "VIOLATION_STATE_APPEAL_DENIED");
-            let mut rules: Vec<String> = v
-                .get("abuse_type_keys")
-                .and_then(Value::as_object)
-                .map(|m| m.keys().filter(|k| !matches!(k.as_str(), "VIOLATION_TYPE_NONE" | "VIOLATION_TYPE_INVALID")).cloned().collect())
-                .unwrap_or_default();
-            rules.sort();
-            Violation {
-                id: text(v, "uid"),
-                kind,
-                at: v.get("create_time").and_then(Value::as_str).and_then(crate::time::iso_secs),
-                state: match state.as_str() {
-                    "VIOLATION_STATE_APPEAL_DENIED" => "denied",
-                    "VIOLATION_STATE_APPEAL_ACCEPTED" => "accepted",
-                    "VIOLATION_STATE_INACTIVE" => "inactive",
-                    "VIOLATION_STATE_EDUCATIONAL_PASS" => "unavailable",
-                    _ => "",
-                },
-                rules,
-                appeal_by: by.filter(|t| open && tries > 0 && *t > now),
-            }
-        })
-        .collect();
-    list.sort_by_key(|v| std::cmp::Reverse(v.at.unwrap_or(0)));
-    list
-}
-
             let status = text(v, "priceStatus").replace(' ', "").to_lowercase();
             w.price = match status.as_str() {
                 "free" => Some(0),

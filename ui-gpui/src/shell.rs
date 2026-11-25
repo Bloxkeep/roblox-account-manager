@@ -179,6 +179,8 @@ pub struct Root {
     /// Roblox › Settings' account PIN box (its settings locked until it is typed; Enter unlocks).
     pub rs_pin: Entity<InputState>,
     pub passes: pages::passes::Data,
+    /// Roblox › Settings' appeal box (what the account writes Roblox about a violation).
+    pub rs_appeal: Entity<gpui_kit::component::input::TextareaState>,
     pub badges: pages::badges::Data,
     /// The lock screen (pages/lock.rs), and its two password boxes (the second only when a vault is set up).
     pub lock: pages::lock::Data,
@@ -433,6 +435,14 @@ impl Root {
         })
         .detach();
         // Save server's boxes: Enter saves.
+        // The appeal box: its count of words is said under it as it is typed.
+        let rs_appeal = cx.new(|cx| gpui_kit::component::input::TextareaState::new(window, cx).rows(5));
+        cx.subscribe_in(&rs_appeal, window, |_: &mut Root, _, ev: &InputEvent, window, _| {
+            if matches!(ev, InputEvent::Change) {
+                window.refresh();
+            }
+        })
+        .detach();
         let sv_name = mk("sv.name", window, cx);
         // Game collection: Add game's search (a pause while typing asks Roblox, Enter at once), the note (Enter keeps it).
         let gc_q = mk("gcol.search", window, cx);
@@ -734,6 +744,7 @@ impl Root {
             rs_pin,
             mods: Default::default(),
             mods_q,
+            rs_appeal,
             passes: Default::default(),
             badges: Default::default(),
             lock: Default::default(),

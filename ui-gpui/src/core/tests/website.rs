@@ -103,16 +103,21 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     // Violations, as Roblox's Account status page reads moderation-appeal-service's list.
     let now = 1_790_000_000;
     let v = crate::roblox::violations_of(&json!({ "violations": [
-        { "uid": "a", "create_time": "2026-01-02T03:04:05Z", "state": "VIOLATION_STATE_INITIATED", "remaining_appeal_attempts": 1,
+        { "uid": "a", "name": "users/9/violations/a", "create_time": "2026-01-02T03:04:05Z", "state": "VIOLATION_STATE_INITIATED", "remaining_appeal_attempts": 1,
+          "allowed_appeal_types": ["APPEAL", "FIXED"],
           "appeal_by_time": "2027-01-15T08:00:00Z", "content": { "content_type": "CONTENT_TYPE_CHAT" },
           "abuse_type_keys": { "VIOLATION_TYPE_SCAMS": "x", "VIOLATION_TYPE_NONE": "y" } },
         { "uid": "b", "create_time": "2026-03-01T00:00:00Z", "state": "VIOLATION_STATE_APPEAL_DENIED", "remaining_appeal_attempts": 0,
           "appeal_by_time": "2027-01-15T08:00:00Z", "content": { "content_type": "CONTENT_TYPE_ASSET", "asset_type": "ASSET_TYPE_3D_ACCESSORY" } },
-        { "uid": "c", "create_time": "2025-05-01T00:00:00Z", "state": "VIOLATION_STATE_EDUCATIONAL_PASS", "evidence": { "type": "other" } } ],
+        { "uid": "c", "create_time": "2025-05-01T00:00:00Z", "state": "VIOLATION_STATE_EDUCATIONAL_PASS", "evidence": { "type": "other" } },
+        { "uid": "e", "create_time": "2024-05-01T00:00:00Z", "state": "VIOLATION_STATE_INITIATED", "remaining_appeal_attempts": 1,
+          "appeal_by_time": "2027-01-15T08:00:00Z" } ],
         "next_page_token": "" }), now);
-    let got: Vec<(&str, &str, &str, bool)> = v.iter().map(|v| (v.id.as_str(), v.kind, v.state, v.appeal_by.is_some())).collect();
+    let got: Vec<(&str, &str, &str, &str)> = v.iter().map(|v| (v.id.as_str(), v.kind, v.state, v.how)).collect();
     c.check("violations: newest first, what was moderated, where the appeal stands, open to appeal while tries are left",
-        got == [("b", "accessory", "denied", false), ("a", "chat", "", true), ("c", "behavior", "unavailable", false)], format!("{got:?}"));
+        got == [("b", "accessory", "denied", ""), ("a", "chat", "", "inline"), ("c", "behavior", "unavailable", ""), ("e", "behavior", "", "support")], format!("{got:?}"));
+    c.check("…an open one: its name to appeal by, the kinds of appeal Roblox allows in its own words, until when",
+        v.get(1).is_some_and(|v| v.name == "users/9/violations/a" && v.appeal.as_deref() == Some("APPEAL") && v.review.as_deref() == Some("FIXED") && v.appeal_by.is_some()), format!("{v:?}"));
     c.check("…the rules broken, Roblox's empty ones left out", v.get(1).is_some_and(|v| v.rules == ["VIOLATION_TYPE_SCAMS"]), format!("{v:?}"));
     c.check("…an appeal's time gone is no appeal", crate::roblox::violations_of(&json!({ "violations": [{ "uid": "d", "state": "VIOLATION_STATE_INITIATED",
         "remaining_appeal_attempts": 2, "appeal_by_time": "2020-01-01T00:00:00Z" }] }), now).first().is_some_and(|v| v.appeal_by.is_none()), ());
