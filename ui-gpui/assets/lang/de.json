@@ -1641,6 +1641,7 @@
   "m.status": "Kontostatus",
   "m.statusTip": "Die Roblox-Seite zu Status, Verstößen und Einsprüchen dieses Kontos, mit ihm angemeldet",
   "m.switchServer": "Zu einem anderen Server wechseln",
+  "m.serversNone": "Noch keine Server: sie werden ab 1.1.5 gespeichert",
   "m.website": "Website öffnen",
   "macro.addStep": "Schritt hinzufügen",
   "macro.alertNote": "Geht an Discord, falls eingerichtet, und in die Aktivität.",

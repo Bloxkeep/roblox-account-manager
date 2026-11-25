@@ -2347,7 +2347,8 @@ impl Root {
             // (News' New marks count from the read before this visit: a visit ends when the page is left.)
             self.games.mark = None;
         }
-        if matches!(self.page, Page::Home | Page::Games) {
+        // (Accounts too: an account's menu lists the servers it was in.)
+        if matches!(self.page, Page::Home | Page::Games | Page::Accounts) {
             self.want_play_history(&link, cx);
         }
         // The stage's game's words and figures from Roblox, for Home's hero (its description, players, votes).

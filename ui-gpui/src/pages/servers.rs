@@ -638,12 +638,14 @@ fn copy_button(root: &Root, id: impl Into<ElementId>, job: &str, cx: &mut Contex
 }
 
 /// The servers the accounts were in lately in this game, newest first (the one an account is in now on top, marked),
-/// each with its Job ID to copy and Join to go back in. None when there is none.
-fn recent(root: &Root, root_place: i64, cx: &mut Context<Root>) -> Option<AnyElement> {
+/// as cards like the friends' above: the account's face and name, when (or "In it now"), the Job ID, Copy and Join.
+/// None when there is none.
+fn recent(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) -> Option<AnyElement> {
     let place = crate::pages::games::shown_place(root)?;
     let list = root.games.recent_servers.get(&place).filter(|l| !l.is_empty())?;
     let now = crate::time::now_secs();
-    let rows: Vec<AnyElement> = list
+    let (_, card_w) = grid_fit(width, 300., GRID_GAP);
+    let cards: Vec<AnyElement> = list
         .iter()
         .enumerate()
         .map(|(i, v)| {
@@ -651,21 +653,56 @@ fn recent(root: &Root, root_place: i64, cx: &mut Context<Root>) -> Option<AnyEle
             let at_place = v.get("place").and_then(Value::as_i64).filter(|p| *p > 0 && *p != root_place);
             let here = v.get("now").and_then(Value::as_bool).unwrap_or(false);
             let at = v.get("at").and_then(Value::as_i64).unwrap_or(0) / 1000;
+            let account = root.accounts().iter().find(|a| s(a, "id") == s(v, "id")).cloned();
+            let name = s(v, "name").to_string();
+            let short: String = job.chars().take(8).collect();
+            let full: SharedString = job.clone().into();
             let join = job.clone();
-            div()
+            let when = if here {
+                div().flex_none().h(px(20.)).px(px(7.)).flex().items_center().gap(px(5.)).rounded(px(6.)).bg(ca(ONLINE, 0.16)).text_size(px(T_XS)).font_weight(FontWeight::SEMIBOLD).text_color(c(ONLINE)).child(icon("play", 10., c(ONLINE))).child(root.tr("srv.inNow"))
+            } else {
+                div().flex_none().text_size(px(T_S)).text_color(c(TEXT_2)).child(crate::time::ago_far(now - at, &root.i18n))
+            };
+            block()
+                .w(px(card_w))
+                .p(px(12.))
                 .flex()
                 .items_center()
                 .gap(px(12.))
-                .px(px(14.))
-                .py(px(8.))
-                .when(i > 0, |d| d.border_t_1().border_color(ca(WHITE, 0.06)))
-                .child(div().w(px(180.)).flex_none().truncate().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(s(v, "name").to_string()))
-                .child(div().flex_1().min_w_0().truncate().text_size(px(T_S)).font_features(tnum()).text_color(c(MUTED)).child(job.clone()))
-                .child(if here {
-                    div().flex_none().h(px(22.)).px(px(8.)).flex().items_center().rounded(px(7.)).bg(ca(ONLINE, 0.14)).text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(ONLINE)).child(root.tr("srv.inNow"))
-                } else {
-                    div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).child(crate::time::ago_far(now - at, &root.i18n))
+                .child(match &account {
+                    Some(a) => crate::pages::accounts::face(a, 44., block_ground(), cx).flex_none(),
+                    None => div().size(px(44.)).flex_none().rounded_full().bg(ca(WHITE, 0.08)).flex().items_center().justify_center().child(icon("user", 18., c(MUTED))),
                 })
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .gap(px(4.))
+                        .child(div().truncate().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(name))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(8.))
+                                .child(when)
+                                .child(
+                                    div()
+                                        .id(("srv-recent-job", i))
+                                        .min_w_0()
+                                        .flex()
+                                        .items_center()
+                                        .gap(px(4.))
+                                        .text_size(px(T_S))
+                                        .font_features(tnum())
+                                        .text_color(c(MUTED))
+                                        .child(icon("server", 12., c(DIM)))
+                                        .child(div().truncate().child(short))
+                                        .tooltip(move |_, cx| cx.new(|_| Tip(full.clone())).into()),
+                                ),
+                        ),
+                )
                 .child(copy_button(root, ("srv-recent-copy", i), &job, cx))
                 .child(Button::new(("srv-recent-join", i), root.tr("srv.join")).icon("play").small().disabled(job.is_empty()).on_click(cx.listener(move |r, _, _, cx| {
                     crate::pages::games::pick_for_server(r, join.clone());
@@ -681,7 +718,7 @@ fn recent(root: &Root, root_place: i64, cx: &mut Context<Root>) -> Option<AnyEle
             .flex_col()
             .gap(px(12.))
             .child(section_head(root.tr("srv.recentTitle"), Some(list.len())))
-            .child(div().rounded(px(R_M)).bg(c(PANEL)).flex().flex_col().children(rows))
+            .child(grid(GRID_GAP).children(cards))
             .into_any_element(),
     )
 }
@@ -735,7 +772,7 @@ pub fn view(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) ->
         .flex_col()
         .gap(px(SECTION_GAP))
         .child(div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("srv.friendsTitle"), n_friends.filter(|n| *n > 0))).child(friends_body))
-        .children(recent(root, root_place, cx))
+        .children(recent(root, root_place, width, cx))
         // Private before public (owner, 2026-11-13): the public list runs long with more pages on demand, and the
         // private servers under it were out of sight.
         .child(div().flex().flex_col().gap(px(12.)).child(private_head).children(picker).children(buying).children(error).child(private(root, width, cx)))

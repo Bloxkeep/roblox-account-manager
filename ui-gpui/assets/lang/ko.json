@@ -1522,6 +1522,7 @@
   "m.status": "계정 상태",
   "m.statusTip": "이 계정으로 로그인된 Roblox의 계정 상태, 위반, 이의 제기 페이지",
   "m.switchServer": "다른 서버로 이동",
+  "m.serversNone": "아직 서버가 없습니다: 1.1.5부터 저장됩니다",
   "m.website": "웹사이트 열기",
   "macro.addStep": "단계 추가",
   "macro.alertNote": "설정돼 있으면 Discord로, 그리고 활동으로 가요.",

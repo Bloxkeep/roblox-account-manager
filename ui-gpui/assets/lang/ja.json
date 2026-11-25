@@ -1610,6 +1610,7 @@
   "m.status": "アカウントの状態",
   "m.statusTip": "このアカウントでログインした、Robloxの状態・違反・異議申し立てのページ",
   "m.switchServer": "別のサーバーに移る",
+  "m.serversNone": "まだサーバーがありません（1.1.5から記録）",
   "m.website": "Webサイトを開く",
   "macro.addStep": "ステップを追加",
   "macro.alertNote": "設定していればDiscordに、そしてアクティビティに送られます。",

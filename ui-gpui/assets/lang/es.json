@@ -1640,6 +1640,7 @@
   "m.status": "Estado de la cuenta",
   "m.statusTip": "La página de Roblox con el estado, las infracciones y las apelaciones de esta cuenta, con su sesión iniciada",
   "m.switchServer": "Cambiar a otro servidor",
+  "m.serversNone": "Aún no hay servidores: se guardan desde la 1.1.5",
   "m.website": "Abrir sitio web",
   "macro.addStep": "Agregar paso",
   "macro.alertNote": "Va a Discord si está configurado, y a Actividad.",

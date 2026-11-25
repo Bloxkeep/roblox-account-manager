@@ -275,6 +275,38 @@ pub fn recent_servers(sessions: &[Session], place: i64, universe: i64, now: i64)
     out
 }
 
+/// One account's servers lately, newest first, each once, straight from the app's "playSessions" answer (read when its
+/// menu shows, so the stays aren't all made first): Job ID, place, when (ms), the game's name and whether it is in it now.
+pub fn servers_of(raw: &Value, account: &str, at_most: usize) -> Vec<(String, i64, i64, String, bool)> {
+    let now = int(raw, "now");
+    let since = now - RECENT_DAYS * 24 * 3600 * 1000;
+    let games = raw.get("games");
+    let mut all: Vec<(String, i64, i64, String, bool)> = Vec::new();
+    for st in raw.get("sessions").and_then(Value::as_array).into_iter().flatten().filter(|st| st.get("account").and_then(Value::as_str) == Some(account)) {
+        let Some(list) = st.get("servers").and_then(Value::as_array).filter(|l| !l.is_empty()) else { continue };
+        let open = st.get("end").is_none_or(Value::is_null);
+        let name = st.get("game").and_then(Value::as_str).filter(|n| !n.is_empty()).map(str::to_string);
+        for (i, v) in list.iter().enumerate() {
+            let (job, at) = (v.get("job").and_then(Value::as_str).unwrap_or_default(), int(v, "at"));
+            if job.is_empty() || at <= since {
+                continue;
+            }
+            let place = Some(int(v, "place")).filter(|p| *p > 0).unwrap_or_else(|| int(st, "place"));
+            let game = name.clone().or_else(|| games.and_then(|g| g.get(place.to_string())).and_then(|g| g.get("name")).and_then(Value::as_str).map(str::to_string)).unwrap_or_default();
+            all.push((job.to_string(), place, at, game, open && i == list.len() - 1));
+        }
+    }
+    all.sort_by(|a, b| b.4.cmp(&a.4).then(b.2.cmp(&a.2)));
+    let mut out: Vec<(String, i64, i64, String, bool)> = Vec::new();
+    for v in all {
+        if !out.iter().any(|o| o.0.eq_ignore_ascii_case(&v.0)) {
+            out.push(v);
+        }
+    }
+    out.truncate(at_most);
+    out
+}
+
 /// A game that banned an account, by the place the ban names.
 #[derive(Debug, Clone)]
 pub struct Ban {

@@ -1614,6 +1614,7 @@
   "m.status": "Hesap durumu",
   "m.statusTip": "Roblox'un bu hesabın durumu, ihlalleri ve itirazları sayfası, bu hesapla giriş yapılmış olarak",
   "m.switchServer": "Başka bir sunucuya geç",
+  "m.serversNone": "Henüz sunucu yok: 1.1.5'ten beri saklanıyor",
   "m.website": "Siteyi aç",
   "macro.addStep": "Adım ekle",
   "macro.alertNote": "Kuruluysa Discord'a ve Etkinlik'e gider.",

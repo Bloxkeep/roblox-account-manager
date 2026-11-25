@@ -1704,6 +1704,7 @@
   "m.status": "Status konta",
   "m.statusTip": "Strona Roblox ze statusem, naruszeniami i odwołaniami tego konta, zalogowana jako ono",
   "m.switchServer": "Przejdź na inny serwer",
+  "m.serversNone": "Brak serwerów: zapisywane od 1.1.5",
   "m.website": "Otwórz stronę",
   "macro.addStep": "Dodaj krok",
   "macro.alertNote": "Trafia na Discord, jeśli jest skonfigurowany, i do Aktywności.",

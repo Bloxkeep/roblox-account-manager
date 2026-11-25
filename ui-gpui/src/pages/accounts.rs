@@ -901,7 +901,7 @@ pub fn stacked(a: &Value, size: f32, ring: u32, cx: &mut App) -> Div {
 }
 
 /// The face itself: the picture (or the first letter) inside the ring of its state, an edge of `ring` between them.
-fn face(a: &Value, size: f32, ring: Hsla, cx: &mut App) -> Div {
+pub(crate) fn face(a: &Value, size: f32, ring: Hsla, cx: &mut App) -> Div {
     let pad = if size >= 34. { 2. } else { 1.5 };
     let edge = if size >= 34. { 2. } else { 1.5 };
     let inner = size - 2. * pad - 2. * edge;

@@ -1666,6 +1666,7 @@
   "m.status": "Status da conta",
   "m.statusTip": "A página do Roblox com o status, violações e recursos desta conta, conectada nela",
   "m.switchServer": "Trocar de servidor",
+  "m.serversNone": "Ainda sem servidores: guardados desde a 1.1.5",
   "m.website": "Abrir site",
   "macro.addStep": "Adicionar etapa",
   "macro.alertNote": "Vai para o Discord se estiver configurado, e para Atividade.",

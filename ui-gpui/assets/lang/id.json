@@ -1641,6 +1641,7 @@
   "m.status": "Status akun",
   "m.statusTip": "Halaman Roblox tentang status, pelanggaran, dan banding akun ini, sudah masuk sebagai akun ini",
   "m.switchServer": "Pindah ke server lain",
+  "m.serversNone": "Belum ada server: disimpan sejak 1.1.5",
   "m.website": "Buka situs",
   "macro.addStep": "Tambah langkah",
   "macro.alertNote": "Dikirim ke Discord jika sudah diatur, dan dicatat di Aktivitas.",

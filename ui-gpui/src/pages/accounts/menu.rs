@@ -53,6 +53,7 @@ pub enum Sub {
     Fps,
     Copy,
     Macro,
+    Servers,
 }
 
 /// The ⋮ pressed: its menu opens under it, or closes when it was open there.
@@ -232,6 +233,28 @@ fn main_lines(root: &Root, a: &Value, ids: &[String], picked: &[&Value]) -> Vec<
                 r.toast = Some((r.i18n.tv("srv.followed", &[("name", &name)]), "ok".into()));
             }),
         )));
+    }
+    // Its server's Job ID, to share or paste somewhere else.
+    if !many && let Some((_, job)) = server_of(a) {
+        out.push(Some(line(
+            "cm-copy-job",
+            Some("copy"),
+            root.tr("srv.copyJob"),
+            run(move |r, _, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(job.clone()));
+                r.toast = Some((r.tr("srv.jobCopied"), "ok".into()));
+            }),
+        )));
+    }
+    // The servers it was in lately (any game), to go back into one: a second list.
+    if !many {
+        let mut l = line("cm-servers", Some("history"), root.tr("srv.recentTitle"), Go::Sub(Sub::Servers));
+        if recent_of(root, a).is_empty() {
+            l.off = true;
+            l.go = Go::Nothing;
+            l.tip = Some(root.tr("m.serversNone"));
+        }
+        out.push(Some(l));
     }
     // The window closes and opens again into another server of its game.
     if picked.iter().any(|x| is_local(x) && server_of(x).is_some()) {
@@ -413,6 +436,33 @@ fn copy_lines(root: &Root, a: &Value) -> Vec<Option<Line>> {
         .collect()
 }
 
+/// How many of an account's servers its menu lists.
+const MENU_SERVERS: usize = 8;
+
+fn recent_of(root: &Root, a: &Value) -> Vec<(String, i64, i64, String, bool)> {
+    root.games.history.as_ref().map(|raw| crate::history::servers_of(raw, &id_of(a), MENU_SERVERS)).unwrap_or_default()
+}
+
+/// The servers it was in lately: the game and when (or "In it now"); a click opens it into that server again.
+fn server_lines(root: &Root, a: &Value) -> Vec<Option<Line>> {
+    let now = crate::time::now_secs();
+    let me = id_of(a);
+    recent_of(root, a)
+        .into_iter()
+        .enumerate()
+        .map(|(i, (job, place, at, game, here))| {
+            let go = me.clone();
+            let name = if game.is_empty() { format!("#{place}") } else { game };
+            let mut l = line(("cm-server", i), None, name, run(move |r, _, cx| {
+                let link = format!("https://www.roblox.com/games/{place}");
+                r.launch("launch", json!({ "ids": [go.clone()], "appOnly": false, "placeInput": link, "jobId": job.clone() }), false, cx);
+            }));
+            l.hint = Some(if here { root.tr("srv.inNow") } else { crate::time::ago_far(now - at / 1000, &root.i18n) });
+            Some(l)
+        })
+        .collect()
+}
+
 /// Run a macro on these windows only.
 fn macro_lines(root: &Root, ids: &[String]) -> Vec<Option<Line>> {
     let list = root.state.pointer("/settings/macros").and_then(Value::as_array).cloned().unwrap_or_default();
@@ -469,13 +519,14 @@ fn body(root: &Root, a: &Value, m: &Menu, cx: &mut Context<Root>) -> Stateful<Di
         Sub::Fps => fps_lines(root, &ids, &picked),
         Sub::Copy => copy_lines(root, a),
         Sub::Macro => macro_lines(root, &ids),
+        Sub::Servers => server_lines(root, a),
     };
     let (mid, mat) = (m.id.clone(), m.at);
     let mut menu = div()
         .id(SharedString::from(format!("cm-{}", m.id)))
         .occlude()
         .relative()
-        .w(px(if m.sub == Sub::Main { 260. } else { 220. }))
+        .w(px(match m.sub { Sub::Main => 260., Sub::Servers => 300., _ => 220. }))
         .p(px(4.))
         .rounded(px(R_M))
         .bg(c(RAISED_2))
@@ -525,6 +576,7 @@ fn body(root: &Root, a: &Value, m: &Menu, cx: &mut Context<Root>) -> Stateful<Di
             let title = root.tr(match sub {
                 Sub::Fps => "m.fps",
                 Sub::Copy => "m.copy",
+                Sub::Servers => "srv.recentTitle",
                 _ => "macro.runOn",
             });
             menu.child(

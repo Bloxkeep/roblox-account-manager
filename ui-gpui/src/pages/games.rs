@@ -613,7 +613,7 @@ pub struct Data {
     asked_big: HashSet<i64>,
     /// A game's page: the play history as the app handed it last (raw stays, history.rs), and each game's accounts
     /// summed from it here (by place), which the app's gameDetails summed until 2026-11-11.
-    history: Option<Value>,
+    pub(crate) history: Option<Value>,
     /// A game's own pictures (by place) and the carousel that turns through them (GPUI Component's), once Roblox
     /// has given two or more.
     pub shots: HashMap<i64, (Vec<String>, Entity<CarouselState>)>,
@@ -2345,7 +2345,7 @@ fn settle_stays(r: &mut Root, place: i64) {
         .map(|v| {
             let account = r.accounts().iter().find(|a| s(a, "id") == v.account);
             let name = account.map(crate::pages::accounts::label).filter(|n| !n.is_empty()).or(v.label.clone()).unwrap_or_else(|| "–".into());
-            json!({ "job": v.job, "place": v.place, "at": v.at, "name": name, "now": v.now })
+            json!({ "job": v.job, "place": v.place, "at": v.at, "name": name, "now": v.now, "id": v.account })
         })
         .collect();
     r.games.recent_servers.insert(place, recent);

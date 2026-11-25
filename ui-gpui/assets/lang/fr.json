@@ -1665,6 +1665,7 @@
   "m.status": "État du compte",
   "m.statusTip": "La page Roblox sur l’état, les infractions et les appels de ce compte, connectée avec lui",
   "m.switchServer": "Changer de serveur",
+  "m.serversNone": "Aucun serveur pour l'instant : gardés depuis la 1.1.5",
   "m.website": "Ouvrir le site",
   "macro.addStep": "Ajouter une étape",
   "macro.alertNote": "Envoyé sur Discord s’il est configuré, et noté dans Activité.",
