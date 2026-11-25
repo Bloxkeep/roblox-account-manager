@@ -153,7 +153,7 @@ pub struct Data {
     pub menu_closed: Option<(&'static str, std::time::Instant)>,
     /// Appearance: the theme groups, Custom's colours and boxes (appearance.rs).
     pub look: appearance::Look,
-    /// Settings was the page shown at the last frame (`settle` notices it being left).
+    /// Settings was the page shown when Root's data last changed (`settle` notices it being left).
     pub here: bool,
 }
 
@@ -161,7 +161,8 @@ fn st(root: &Root) -> &Value {
     root.state.get("settings").unwrap_or(&Value::Null)
 }
 
-/// Each frame (Root::render): Settings being left is noticed here, as the page only changes in shell.rs's `go`.
+/// Root's data changed (shell.rs `settle`): Settings being left, to another page or to the lock screen, is noticed
+/// here.
 pub fn settle(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     let here = r.page == crate::pages::Page::Settings && !r.locked();
     if r.settings.here && !here {

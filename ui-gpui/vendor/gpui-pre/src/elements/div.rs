@@ -4109,7 +4109,12 @@ fn handle_tooltip_check_visible_and_update(
 
     match action {
         Action::None => {}
-        Action::Hide => clear_active_tooltip(active_tooltip, window),
+        // Bloxkeep: this is asked as the window is drawn (prepaint_tooltip), and the frame being made leaves the tip
+        // out when this answers false: the tip is only let go of, no other frame is needed (none can be asked for
+        // while drawing).
+        Action::Hide => {
+            active_tooltip.borrow_mut().take();
+        }
         Action::ScheduleHide(tooltip) => {
             let delayed_hide_task = window.spawn(cx, {
                 let weak_active_tooltip = Rc::downgrade(active_tooltip);

@@ -126,13 +126,10 @@ pub fn open_feedback(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) 
         st.set_placeholder(hint, window, cx);
     });
     let this = cx.weak_entity();
-    let first = std::rc::Rc::new(std::cell::Cell::new(true));
+    // The words' box has the keyboard as the box opens (given here, once).
+    let keys = r.fb_text.read(cx).focus_handle(cx);
     window.open_dialog(cx, move |dialog, window, cx| {
         let Some(root) = this.upgrade() else { return dialog };
-        if first.replace(false) {
-            let h = root.read(cx).fb_text.read(cx).focus_handle(cx);
-            window.focus(&h, cx);
-        }
         let r = root.read(cx);
         let f = &r.extras;
         let label = |key: &str, hint: Option<&str>| {
@@ -229,6 +226,7 @@ pub fn open_feedback(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) 
         .child(dialog_body(body))
         .footer(foot)
     });
+    window.focus(&keys, cx);
 }
 
 // ───────────────────────── what's new ─────────────────────────

@@ -177,7 +177,8 @@ pub struct Data {
     found: RefCell<Option<ArtFound>>,
 }
 
-/// A link clicked in an article (the text view hands it back from outside the window's reach).
+/// A link clicked in an article (the text view hands it back from outside the window's reach, and tells Root, whose
+/// `settle` follows it).
 static CLICKED: Mutex<Option<String>> = Mutex::new(None);
 /// Where each part of the shown article starts on the window (by its place in the Contents), as last drawn.
 static PART_TOPS: LazyLock<Mutex<HashMap<usize, Pixels>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
@@ -776,7 +777,8 @@ pub fn search(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     cx.notify();
 }
 
-/// A link clicked in an article: its own pages open here, the rest in the browser.
+/// Root's data changed (shell.rs `settle`): the boxes the view shown needs; a link clicked in an article followed, its
+/// own pages here, the rest in the browser.
 pub fn settle(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     boxes(r, window, cx);
     let Some(href) = CLICKED.hold().take() else { return };
@@ -2015,6 +2017,7 @@ fn article_view(root: &Root, about: &About, title: &str, table: Option<&str>, wi
             }
         }
     }
+    let root_id = cx.entity_id();
     let words = |id: String, html: SharedString| {
         TextView::html(SharedString::from(id), html)
             .selectable(true)
@@ -2022,9 +2025,9 @@ fn article_view(root: &Root, about: &About, title: &str, table: Option<&str>, wi
                 let u = uri.to_string();
                 ImageSource::Image(LOADED.hold().get(&u).cloned().unwrap_or_else(|| BLANK.clone()))
             })
-            .on_link_click(|href, _, _, cx| {
+            .on_link_click(move |href, _, _, cx| {
                 *CLICKED.hold() = Some(href.to_string());
-                cx.refresh_windows();
+                cx.notify(root_id);
             })
     };
     let art_id = format!("wk-art-{}", key(&site, &article.title));
