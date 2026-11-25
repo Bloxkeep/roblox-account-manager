@@ -47,16 +47,22 @@ pub fn start() -> Sampler {
     Sampler { stop, join }
 }
 
+#[repr(C, align(16))]
+struct Aligned(CONTEXT);
+
 /// One stack, walked while the thread stands still (nothing allocated meanwhile: it may hold the heap's lock).
 unsafe fn sample(h: HANDLE, frames: &mut [u64; 96]) -> usize {
     unsafe {
         if SuspendThread(h) == u32::MAX {
             return 0;
         }
-        let mut ctx: CONTEXT = std::mem::zeroed();
+        // (GetThreadContext wants its CONTEXT on 16 bytes, as winnt.h declares it; windows-sys' is only 8-aligned and
+        // every call failed: no stack was ever taken.)
+        let mut held: Aligned = std::mem::zeroed();
+        let ctx = &mut held.0;
         ctx.ContextFlags = CONTEXT_CONTROL_AMD64 | CONTEXT_INTEGER_AMD64;
         let mut n = 0;
-        if GetThreadContext(h, &mut ctx) != 0 {
+        if GetThreadContext(h, ctx) != 0 {
             while n < frames.len() {
                 let rip = ctx.Rip;
                 if rip == 0 {
@@ -75,7 +81,7 @@ unsafe fn sample(h: HANDLE, frames: &mut [u64; 96]) -> usize {
                 } else {
                     let mut data = std::ptr::null_mut();
                     let mut frame = 0u64;
-                    RtlVirtualUnwind(0, base, rip, f, &mut ctx, &mut data, &mut frame, std::ptr::null_mut());
+                    RtlVirtualUnwind(0, base, rip, f, ctx, &mut data, &mut frame, std::ptr::null_mut());
                 }
             }
         }
