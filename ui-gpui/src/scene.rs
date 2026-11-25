@@ -715,8 +715,8 @@ fn draw(bytes: &[u8], svg: bool, whole: bool, w: u32, h: u32, blur: u32, under: 
         let s = (w as f32 / sw as f32).max(h as f32 / sh as f32);
         let (w, h) = drawn(sw as f32, sh as f32, s);
         let (cw, ch) = (((w as f32 / s).round() as u32).clamp(1, sw), ((h as f32 / s).round() as u32).clamp(1, sh));
-        let cut = image::imageops::crop_imm(&src, (sw - cw) / 2, (sh - ch) / 2, cw, ch).to_image();
-        image::imageops::resize(&cut, w, h, image::imageops::FilterType::Triangle)
+        // (Its middle read straight into the size drawn, a row at a time: images::resize_part.)
+        crate::images::resize_part(&src, ((sw - cw) / 2, (sh - ch) / 2, cw, ch), w, h, crate::images::Kernel::Triangle)
     };
     let (w, h) = pic.dimensions();
     if blur > 0 {

@@ -684,14 +684,35 @@ pub fn tone2(url: &str) -> Option<u32> {
 /// went 88 -> 129 MB at the owner's start (alpha.16, 2026-11-22). Here only one float row is kept. The same weights as
 /// `image` (each output pixel weighs the input pixels its widened kernel covers).
 fn catmull_rom(src: &image::RgbaImage, w: u32, h: u32) -> image::RgbaImage {
+    resize_part(src, (0, 0, src.width(), src.height()), w, h, Kernel::CatmullRom)
+}
+
+/// The filters `resize_part` weighs with, as `image`'s of the same names.
+#[derive(Clone, Copy)]
+pub(crate) enum Kernel {
+    CatmullRom,
+    Triangle,
+}
+
+/// The part `(x, y, width, height)` of `src` made `w`×`h`, a row at a time as `catmull_rom` (no cut copy of the part,
+/// no float copy of the picture): the theme's picture (scene.rs) went through `image`'s crop and resize, and Rust's
+/// heap rose by some 140 MB each time it was drawn at the owner's window size (a 19.8 MB cut copy, an 80 MB float
+/// copy; the koi pond, 2026-11-25).
+pub(crate) fn resize_part(src: &image::RgbaImage, part: (u32, u32, u32, u32), w: u32, h: u32, kernel: Kernel) -> image::RgbaImage {
     // Per output pixel along one side: the first input pixel and the weights from it on, summing to 1.
-    fn weights(from: u32, to: u32) -> Vec<(usize, Vec<f32>)> {
+    let weights = |from: u32, to: u32| -> Vec<(usize, Vec<f32>)> {
         let ratio = from as f32 / to as f32;
         let scale = ratio.max(1.);
-        let support = 2. * scale;
+        let support = match kernel {
+            Kernel::CatmullRom => 2.,
+            Kernel::Triangle => 1.,
+        } * scale;
         let kernel = |x: f32| {
             let a = x.abs();
-            (if a < 1. { 9. * a * a * a - 15. * a * a + 6. } else if a < 2. { -3. * a * a * a + 15. * a * a - 24. * a + 12. } else { 0. }) / 6.
+            match kernel {
+                Kernel::CatmullRom => (if a < 1. { 9. * a * a * a - 15. * a * a + 6. } else if a < 2. { -3. * a * a * a + 15. * a * a - 24. * a + 12. } else { 0. }) / 6.,
+                Kernel::Triangle => (1. - a).max(0.),
+            }
         };
         (0..to)
             .map(|o| {
@@ -706,19 +727,23 @@ fn catmull_rom(src: &image::RgbaImage, w: u32, h: u32) -> image::RgbaImage {
                 (left, ws)
             })
             .collect()
-    }
-    let (sw, sh) = src.dimensions();
+    };
+    let (iw, ih) = src.dimensions();
+    let (px0, py0) = (part.0.min(iw.saturating_sub(1)), part.1.min(ih.saturating_sub(1)));
+    let (sw, sh) = (part.2.clamp(1, iw - px0), part.3.clamp(1, ih - py0));
     let (w, h) = (w.max(1), h.max(1));
     let across = weights(sw, w);
     let down = weights(sh, h);
     let raw = src.as_raw();
-    let stride = sw as usize * 4;
-    let mut row = vec![0f32; stride];
+    let (stride, from) = (iw as usize * 4, px0 as usize * 4);
+    let width = sw as usize * 4;
+    let mut row = vec![0f32; width];
     let mut out = image::RgbaImage::new(w, h);
     for (y, (top, wy)) in down.iter().enumerate() {
         row.iter_mut().for_each(|v| *v = 0.);
         for (k, &f) in wy.iter().enumerate() {
-            let line = &raw[(top + k) * stride..(top + k + 1) * stride];
+            let at = (py0 as usize + top + k) * stride + from;
+            let line = &raw[at..at + width];
             for (acc, &v) in row.iter_mut().zip(line) {
                 *acc += f * v as f32;
             }
