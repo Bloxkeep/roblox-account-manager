@@ -354,17 +354,26 @@ mod win {
             ActivationType: AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK,
             Anonymous: AUDIOCLIENT_ACTIVATION_PARAMS_0 { ProcessLoopbackParams: AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS { TargetProcessId: pid, ProcessLoopbackMode: PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE } },
         };
-        let mut pv = PROPVARIANT::default();
-        // (The blob points at `params`, alive till the end; the PROPVARIANT owns nothing and is never cleared.)
+        let params = Box::new(params);
+        // The blob points at `params`, which the PROPVARIANT doesn't own: it is never cleared. (Dropped, the windows
+        // crate's PROPVARIANT clears itself, and a blob's clearing frees its data with CoTaskMemFree: memory that
+        // was never COM's, and the heap was broken at once. Every Bloxkeep crashed as a profile with its beat on was
+        // shown with a song playing.)
+        let mut pv = std::mem::ManuallyDrop::new(PROPVARIANT::default());
         unsafe {
             let inner = &mut *pv.Anonymous.Anonymous;
             inner.vt = VT_BLOB;
-            inner.Anonymous.blob = BLOB { cbSize: std::mem::size_of::<AUDIOCLIENT_ACTIVATION_PARAMS>() as u32, pBlobData: &params as *const _ as *mut u8 };
+            inner.Anonymous.blob = BLOB { cbSize: std::mem::size_of::<AUDIOCLIENT_ACTIVATION_PARAMS>() as u32, pBlobData: &*params as *const _ as *mut u8 };
         }
         let done = Event::new().ok_or_else(windows::core::Error::from_win32)?;
         let handler: IActivateAudioInterfaceCompletionHandler = Made(done.0 as usize).into();
-        let op = unsafe { ActivateAudioInterfaceAsync(VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK, &IAudioClient::IID, Some(&pv), &handler)? };
-        unsafe { WaitForSingleObject(done.0, 5000) };
+        let op = unsafe { ActivateAudioInterfaceAsync(VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK, &IAudioClient::IID, Some(&*pv), &handler)? };
+        if unsafe { WaitForSingleObject(done.0, 5000) } != 0 {
+            // Windows hasn't answered: it may still read the parameters and set the event, so neither goes.
+            std::mem::forget(params);
+            std::mem::forget(done);
+            return Err(windows::core::Error::from_hresult(windows::core::HRESULT(0x8000_000Au32 as i32)));
+        }
         let mut hr = windows::core::HRESULT(0);
         let mut made: Option<windows::core::IUnknown> = None;
         unsafe { op.GetActivateResult(&mut hr, &mut made)? };
@@ -436,8 +445,11 @@ mod win {
     }
 
     /// Reads the client's sound until it isn't wanted (or another source is), a look each 512 samples.
-    fn read((client, rate, channels, float): (IAudioClient, f32, u16, bool), src: Source) -> windows::core::Result<()> {
+    fn read((made, rate, channels, float): (IAudioClient, f32, u16, bool), src: Source) -> windows::core::Result<()> {
         let tick = Event::new().ok_or_else(windows::core::Error::from_win32)?;
+        // (Held after the event, so it is let go before the event is closed, however this ends: Windows signals the
+        // event it was given until the client is gone.)
+        let client = made;
         let evented = unsafe { client.SetEventHandle(HANDLE(tick.0)) }.is_ok();
         let capture: IAudioCaptureClient = unsafe { client.GetService()? };
         unsafe { client.Start()? };
