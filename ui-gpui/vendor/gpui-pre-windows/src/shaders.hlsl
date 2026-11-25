@@ -1007,7 +1007,9 @@ struct PathFragmentInput {
     nointerpolation uint vertex_id: TEXCOORD1;
 };
 
-PathVertexOutput path_rasterization_vertex(uint vertex_id: SV_VertexID) {
+PathVertexOutput path_rasterization_vertex(uint draw_vertex_id: SV_VertexID) {
+    // (Bloxkeep: all of a frame's path vertices are in one buffer; this batch's start at batch_start_index.)
+    uint vertex_id = batch_start_index + draw_vertex_id;
     PathRasterizationSprite sprite = path_rasterization_sprites[vertex_id];
 
     PathVertexOutput output;
@@ -1062,10 +1064,9 @@ struct PathSpriteVertexOutput {
 
 StructuredBuffer<PathSprite> path_sprites: register(t1);
 
-PathSpriteVertexOutput path_sprite_vertex(uint vertex_id: SV_VertexID, uint sprite_id: SV_InstanceID) {
+PathSpriteVertexOutput path_sprite_vertex(uint vertex_id: SV_VertexID, uint instance_id: SV_InstanceID) {
     float2 unit_vertex = float2(float(vertex_id & 1u), 0.5 * float(vertex_id & 2u));
-    // (Bloxkeep: all the frame's path batches' sprites are in the buffer; this batch's start at batch_start_index.)
-    PathSprite sprite = path_sprites[batch_start_index + sprite_id];
+    PathSprite sprite = path_sprites[batch_start_index + instance_id];
 
     // Don't apply content mask because it was already accounted for when rasterizing the path
     float4 device_position = to_device_position(unit_vertex, sprite.bounds);
