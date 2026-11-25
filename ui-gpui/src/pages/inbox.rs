@@ -409,7 +409,21 @@ fn load(r: &mut Root, tab: usize, cx: &mut Context<Root>) {
     }
     match tab {
         0 => read!(roblox::talks(&cookie, user), talks),
-        1 => read!(roblox::letters(&cookie), letters),
+        // The messages read: the Inbox button counts what they hold unread, so its number is one to be found here.
+        1 => {
+            let rx = roblox::run(move || roblox::letters(&cookie));
+            reply(rx, cx, move |r, got: Result<Vec<Letter>, String>, cx| {
+                if r.inbox.of == user {
+                    if let Ok(l) = &got {
+                        crate::pages::games::letters_unread(r, user, l.iter().filter(|m| !m.read).count() as i64);
+                    }
+                    r.inbox.letters = Some(got);
+                    r.inbox.reading[tab] = false;
+                    peek(r, cx);
+                    cx.notify();
+                }
+            });
+        }
         // Shown: seen, at Roblox too (its bell's count back to 0, as roblox.com does when its list opens); the bell
         // kept counting them however many were read (the owner, 2026-11-19: "chuông thông báo vẫn 20").
         2 => {

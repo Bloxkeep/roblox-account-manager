@@ -2642,6 +2642,11 @@ pub struct Corner {
     of: i64,
     robux: Option<i64>,
     pub(crate) unread: (i64, i64),
+    /// How many of the messages Roblox counts unread the inbox found nowhere (past what it reads, or not shown by
+    /// Roblox in any of its tabs): left out of the count, as the inbox's messages were read last.
+    unfound: i64,
+    /// The inbox's unread messages, read before Roblox's count came: the count's first answer sets `unfound` by them.
+    found: Option<i64>,
     held: Option<roblox::Held>,
     asked: Option<std::time::Instant>,
     busy: bool,
@@ -2721,7 +2726,10 @@ pub fn want_corner(r: &mut Root, cx: &mut Context<Root>) {
             }
             k.busy = false;
             k.robux = robux.or(k.robux);
-            k.unread = unread;
+            if let Some(n) = k.found.take() {
+                k.unfound = (unread.1 - n).max(0);
+            }
+            k.unread = (unread.0, (unread.1 - k.unfound).max(0));
             // (A read that failed keeps what was known.)
             if let Ok(h) = held {
                 k.held = h;
@@ -2743,6 +2751,20 @@ pub fn notes_seen(r: &mut Root, user: i64) {
 pub fn letter_read(r: &mut Root) {
     let k = &mut r.games.corner;
     k.unread.1 = (k.unread.1 - 1).max(0);
+}
+
+/// The inbox's messages read for `user`, `n` of them unread: what the Inbox button counts from now on.
+pub fn letters_unread(r: &mut Root, user: i64, n: i64) {
+    let k = &mut r.games.corner;
+    if k.of == user && (k.busy || k.asked.is_none()) {
+        // (Roblox's count not in yet: it is weighed by these when it comes.)
+        k.found = Some(n);
+        k.unread.1 = n;
+    } else if k.of == user {
+        let counted = k.unread.1 + k.unfound;
+        k.unfound = (counted - n).max(0);
+        k.unread.1 = n;
+    }
 }
 
 /// Read the corner again at the next frame (after a buy, or the inbox read).

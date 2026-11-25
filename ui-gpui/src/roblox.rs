@@ -3942,14 +3942,38 @@ pub struct Letter {
     pub read: bool,
 }
 
-/// The newest 30 messages of the signed-in account's inbox.
+/// The newest 30 messages of the signed-in account's inbox, and every one Roblox counts unread besides: older pages of
+/// the inbox, then its archive, are read on until as many unread are found as Roblox counts (its count, the Inbox
+/// button's, takes in ones past the first 30 and archived ones: the owner, 2026-11-25, had 7 counted and 1 to see).
 pub fn letters(cookie: &str) -> Result<Vec<Letter>, String> {
-    let d = ask("https://privatemessages.roblox.com/v1/messages?pageNumber=0&pageSize=30&messageTab=Inbox", cookie, "messages")?;
-    let mut list: Vec<(i64, Letter)> = d
-        .get("collection")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
+    let page = |tab: &str, n: i64| ask(&format!("https://privatemessages.roblox.com/v1/messages?pageNumber={n}&pageSize=30&messageTab={tab}"), cookie, "messages");
+    let rows = |d: &Value| d.get("collection").and_then(Value::as_array).cloned().unwrap_or_default();
+    let is_unread = |v: &Value| v.get("isRead").and_then(Value::as_bool) == Some(false);
+    let first = page("Inbox", 0)?;
+    let mut all = rows(&first);
+    let counted = get("https://privatemessages.roblox.com/v1/messages/unread/count", Some(cookie)).ok().and_then(|d| d.get("count").and_then(Value::as_i64)).unwrap_or(0);
+    let found = |all: &[Value]| all.iter().filter(|v| is_unread(v)).count() as i64;
+    // (Ten pages each at most: 300 messages.)
+    'tabs: for (tab, start) in [("Inbox", 1), ("Archive", 0)] {
+        let mut n = start;
+        while found(&all) < counted && n < 10 {
+            let Ok(d) = page(tab, n) else { break };
+            let got = rows(&d);
+            if got.is_empty() {
+                continue 'tabs;
+            }
+            // Past the inbox's first page only its unread ones are kept: what the count is about.
+            all.extend(got.into_iter().filter(|v| is_unread(v)));
+            n += 1;
+            if n >= int(&d, "totalPages") {
+                continue 'tabs;
+            }
+        }
+    }
+    let mut seen = std::collections::HashSet::new();
+    all.retain(|v| seen.insert(int(v, "id")));
+    let mut list: Vec<(i64, Letter)> = all
+        .iter()
         .map(|v| {
             let who = v.get("sender").cloned().unwrap_or(Value::Null);
             let name = text(&who, "displayName");
