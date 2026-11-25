@@ -627,7 +627,8 @@ pub struct Data {
     /// The gameplay clips the tiles play under the mouse (pages/clips.rs).
     pub clips: crate::pages::clips::Clips,
     pub stays: HashMap<i64, Vec<Value>>,
-    /// The servers the accounts were in lately, by the place shown (history::recent_servers): {job, place, at, name, now}.
+    /// The servers the accounts were in lately, by the place shown (history::recent_servers): {job, place, at, now,
+    /// accounts: [{id, name, now}]}.
     pub recent_servers: HashMap<i64, Vec<Value>>,
     /// The country pick beside Play (region_button): each game's servers with their country (None while asked), its
     /// menu open, when it last closed, a Play waiting on the answer to take a server, and a line saying none was there.
@@ -2343,9 +2344,16 @@ fn settle_stays(r: &mut Root, place: i64) {
     let recent: Vec<Value> = crate::history::recent_servers(&sessions, place, universe, now)
         .into_iter()
         .map(|v| {
-            let account = r.accounts().iter().find(|a| s(a, "id") == v.account);
-            let name = account.map(crate::pages::accounts::label).filter(|n| !n.is_empty()).or(v.label.clone()).unwrap_or_else(|| "–".into());
-            json!({ "job": v.job, "place": v.place, "at": v.at, "name": name, "now": v.now, "id": v.account })
+            let accounts: Vec<Value> = v
+                .accounts
+                .iter()
+                .map(|w| {
+                    let account = r.accounts().iter().find(|a| s(a, "id") == w.account);
+                    let name = account.map(crate::pages::accounts::label).filter(|n| !n.is_empty()).or(w.label.clone()).unwrap_or_else(|| "–".into());
+                    json!({ "id": w.account, "name": name, "now": w.now })
+                })
+                .collect();
+            json!({ "job": v.job, "place": v.place, "at": v.at, "now": v.now(), "accounts": accounts })
         })
         .collect();
     r.games.recent_servers.insert(place, recent);

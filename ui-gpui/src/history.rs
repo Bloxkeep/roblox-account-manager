@@ -36,16 +36,30 @@ pub struct SeenServer {
     pub at: i64,
 }
 
-/// A server an account was in lately, for a game's page to join again.
+/// A server accounts were in lately, for a game's page to join again: the newest time one came in, and every account
+/// that was in it (the one in it now, or that came in last, first).
 #[derive(Debug, Clone, PartialEq)]
 pub struct RecentServer {
     pub job: String,
     pub place: i64,
     pub at: i64,
+    pub accounts: Vec<ServerAccount>,
+}
+
+/// An account that was in a server: its id, its name then, and whether it is in it now (its stay goes on and this is
+/// its last server).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ServerAccount {
     pub account: String,
     pub label: Option<String>,
-    /// The account is in it now (its stay goes on and this is its last server).
     pub now: bool,
+}
+
+impl RecentServer {
+    /// An account is in it now.
+    pub fn now(&self) -> bool {
+        self.accounts.iter().any(|a| a.now)
+    }
 }
 
 /// How many servers a game's page lists, and how far back.
@@ -253,22 +267,32 @@ pub fn game_accounts(sessions: &[Session], known: &HashMap<i64, Known>, place: i
     out
 }
 
-/// The servers the accounts were in lately in this game (`place`, or any place of `universe`), newest first, each once
-/// (the newest time it was joined; in it now when any account is).
+/// The servers the accounts were in lately in this game (`place`, or any place of `universe`), each once with every
+/// account that was in it, the ones an account is in now first, then the newest joined.
 pub fn recent_servers(sessions: &[Session], place: i64, universe: i64, now: i64) -> Vec<RecentServer> {
     let since = now - RECENT_DAYS * 24 * 3600 * 1000;
-    let mut all: Vec<RecentServer> = Vec::new();
+    // Each visit: (job, place, when, account, name, in it now), newest first.
+    let mut visits: Vec<(&str, i64, i64, &str, Option<String>, bool)> = Vec::new();
     for s in sessions.iter().filter(|s| s.place == place || (universe > 0 && s.universe == universe)) {
         let last = s.servers.len().saturating_sub(1);
         for (i, v) in s.servers.iter().enumerate().filter(|(_, v)| v.at > since) {
-            all.push(RecentServer { job: v.job.clone(), place: if v.place > 0 { v.place } else { s.place }, at: v.at, account: s.account.clone(), label: s.label.clone(), now: s.end.is_none() && i == last });
+            visits.push((&v.job, if v.place > 0 { v.place } else { s.place }, v.at, &s.account, s.label.clone(), s.end.is_none() && i == last));
         }
     }
-    all.sort_by(|a, b| b.now.cmp(&a.now).then(b.at.cmp(&a.at)));
+    visits.sort_by(|a, b| b.5.cmp(&a.5).then(b.2.cmp(&a.2)));
     let mut out: Vec<RecentServer> = Vec::new();
-    for v in all {
-        if !out.iter().any(|o| o.job.eq_ignore_ascii_case(&v.job)) {
-            out.push(v);
+    for (job, place, at, account, label, here) in visits {
+        let i = match out.iter().position(|o| o.job.eq_ignore_ascii_case(job)) {
+            Some(i) => i,
+            None => {
+                out.push(RecentServer { job: job.to_string(), place, at, accounts: Vec::new() });
+                out.len() - 1
+            }
+        };
+        let server = &mut out[i];
+        match server.accounts.iter_mut().find(|a| a.account == account) {
+            Some(a) => a.now |= here,
+            None => server.accounts.push(ServerAccount { account: account.to_string(), label, now: here }),
         }
     }
     out.truncate(RECENT_SERVERS);

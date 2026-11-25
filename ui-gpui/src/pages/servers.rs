@@ -641,6 +641,8 @@ fn copy_button(root: &Root, id: impl Into<ElementId>, job: &str, cx: &mut Contex
 /// as cards like the friends' above: the account's face and name, when (or "In it now"), the Job ID, Copy and Join.
 /// None when there is none.
 fn recent(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) -> Option<AnyElement> {
+    /// The accounts' faces.
+    const AV: f32 = 44.;
     let place = crate::pages::games::shown_place(root)?;
     let list = root.games.recent_servers.get(&place).filter(|l| !l.is_empty())?;
     let now = crate::time::now_secs();
@@ -653,8 +655,27 @@ fn recent(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) -> O
             let at_place = v.get("place").and_then(Value::as_i64).filter(|p| *p > 0 && *p != root_place);
             let here = v.get("now").and_then(Value::as_bool).unwrap_or(false);
             let at = v.get("at").and_then(Value::as_i64).unwrap_or(0) / 1000;
-            let account = root.accounts().iter().find(|a| s(a, "id") == s(v, "id")).cloned();
-            let name = s(v, "name").to_string();
+            // Every one of the app's accounts that was in it: their faces overlapped (three at most), their names.
+            let who: Vec<&Value> = v.get("accounts").and_then(Value::as_array).map(|l| l.iter().collect()).unwrap_or_default();
+            let names: Vec<String> = who.iter().map(|w| s(w, "name").to_string()).collect();
+            let name = match names.len() {
+                0 => "–".to_string(),
+                1 | 2 => names.join(", "),
+                n => format!("{} +{}", names[0], n - 1),
+            };
+            let all_names: SharedString = names.join(", ").into();
+            let faces: Vec<AnyElement> = who
+                .iter()
+                .take(3)
+                .enumerate()
+                .map(|(k, w)| {
+                    let face = match root.accounts().iter().find(|a| s(a, "id") == s(w, "id")) {
+                        Some(a) => crate::pages::accounts::face(a, AV, block_ground(), cx),
+                        None => div().size(px(AV)).rounded_full().bg(ca(WHITE, 0.08)).flex().items_center().justify_center().child(icon("user", 18., c(MUTED))),
+                    };
+                    div().flex_none().when(k > 0, |d| d.ml(px(-AV * 0.4))).child(face).into_any_element()
+                })
+                .collect();
             let short: String = job.chars().take(8).collect();
             let full: SharedString = job.clone().into();
             let join = job.clone();
@@ -669,10 +690,7 @@ fn recent(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) -> O
                 .flex()
                 .items_center()
                 .gap(px(12.))
-                .child(match &account {
-                    Some(a) => crate::pages::accounts::face(a, 44., block_ground(), cx).flex_none(),
-                    None => div().size(px(44.)).flex_none().rounded_full().bg(ca(WHITE, 0.08)).flex().items_center().justify_center().child(icon("user", 18., c(MUTED))),
-                })
+                .child(div().flex_none().flex().items_center().children(faces))
                 .child(
                     div()
                         .flex_1()
@@ -680,7 +698,7 @@ fn recent(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) -> O
                         .flex()
                         .flex_col()
                         .gap(px(4.))
-                        .child(div().truncate().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(name))
+                        .child(div().id(("srv-recent-who", i)).truncate().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(name).when(names.len() > 1, |d| d.tooltip(move |_, cx| cx.new(|_| Tip(all_names.clone())).into())))
                         .child(
                             div()
                                 .flex()
