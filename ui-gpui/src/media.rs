@@ -141,7 +141,8 @@ mod win {
         GlobalSystemMediaTransportControlsSessionPlaybackStatus as Status,
     };
     use windows::Storage::Streams::DataReader;
-    use windows::Win32::Media::Audio::{IAudioSessionControl2, IAudioSessionManager2, IMMDeviceEnumerator, ISimpleAudioVolume, MMDeviceEnumerator, eMultimedia, eRender};
+    use windows::Win32::Media::Audio::Endpoints::IAudioMeterInformation;
+    use windows::Win32::Media::Audio::{AudioSessionStateExpired, IAudioSessionControl2, IAudioSessionManager2, IMMDeviceEnumerator, ISimpleAudioVolume, MMDeviceEnumerator, eMultimedia, eRender};
     use windows::Win32::System::Com::{CLSCTX_ALL, CoCreateInstance, CoTaskMemFree};
     use windows::Win32::System::WinRT::{RO_INIT_MULTITHREADED, RoInitialize};
     use windows::core::Interface;
@@ -424,8 +425,13 @@ mod win {
         Ok(found)
     }
 
-    /// The program that plays the music app's sound (its sound session's), for the profile's beat (beat.rs).
+    /// The program whose sound (with its children's: beat.rs reads a program's whole tree) is the music app's, for the
+    /// profile's beat: the top one of the programs with a sound session of the app. (Spotify has a session for itself
+    /// and one for the audio service program it started: most songs sound from the audio service, some from Spotify
+    /// itself. The first session listed was read, the audio service's, and the profile heard nothing while those
+    /// songs played.) Of programs apart, the loudest now. Never an expired session.
     pub fn pid_of(player: Player) -> Option<u32> {
+        let mut found: Vec<(u32, f32)> = Vec::new();
         unsafe {
             let _ = RoInitialize(RO_INIT_MULTITHREADED);
             let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).ok()?;
@@ -436,12 +442,54 @@ mod win {
                 let Ok(name) = control.GetSessionInstanceIdentifier() else { continue };
                 let said = name.to_string().unwrap_or_default().to_lowercase();
                 CoTaskMemFree(Some(name.0 as *const _));
-                if said.contains(player.program()) && let Ok(pid) = control.GetProcessId() && pid != 0 {
-                    return Some(pid);
+                if !said.contains(player.program()) || control.GetState() == Ok(AudioSessionStateExpired) {
+                    continue;
+                }
+                let Ok(pid) = control.GetProcessId() else { continue };
+                if pid != 0 {
+                    found.push((pid, control.cast::<IAudioMeterInformation>().and_then(|m| m.GetPeakValue()).unwrap_or(0.)));
                 }
             }
         }
-        None
+        if found.len() > 1 {
+            let parents = parents();
+            let under = |mut pid: u32, top: u32| {
+                for _ in 0..16 {
+                    match parents.get(&pid) {
+                        Some(&p) if p == top => return true,
+                        Some(&p) if p != 0 && p != pid => pid = p,
+                        _ => return false,
+                    }
+                }
+                false
+            };
+            let all: Vec<u32> = found.iter().map(|f| f.0).collect();
+            found.retain(|&(pid, _)| !all.iter().any(|&top| top != pid && under(pid, top)));
+        }
+        found.into_iter().max_by(|a, b| a.1.total_cmp(&b.1)).map(|(pid, _)| pid)
+    }
+
+    /// Each program's parent, from Windows' list now.
+    fn parents() -> std::collections::HashMap<u32, u32> {
+        use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+        use windows_sys::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS};
+        let mut out = std::collections::HashMap::new();
+        // SAFETY: the snapshot is closed below; the entry's size is set as Windows asks.
+        unsafe {
+            let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if snap == INVALID_HANDLE_VALUE {
+                return out;
+            }
+            let mut e: PROCESSENTRY32W = std::mem::zeroed();
+            e.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+            let mut ok = Process32FirstW(snap, &mut e) != 0;
+            while ok {
+                out.insert(e.th32ProcessID, e.th32ParentProcessID);
+                ok = Process32NextW(snap, &mut e) != 0;
+            }
+            CloseHandle(snap);
+        }
+        out
     }
 
     fn volume_of(player: Player) -> Option<f32> {

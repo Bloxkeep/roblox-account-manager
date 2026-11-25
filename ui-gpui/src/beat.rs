@@ -468,15 +468,17 @@ mod win {
                     continue;
                 }
             };
-            if let Err(e) = read(client, src) {
+            if let Err(e) = read(client, src, pid) {
                 say("reading", &e);
                 std::thread::sleep(Duration::from_millis(500));
             }
         }
     }
 
-    /// Reads the client's sound until it isn't wanted (or another source is), a look each 512 samples.
-    fn read((made, rate, channels, float): (IAudioClient, f32, u16, bool), src: Source) -> windows::core::Result<()> {
+    /// Reads the client's sound until it isn't wanted (or another source is), a look each 512 samples; or, reading the
+    /// music app's program `pid`, until only silence came for 2 s while another of its programs sounds (it is read
+    /// from then).
+    fn read((made, rate, channels, float): (IAudioClient, f32, u16, bool), src: Source, pid: u32) -> windows::core::Result<()> {
         let tick = Event::new().ok_or_else(windows::core::Error::from_win32)?;
         // (Held after the event, so it is let go before the event is closed, however this ends: Windows signals the
         // event it was given until the client is gone.)
@@ -495,6 +497,7 @@ mod win {
         let (mut at, mut fresh) = (0usize, 0usize);
         let mut asked = Instant::now();
         let mut heard = Instant::now();
+        let (mut sounded, mut looked) = (Instant::now(), Instant::now());
         let channels = channels.max(1) as usize;
         let result = loop {
             if evented {
@@ -503,6 +506,9 @@ mod win {
                 std::thread::sleep(Duration::from_millis(10));
             }
             if drain(&capture, channels, float, rate, |_, v| {
+                if v != 0. {
+                    sounded = Instant::now();
+                }
                 ring[at] = v;
                 at = (at + 1) % RING;
                 fresh += 1;
@@ -534,6 +540,16 @@ mod win {
                     break Ok(());
                 }
             }
+            // (The song plays, as the profile asks only then: silence this long is another program's sound.)
+            if let Source::App(player) = src
+                && sounded.elapsed() > Duration::from_secs(2)
+                && looked.elapsed() > Duration::from_secs(1)
+            {
+                looked = Instant::now();
+                if crate::media::pid_of(player).is_some_and(|p| p != pid) {
+                    break Ok(());
+                }
+            }
         };
         unsafe {
             let _ = client.Stop();
@@ -546,17 +562,13 @@ mod win {
     fn drain(capture: &IAudioCaptureClient, channels: usize, float: bool, rate: f32, mut each: impl FnMut(u64, f32)) -> windows::core::Result<bool> {
         let mut any = false;
         loop {
-            let size = match unsafe { capture.GetNextPacketSize() } {
-                Ok(s) => s,
-                Err(_) => break,
-            };
+            // (An error, as the speakers gone, ends the read: a new client is made.)
+            let size = unsafe { capture.GetNextPacketSize()? };
             if size == 0 {
                 break;
             }
             let (mut data, mut frames, mut flags, mut taken) = (std::ptr::null_mut(), 0u32, 0u32, 0u64);
-            if unsafe { capture.GetBuffer(&mut data, &mut frames, &mut flags, None, Some(&mut taken)) }.is_err() {
-                break;
-            }
+            unsafe { capture.GetBuffer(&mut data, &mut frames, &mut flags, None, Some(&mut taken))? };
             let silent = flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32 != 0 || data.is_null();
             for f in 0..frames as usize {
                 let mut v = 0f32;
