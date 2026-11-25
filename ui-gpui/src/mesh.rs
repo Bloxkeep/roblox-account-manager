@@ -132,24 +132,13 @@ struct Tex {
     w: usize,
     h: usize,
     rgba: Vec<u8>,
-    /// Whether any of its dots is see-through (else it can't hide anything).
-    clear: bool,
 }
 
 impl Tex {
     fn of(bytes: &[u8]) -> Option<Tex> {
         let i = image::load_from_memory(bytes).ok()?.to_rgba8();
         let (w, h) = (i.width() as usize, i.height() as usize);
-        let rgba = i.into_raw();
-        let clear = rgba.chunks(4).any(|p| p[3] < 255);
-        (w > 0 && h > 0).then(|| Tex { w, h, rgba, clear })
-    }
-
-    /// How solid the picture is at its dot nearest a place (0..1 each way, repeating).
-    fn alpha_near(&self, u: f32, v: f32) -> u8 {
-        let x = (((u - u.floor()) * self.w as f32) as usize).min(self.w - 1);
-        let y = (((1. - (v - v.floor())) * self.h as f32) as usize).min(self.h - 1);
-        self.rgba[(y * self.w + x) * 4 + 3]
+        (w > 0 && h > 0).then(|| Tex { w, h, rgba: i.into_raw() })
     }
 
     /// The colour and how solid it is at a place on the picture (0..1 each way, repeating), between its four nearest
@@ -1091,7 +1080,6 @@ impl Model {
                             for p in g.rgba.chunks_mut(4) {
                                 p[3] = p[0];
                             }
-                            g.clear = g.rgba.chunks(4).any(|p| p[3] < 255);
                             Arc::new(g)
                         } else {
                             t
@@ -1351,7 +1339,6 @@ impl Model {
         let u = cross(s, f);
         // Wide enough that the model fits whichever way it is turned, at zoom 1; nearer, it fills more.
         let t = self.radius * 1.16 / (d0 * d0 - self.radius * self.radius).max(1e-6).sqrt();
-        let tt = t;
         let (sin, cos) = view.yaw.sin_cos();
         // The light: from over the viewer's left shoulder, and from above. Its half-way to the viewer gives the gloss.
         let light = norm(add(add(mul(f, -0.7), mul(u, 0.6)), mul(s, -0.35)));
@@ -1387,8 +1374,6 @@ impl Model {
         let face = |p: V3| -> V3 { turn(p, hs, hc) };
         let mut shown: Vec<Shown> = Vec::with_capacity(self.tris.len());
         let mut transparent = Vec::new();
-        // Where each solid triangle is in the room this moment, for the shadows it casts on the avatar itself.
-        let mut casters: Vec<([V3; 3], [[f32; 2]; 3], usize)> = Vec::with_capacity(self.tris.len());
         for tri in &self.tris {
             let (mut tp, mut tn) = (tri.p, tri.n);
             if let Some((r, sw, e, fwd)) = hang.as_ref() {
@@ -1447,9 +1432,6 @@ impl Model {
                 continue;
             }
             let mat = tri.mat.min(self.mats.len() - 1);
-            if self.mats[mat].d >= 1. {
-                casters.push((placed, tri.uv, mat));
-            }
             let projected = Shown { sx, sy, iz: [1. / z[0], 1. / z[1], 1. / z[2]], nn, uv: tri.uv, mat, area, x0, x1: x1 as usize, y0, y1: y1 as usize };
             if self.mats[mat].d < 1. {
                 transparent.push(projected);
@@ -1457,10 +1439,8 @@ impl Model {
                 shown.push(projected);
             }
         }
-        let shadow = SelfShadow::of(&casters, &self.mats, light, self.center, self.radius, cores);
         // Draw opaque depth first, then blend translucent triangles from far to near.
         transparent.sort_by(|a, b| a.iz.iter().sum::<f32>().total_cmp(&b.iz.iter().sum::<f32>()));
-        let solid_count = shown.len();
         shown.extend(transparent);
         let room = &ROOMS[view.room.min(ROOMS.len() - 1)];
         let walled = room.wall != 0;
@@ -1526,50 +1506,22 @@ impl Model {
         // dots a picture at four per dot, which one core drew far too slowly to follow a drag or a walk (the owner,
         // 2026-11-15: "lag kinh khủng khiếp"). The same picture as before, dot for dot. The bands run on threads kept
         // for them (`run_bands`), not threads made for each picture.
-        // How lit a dot is (and its gloss), from where it is on the stage (`px`, `py`), its depth and normal.
-        let lit_dot = |px: f32, py: f32, zz: f32, nrm: V3, shine: f32| -> (f32, f32) {
-            // Where the dot is in the room: its line of sight, as deep as it is.
-            let ray = add(f, add(mul(s, (px - half) / half * tt), mul(u, (half - py) / half * tt)));
-            let lit_by = shadow.light_at(add(eye, mul(ray, zz)), nrm);
-            shade(nrm, light, halfway, f, shine, lit_by)
-        };
-        let light_solid = |col: &mut [[u8; 4]], depth: &[f32], facing: &[[i8; 3]], made_of: &[u16], top: usize| {
-            for (at, zz) in depth.iter().enumerate() {
-                if *zz == f32::MAX {
-                    continue;
-                }
-                let (x, y) = (at % n, top + at / n);
-                let q = facing[at];
-                let nrm = norm([q[0] as f32, q[1] as f32, q[2] as f32]);
-                let shine = self.mats.get(made_of[at] as usize).map_or(0., |m| m.shine);
-                let (lit, gloss) = lit_dot(x as f32 + 0.5, y as f32 + 0.5, *zz, nrm, shine);
-                let c = &mut col[at];
-                for channel in 0..3 {
-                    c[channel] = (c[channel] as f32 * lit + gloss).min(255.) as u8;
-                }
-            }
-        };
+        // How lit a dot is (and its gloss), from its normal.
+        let lit_dot = |nrm: V3, shine: f32| -> (f32, f32) { shade(nrm, light, halfway, f, shine) };
         let mut out = vec![0u8; size * size * 4];
         let cores = cores.clamp(1, BAND_THREADS);
         let rows_out = size.div_ceil(cores).max(1);
         {
             let mut bands: Vec<Band<'_>> = Vec::new();
             for (i, chunk) in out.chunks_mut(rows_out * size * 4).enumerate() {
-                let (shown, ground, light_solid, lit_dot) = (&shown, &ground, &light_solid, &lit_dot);
+                let (shown, ground, lit_dot) = (&shown, &ground, &lit_dot);
                 bands.push(Box::new(move || {
                     let y_out = i * rows_out;
                     let rows = chunk.len() / (size * 4);
                     let (top, bottom) = (y_out * SS, (y_out + rows) * SS);
                     let mut depth = vec![f32::MAX; (bottom - top) * n];
-                    // The solid triangles' nearest dots are lit once all are in (a dot drawn over is never lit): their
-                    // normal and material kept till then.
-                    let mut facing = vec![[0i8; 3]; (bottom - top) * n];
-                    let mut made_of = vec![0u16; (bottom - top) * n];
                     let mut col = vec![[0u8; 4]; (bottom - top) * n];
-                    for (k, t) in shown.iter().enumerate() {
-                        if k == solid_count {
-                            light_solid(&mut col, &depth, &facing, &made_of, top);
-                        }
+                    for t in shown.iter() {
                         if t.y1 < top || t.y0 >= bottom {
                             continue;
                         }
@@ -1606,13 +1558,11 @@ impl Model {
                                 let nrm = norm([a * t.nn[0][0] + b * t.nn[1][0] + c * t.nn[2][0], a * t.nn[0][1] + b * t.nn[1][1] + c * t.nn[2][1], a * t.nn[0][2] + b * t.nn[1][2] + c * t.nn[2][2]]);
                                 // Light on both sides of a thin part (a cape, a leaf): the side facing the camera.
                                 let nrm = if dot(nrm, f) > 0. { mul(nrm, -1.) } else { nrm };
+                                let (lit, gloss) = lit_dot(nrm, material.shine);
                                 if material.d >= 1. {
                                     depth[at] = zz;
-                                    col[at] = [base[0].min(255.) as u8, base[1].min(255.) as u8, base[2].min(255.) as u8, 255];
-                                    facing[at] = [(nrm[0] * 127.).round() as i8, (nrm[1] * 127.).round() as i8, (nrm[2] * 127.).round() as i8];
-                                    made_of[at] = t.mat as u16;
+                                    col[at] = [(base[0] * lit + gloss).min(255.) as u8, (base[1] * lit + gloss).min(255.) as u8, (base[2] * lit + gloss).min(255.) as u8, 255];
                                 } else {
-                                    let (lit, gloss) = lit_dot(px, py, zz, nrm, material.shine);
                                     let alpha = material.d;
                                     let under = 1. - alpha;
                                     let pixel = &mut col[at];
@@ -1623,9 +1573,6 @@ impl Model {
                                 }
                             }
                         }
-                    }
-                    if solid_count == shown.len() {
-                        light_solid(&mut col, &depth, &facing, &made_of, top);
                     }
                     let out = chunk;
                     for y in y_out..y_out + rows {
@@ -1686,132 +1633,19 @@ impl Model {
 }
 
 /// How lit a dot of the avatar is, and the gloss over it (0 to 255, white light), for its normal (toward the viewer),
-/// the light, the half-way between light and viewer, the way the viewer looks and the material's Ns; `lit_by` is how
-/// much of the light reaches it (0 in its own shadow, 1 in the open). Light from the sky above and the floor below,
+/// the light, the half-way between light and viewer, the way the viewer looks and the material's Ns. No part shades
+/// another (a hat's shadow on the face), as in Roblox's own 3D view of an avatar. Light from the sky above and the
+/// floor below,
 /// the light itself, and a faint edge light where the surface turns away: a white outfit stays white where the light
 /// falls (never past its own colour, so it doesn't burn out) and keeps its shape in the shade and at its edges.
-fn shade(nrm: V3, light: V3, halfway: V3, f: V3, ns: f32, lit_by: f32) -> (f32, f32) {
+fn shade(nrm: V3, light: V3, halfway: V3, f: V3, ns: f32) -> (f32, f32) {
     let sky = 0.42 + 0.1 * nrm[1];
-    let key = 0.5 * dot(nrm, light).max(0.) * lit_by;
+    let key = 0.5 * dot(nrm, light).max(0.);
     let edge = (1. - dot(nrm, mul(f, -1.)).clamp(0., 1.)).powi(3) * 0.16;
     // Roblox's plain parts are plastic, with a soft sheen; a shiny surface (Ns) a tighter, brighter one.
     let (power, strength) = if ns > 0. { ((ns * 0.5).clamp(16., 128.), 0.42) } else { (24., 0.1) };
-    let gloss = 255. * strength * dot(nrm, halfway).max(0.).powi(power as i32) * lit_by;
+    let gloss = 255. * strength * dot(nrm, halfway).max(0.).powi(power as i32);
     ((sky + key + edge).min(1.), gloss)
-}
-
-/// The avatar seen from its light, each dot of it as near the light as the avatar is there: what tells a dot it is in
-/// the avatar's own shadow (a hat's on the face, an arm's on the body). SM × SM over its reach, made each picture (the
-/// avatar moves).
-const SM: usize = 256;
-
-struct SelfShadow {
-    near: Vec<f32>,
-    light: V3,
-    across: V3,
-    up: V3,
-    center: V3,
-    reach: f32,
-}
-
-impl SelfShadow {
-    /// Made in bands of rows at once, as the picture is (`cores` of them).
-    fn of(casters: &[([V3; 3], [[f32; 2]; 3], usize)], mats: &[Mat], light: V3, center: V3, radius: f32, cores: usize) -> SelfShadow {
-        let across = norm(cross(if light[1].abs() > 0.95 { [1., 0., 0.] } else { [0., 1., 0.] }, light));
-        let up = cross(light, across);
-        let reach = radius * 1.25;
-        let to = |p: V3| -> (f32, f32, f32) {
-            let d = sub(p, center);
-            ((dot(d, across) / reach * 0.5 + 0.5) * SM as f32, (0.5 - dot(d, up) / reach * 0.5) * SM as f32, dot(d, light))
-        };
-        // Each triangle on the map once (its corners there and its rows), then drawn by the bands its rows are in.
-        let placed: Vec<([(f32, f32, f32); 3], usize, usize, &[[f32; 2]; 3], usize)> = casters
-            .iter()
-            .filter_map(|(p, uv, mat)| {
-                let c = [to(p[0]), to(p[1]), to(p[2])];
-                // (Only a side facing the light is nearest it: the far side of a part is never what shades another.)
-                if (c[1].0 - c[0].0) * (c[2].1 - c[0].1) - (c[2].0 - c[0].0) * (c[1].1 - c[0].1) > 0. {
-                    return None;
-                }
-                let y0 = c[0].1.min(c[1].1).min(c[2].1).floor().max(0.) as usize;
-                let y1 = c[0].1.max(c[1].1).max(c[2].1).ceil();
-                (y1 >= 0. && y0 < SM).then(|| (c, y0, (y1 as usize).min(SM - 1), uv, *mat))
-            })
-            .collect();
-        let mut near = vec![f32::MIN; SM * SM];
-        let rows = SM.div_ceil(cores.clamp(1, BAND_THREADS)).max(1);
-        let bands: Vec<Band<'_>> = near
-            .chunks_mut(rows * SM)
-            .enumerate()
-            .map(|(i, chunk)| {
-                let placed = &placed;
-                Box::new(move || {
-                    let (top, bottom) = (i * rows, i * rows + chunk.len() / SM);
-                    for &([a, b, c], y0, y1, uv, mat) in placed.iter() {
-                        if y1 < top || y0 >= bottom {
-                            continue;
-                        }
-                        let area = (b.0 - a.0) * (c.1 - a.1) - (c.0 - a.0) * (b.1 - a.1);
-                        if area.abs() < 1e-6 {
-                            continue;
-                        }
-                        let x0 = a.0.min(b.0).min(c.0).floor().max(0.) as usize;
-                        let x1 = (a.0.max(b.0).max(c.0).ceil() as isize).min(SM as isize - 1);
-                        if x1 < 0 {
-                            continue;
-                        }
-                        // (Hair's strands and a decal's clear edges cast no shadow.)
-                        let mask = mats.get(mat).and_then(|m| m.mask.as_ref().or(m.tex.as_ref())).filter(|k| k.clear);
-                        for y in y0.max(top)..=y1.min(bottom - 1) {
-                            let py = y as f32 + 0.5;
-                            for x in x0..=x1 as usize {
-                                let px = x as f32 + 0.5;
-                                let w0 = ((b.0 - px) * (c.1 - py) - (c.0 - px) * (b.1 - py)) / area;
-                                let w1 = ((c.0 - px) * (a.1 - py) - (a.0 - px) * (c.1 - py)) / area;
-                                let w2 = 1. - w0 - w1;
-                                if w0 < 0. || w1 < 0. || w2 < 0. {
-                                    continue;
-                                }
-                                let d = w0 * a.2 + w1 * b.2 + w2 * c.2;
-                                let at = (y - top) * SM + x;
-                                if d <= chunk[at] {
-                                    continue;
-                                }
-                                if let Some(k) = mask {
-                                    let (tu, tv) = (w0 * uv[0][0] + w1 * uv[1][0] + w2 * uv[2][0], w0 * uv[0][1] + w1 * uv[1][1] + w2 * uv[2][1]);
-                                    if k.alpha_near(tu, tv) < 128 {
-                                        continue;
-                                    }
-                                }
-                                chunk[at] = d;
-                            }
-                        }
-                    }
-                }) as Band<'_>
-            })
-            .collect();
-        run_bands(bands);
-        SelfShadow { near, light, across, up, center, reach }
-    }
-
-    /// How much of the light reaches a place on the avatar with this normal: 1 in the open, 0 in its own shadow,
-    /// blended between the map's four nearest dots so its edge is soft.
-    fn light_at(&self, p: V3, nrm: V3) -> f32 {
-        let d = sub(p, self.center);
-        let gx = (dot(d, self.across) / self.reach * 0.5 + 0.5) * SM as f32 - 0.5;
-        let gy = (0.5 - dot(d, self.up) / self.reach * 0.5) * SM as f32 - 0.5;
-        if gx < 0. || gy < 0. || gx >= (SM - 1) as f32 || gy >= (SM - 1) as f32 {
-            return 1.;
-        }
-        // (A step or two of the map, more where the surface is turned from the light, so a surface doesn't shade
-        // itself.)
-        let step = self.reach * 2. / SM as f32;
-        let me = dot(d, self.light) + step * (1.5 + 2.5 * (1. - dot(nrm, self.light).abs()));
-        let (x0, y0) = (gx as usize, gy as usize);
-        let (fx, fy) = (gx - x0 as f32, gy - y0 as f32);
-        let open = |x: usize, y: usize| if self.near[y * SM + x] <= me { 1. } else { 0. };
-        (open(x0, y0) * (1. - fx) + open(x0 + 1, y0) * fx) * (1. - fy) + (open(x0, y0 + 1) * (1. - fx) + open(x0 + 1, y0 + 1) * fx) * fy
-    }
 }
 
 /// The model seen from straight above, each part the darker the nearer the floor it is, and softened: the shadow the
