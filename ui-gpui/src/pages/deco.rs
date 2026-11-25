@@ -199,6 +199,11 @@ pub fn sweep(cx: &mut App) {
     }
 }
 
+/// A still picture of assets/deco at its small size, for a picture shown as it is (pages::medals).
+pub fn still(name: &'static str, cx: &App) -> Option<Arc<RenderImage>> {
+    pic(name, cx)
+}
+
 fn pic(name: &'static str, cx: &App) -> Option<Arc<RenderImage>> {
     PICS.with(|p| {
         let mut p = p.borrow_mut();
@@ -1716,10 +1721,13 @@ fn edge_lit(b: &crate::beat::Beat, power: f32) -> f32 {
     ((0.4 * b.level + 0.6 * hit) * power).min(1.)
 }
 
+/// The room the light thrown by `pulse_edges` needs round the card: a page that scrolls cuts it flush at its top, so it
+/// leaves this much above the card (square corners and a straight cut otherwise).
+pub const EDGE_ROOM: f32 = 36.;
+
 /// The song's light thrown out from the card's edge (`r` its corners), drawn behind it in the card's box: as a
 /// phone's edge lighting does with music (Samsung's), the light round the whole edge, the corners followed, a tight
-/// bright glow and a wider one in the cover's colour. (The page leaves 24 px round the card, so the light stays in
-/// that.)
+/// bright glow, a wider one in the cover's colour and a faint one thrown furthest, all fading out within EDGE_ROOM.
 pub fn pulse_edges(b: crate::beat::Beat, hex: u32, power: f32, r: f32) -> AnyElement {
     canvas(|_, _, _| {}, move |bounds: Bounds<Pixels>, _, window, _| {
         let v = edge_lit(&b, power);
@@ -1728,7 +1736,9 @@ pub fn pulse_edges(b: crate::beat::Beat, hex: u32, power: f32, r: f32) -> AnyEle
         }
         let wide = BoxShadow { color: col(hex, 0.65 * v), offset: point(px(0.), px(0.)), blur_radius: px(12. + 10. * v), spread_radius: px(1. + 3. * v), inset: false };
         let tight = BoxShadow { color: col(mix(hex, 0xffffff, 0.45), 0.8 * v), offset: point(px(0.), px(0.)), blur_radius: px(4. + 4. * v), spread_radius: px(0.), inset: false };
-        window.paint_drop_shadows(bounds, Corners::all(px(r)), &[wide, tight]);
+        // (The light thrown furthest: it fades out within EDGE_ROOM of the card, the room the page leaves above it.)
+        let far = BoxShadow { color: col(hex, 0.4 * v), offset: point(px(0.), px(0.)), blur_radius: px(14. + 10. * v), spread_radius: px(2. + 2. * v), inset: false };
+        window.paint_drop_shadows(bounds, Corners::all(px(r)), &[far, wide, tight]);
     })
     .absolute()
     .inset_0()

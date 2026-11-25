@@ -110,6 +110,9 @@ pub struct Data {
     bought: Vec<(i64, i64, bool)>,
     /// Whose games made are all shown (See all on their Creations): the shelf shows the first SHELF otherwise.
     made_all: Option<i64>,
+    /// The games each user has played, by their Roblox id, as their badges tell (roblox::games_played): the count and
+    /// whether all their badges were read; None while counted or when Roblox didn't tell. Counted once a run.
+    played: std::collections::HashMap<i64, Option<(i64, bool)>>,
 }
 
 impl Data {
@@ -386,6 +389,7 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
     r.profile.loading = true;
     let ask = crate::pages::avatar::ticket();
     r.profile.load_ask = ask;
+    count_games(r, user, cookie.clone(), cx);
     let rx = roblox::run(move || roblox::profile(&cookie, user));
     reply(rx, cx, move |r, got, cx| {
         // Overtaken (another account, or asked again since): dropped.
@@ -394,6 +398,20 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
         }
         r.profile.loading = false;
         r.profile.got = Some(got);
+        cx.notify();
+    });
+}
+
+/// Counts the games `user` has played (their badges, read with `cookie` for their own profile: a private inventory
+/// answers its owner), once a run, for the badge under their name (pages::medals).
+fn count_games(r: &mut Root, user: i64, cookie: String, cx: &mut Context<Root>) {
+    if r.profile.played.contains_key(&user) {
+        return;
+    }
+    r.profile.played.insert(user, None);
+    let rx = roblox::run(move || roblox::games_played(&cookie, user));
+    reply(rx, cx, move |r, got, cx| {
+        r.profile.played.insert(user, got.ok());
         cx.notify();
     });
 }
@@ -411,6 +429,7 @@ pub fn open_person(r: &mut Root, user: i64, cx: &mut Context<Root>) {
     r.profile.block = Some(Follow { user, on: None, asked: false, busy: false });
     ask_block(r, cx);
     r.games.view = crate::pages::games::View::Profile;
+    count_games(r, user, String::new(), cx);
     let rx = roblox::run(move || roblox::profile("", user));
     reply(rx, cx, move |r, got, cx| {
         if let Some(p) = r.profile.person.as_mut().filter(|p| p.0 == user) {
@@ -1976,6 +1995,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                 .when(own, |d| d.child(div().text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(FACE)).child(hello.trim_end_matches([',', ' ']).to_string())))
                 .child(title)
                 .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(if own && root.hides_names() { root.i18n.tv("pf.joined", &[("d", &day(&p.joined))]) } else { format!("@{} · {}", p.name, root.i18n.tv("pf.joined", &[("d", &day(&p.joined))])) }))
+                .when_some(crate::pages::medals::row(root, &p.joined, root.profile.played.get(&user).copied().flatten(), cx), |d, m| d.child(m))
                 .when_some(here_line(root, user, own, cx), |d, l| d.child(l))
                 .when_some(about, |d, t| d.child(div().pt(px(4.)).text_size(px(T_M)).text_color(c(TEXT_2)).truncate().child(t))),
         )
@@ -2196,7 +2216,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
     crate::scrolled::body("pf-body", 
         div()
             .px(px(PAGE_X))
-            .pt(px(4.))
+            .pt(px(if power > 0. { deco::EDGE_ROOM } else { 4. }))
             .pb(px(24.))
             .flex()
             .flex_col()

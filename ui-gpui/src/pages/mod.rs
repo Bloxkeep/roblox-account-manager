@@ -14,6 +14,7 @@ pub mod preset_form;
 pub mod preset_menu;
 pub mod profile;
 pub mod deco;
+pub mod medals;
 mod profile_media;
 pub mod quick;
 pub mod settings;

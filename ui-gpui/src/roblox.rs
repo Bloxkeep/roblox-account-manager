@@ -1794,6 +1794,34 @@ pub fn badges_page(cookie: &str, user: i64, cursor: &str) -> Result<(Vec<Owned>,
     Ok((list, text(&d, "nextPageCursor")))
 }
 
+/// How many games a user has played, as far as Roblox tells anyone: the games their won badges came from (nearly every
+/// game gives one for coming in), counted once each, over all their badges (pages of 100, newest first). With the sign-in
+/// a private inventory answers its owner. `true` when every page was read; past PLAYED_PAGES the count is a floor.
+pub fn games_played(cookie: &str, user: i64) -> Result<(i64, bool), String> {
+    const PLAYED_PAGES: usize = 60;
+    let cookie = Some(cookie).filter(|c| !c.is_empty());
+    let mut games = std::collections::HashSet::new();
+    let mut cursor = String::new();
+    for _ in 0..PLAYED_PAGES {
+        let mut url = format!("https://badges.roblox.com/v1/users/{user}/badges?limit=100&sortOrder=Desc");
+        if !cursor.is_empty() {
+            url += &format!("&cursor={}", enc(&cursor));
+        }
+        let d = get(&url, cookie)?;
+        for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
+            let from = v.get("awarder").map_or(0, |a| int(a, "id"));
+            if from > 0 {
+                games.insert(from);
+            }
+        }
+        cursor = text(&d, "nextPageCursor");
+        if cursor.is_empty() {
+            return Ok((games.len() as i64, true));
+        }
+    }
+    Ok((games.len() as i64, false))
+}
+
 /// Where layered clothing sits when it is put on (Roblox wants an order with each): shoes under trousers, a jacket
 /// over a shirt. The numbers only say which is over which.
 fn layer(kind: &str) -> Option<i64> {
