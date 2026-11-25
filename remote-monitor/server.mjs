@@ -147,6 +147,8 @@ async function handle(req, res) {
       commands: Array.isArray(roster.commands) ? roster.commands : [],
       ram: roster.ram === true,
       done: Array.isArray(roster.done) ? roster.done : [],
+      // The app's language, for a page whose language wasn't picked on it.
+      ...(typeof roster.language === 'string' && /^[a-z]{2,3}$/.test(roster.language) ? { language: roster.language } : {}),
     }));
     return;
   }

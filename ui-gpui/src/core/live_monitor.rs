@@ -147,14 +147,14 @@ fn serve_roster(mut stream: TcpStream, key: &str, live: &AtomicBool) -> io::Resu
                     labels.insert(id.clone(), serde_json::Value::String(client.label));
                 }
             }
-            let mut roster = serde_json::json!({ "state": "ready", "labels": labels });
+            let mut roster = serde_json::json!({ "state": "ready", "labels": labels, "language": crate::lang::cur().code });
             if let (Some(all), serde_json::Value::Object(extras)) = (roster.as_object_mut(), app.remote_page_extras(&ids)) {
                 all.extend(extras);
                 all.insert("done".into(), serde_json::Value::Array(done_lately()));
             }
             let _ = tx.send(roster);
         } else {
-            let _ = tx.send(serde_json::json!({ "state": "locked" }));
+            let _ = tx.send(serde_json::json!({ "state": "locked", "language": crate::lang::cur().code }));
         }
     }));
     if let Ok(roster) = rx.recv_timeout(Duration::from_millis(900)) && listening(live) {
