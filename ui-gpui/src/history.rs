@@ -24,7 +24,33 @@ pub struct Session {
     pub end: Option<i64>,
     /// When the window was last seen still playing: the end of a stay nobody saw end.
     pub seen: Option<i64>,
+    /// The servers it was in, in order, as the client's log named them.
+    pub servers: Vec<SeenServer>,
 }
+
+/// A server a stay was in: Roblox's Job ID, the place it runs and when the client came in (ms since 1970).
+#[derive(Debug, Clone, Default)]
+pub struct SeenServer {
+    pub job: String,
+    pub place: i64,
+    pub at: i64,
+}
+
+/// A server an account was in lately, for a game's page to join again.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RecentServer {
+    pub job: String,
+    pub place: i64,
+    pub at: i64,
+    pub account: String,
+    pub label: Option<String>,
+    /// The account is in it now (its stay goes on and this is its last server).
+    pub now: bool,
+}
+
+/// How many servers a game's page lists, and how far back.
+const RECENT_SERVERS: usize = 12;
+const RECENT_DAYS: i64 = 30;
 
 /// A game the app has looked up: its universe, name and start place.
 #[derive(Debug, Clone, Default)]
@@ -64,6 +90,14 @@ pub fn read(v: &Value) -> (Vec<Session>, HashMap<i64, Known>, i64) {
             start: int(s, "start"),
             end: s.get("end").and_then(Value::as_i64),
             seen: s.get("seen").and_then(Value::as_i64),
+            servers: s
+                .get("servers")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .map(|v| SeenServer { job: v.get("job").and_then(Value::as_str).unwrap_or_default().to_string(), place: int(v, "place"), at: int(v, "at") })
+                .filter(|v| !v.job.is_empty())
+                .collect(),
         })
         .collect();
     let known = v
@@ -219,6 +253,28 @@ pub fn game_accounts(sessions: &[Session], known: &HashMap<i64, Known>, place: i
     out
 }
 
+/// The servers the accounts were in lately in this game (`place`, or any place of `universe`), newest first, each once
+/// (the newest time it was joined; in it now when any account is).
+pub fn recent_servers(sessions: &[Session], place: i64, universe: i64, now: i64) -> Vec<RecentServer> {
+    let since = now - RECENT_DAYS * 24 * 3600 * 1000;
+    let mut all: Vec<RecentServer> = Vec::new();
+    for s in sessions.iter().filter(|s| s.place == place || (universe > 0 && s.universe == universe)) {
+        let last = s.servers.len().saturating_sub(1);
+        for (i, v) in s.servers.iter().enumerate().filter(|(_, v)| v.at > since) {
+            all.push(RecentServer { job: v.job.clone(), place: if v.place > 0 { v.place } else { s.place }, at: v.at, account: s.account.clone(), label: s.label.clone(), now: s.end.is_none() && i == last });
+        }
+    }
+    all.sort_by(|a, b| b.now.cmp(&a.now).then(b.at.cmp(&a.at)));
+    let mut out: Vec<RecentServer> = Vec::new();
+    for v in all {
+        if !out.iter().any(|o| o.job.eq_ignore_ascii_case(&v.job)) {
+            out.push(v);
+        }
+    }
+    out.truncate(RECENT_SERVERS);
+    out
+}
+
 /// A game that banned an account, by the place the ban names.
 #[derive(Debug, Clone)]
 pub struct Ban {
@@ -272,6 +328,7 @@ mod tests {
                     start: at(&s["start"]).unwrap(),
                     end: at(&s["end"]),
                     seen: None,
+                    servers: Vec::new(),
                 })
                 .collect();
             let known: HashMap<i64, Known> = case["games"]

@@ -196,6 +196,7 @@ impl App {
                     "account": s.account_id, "label": if hide { None } else { s.account_label.clone() }, "place": s.place_id, "universe": s.universe_id,
                     "game": s.game_name, "start": App::unix_ms(s.started_at), "end": s.ended_at.map(App::unix_ms), "seen": s.last_seen_at.map(App::unix_ms),
                     "reason": s.end_reason, "code": s.reason_code, "preset": s.preset_id,
+                    "servers": s.servers.iter().map(|v| json!({ "job": v.job_id, "place": v.place_id, "at": App::unix_ms(v.at) })).collect::<Vec<_>>(),
                 })
             })
             .collect();

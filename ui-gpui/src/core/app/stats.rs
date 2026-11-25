@@ -198,6 +198,24 @@ impl App {
                     changed = true;
                 }
             }
+            // The server it is in, once its log names it: a new one is added to the stay (a hop, a teleport).
+            if log.status == "ingame"
+                && let Some(job) = log.job_id.as_ref().filter(|j| !j.is_empty())
+                && let Some(o) = open.as_ref()
+                && !o.servers.last().is_some_and(|s| s.job_id.eq_ignore_ascii_case(job))
+            {
+                let seen = crate::core::models::StayServer { job_id: job.clone(), place_id: place, at: since_wake(log.at) };
+                self.update_play(o, |s| {
+                    s.servers.push(seen.clone());
+                    let over = s.servers.len().saturating_sub(crate::core::models::MAX_STAY_SERVERS);
+                    s.servers.drain(..over);
+                });
+                if let Some(o) = open.as_mut() {
+                    o.servers.push(seen);
+                }
+                self.bump_play_revision();
+                changed = true;
+            }
             match open {
                 None => {
                     self.start_play(id, pid, place, since_wake(log.at), now);

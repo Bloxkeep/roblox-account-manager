@@ -733,8 +733,28 @@ pub struct PlaySession {
     pub reason_code: Option<i32>,
     /// The preset whose window it was (summaries group play by preset); None opened otherwise, or before 1.0.5.
     pub preset_id: Option<Guid>,
+    /// The servers it was in, in order, as its log named them (a server hop or a teleport adds one; at most
+    /// MAX_STAY_SERVERS, the oldest dropped): a game's page lists them to join again. Missing in stays before 1.1.5.
+    pub servers: Vec<StayServer>,
     #[serde(flatten)]
     pub extra: Extra,
+}
+
+pub const MAX_STAY_SERVERS: usize = 20;
+
+/// A server a stay was in: Roblox's Job ID, the place it runs and when the client came in.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct StayServer {
+    pub job_id: String,
+    pub place_id: i64,
+    pub at: Stamp,
+}
+
+impl Default for StayServer {
+    fn default() -> StayServer {
+        StayServer { job_id: String::new(), place_id: 0, at: stamp_min() }
+    }
 }
 
 impl Default for PlaySession {
@@ -752,6 +772,7 @@ impl Default for PlaySession {
             end_reason: None,
             reason_code: None,
             preset_id: None,
+            servers: Vec::new(),
             extra: Extra::new(),
         }
     }

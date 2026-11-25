@@ -583,6 +583,7 @@ fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> (Option<usize>, A
                             .children(at.map(|a| div().truncate().text_size(px(T_S)).text_color(c(MUTED)).child(a)))
                             .child(div().truncate().text_size(px(T_S)).text_color(c(TEXT_2)).child(whose)),
                     )
+                    .child(copy_button(root, ("srv-friend-copy", i), &job, cx))
                     .child(
                         div().id(("srv-friend", i)).flex_none().tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()).child(
                             Button::new(("srv-friend-join", i), root.tr("srv.join")).icon("play").small().disabled(job.is_empty()).on_click(cx.listener(move |r, _, _, cx| {
@@ -621,6 +622,68 @@ fn open_vip_checkout(root: &mut Root, place: i64, id: String, cx: &mut Context<R
         cx.notify();
     });
     cx.notify();
+}
+
+/// A server's Job ID to the clipboard, said in a toast.
+fn copy_job(r: &mut Root, job: &str, cx: &mut Context<Root>) {
+    cx.write_to_clipboard(ClipboardItem::new_string(job.to_string()));
+    r.toast = Some((r.tr("srv.jobCopied"), "ok".into()));
+    cx.notify();
+}
+
+/// Copies a server's Job ID (a button beside its Join).
+fn copy_button(root: &Root, id: impl Into<ElementId>, job: &str, cx: &mut Context<Root>) -> IconButton {
+    let job = job.to_string();
+    IconButton::new(id, "copy").size(30.).disabled(job.is_empty()).tip(root.tr("srv.copyJob")).on_click(cx.listener(move |r, _, _, cx| copy_job(r, &job, cx)))
+}
+
+/// The servers the accounts were in lately in this game, newest first (the one an account is in now on top, marked),
+/// each with its Job ID to copy and Join to go back in. None when there is none.
+fn recent(root: &Root, root_place: i64, cx: &mut Context<Root>) -> Option<AnyElement> {
+    let place = crate::pages::games::shown_place(root)?;
+    let list = root.games.recent_servers.get(&place).filter(|l| !l.is_empty())?;
+    let now = crate::time::now_secs();
+    let rows: Vec<AnyElement> = list
+        .iter()
+        .enumerate()
+        .map(|(i, v)| {
+            let job = s(v, "job").to_string();
+            let at_place = v.get("place").and_then(Value::as_i64).filter(|p| *p > 0 && *p != root_place);
+            let here = v.get("now").and_then(Value::as_bool).unwrap_or(false);
+            let at = v.get("at").and_then(Value::as_i64).unwrap_or(0) / 1000;
+            let join = job.clone();
+            div()
+                .flex()
+                .items_center()
+                .gap(px(12.))
+                .px(px(14.))
+                .py(px(8.))
+                .when(i > 0, |d| d.border_t_1().border_color(ca(WHITE, 0.06)))
+                .child(div().w(px(180.)).flex_none().truncate().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(s(v, "name").to_string()))
+                .child(div().flex_1().min_w_0().truncate().text_size(px(T_S)).font_features(tnum()).text_color(c(MUTED)).child(job.clone()))
+                .child(if here {
+                    div().flex_none().h(px(22.)).px(px(8.)).flex().items_center().rounded(px(7.)).bg(ca(ONLINE, 0.14)).text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(ONLINE)).child(root.tr("srv.inNow"))
+                } else {
+                    div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).child(crate::time::ago_far(now - at, &root.i18n))
+                })
+                .child(copy_button(root, ("srv-recent-copy", i), &job, cx))
+                .child(Button::new(("srv-recent-join", i), root.tr("srv.join")).icon("play").small().disabled(job.is_empty()).on_click(cx.listener(move |r, _, _, cx| {
+                    crate::pages::games::pick_for_server(r, join.clone());
+                    r.games.pick_place = at_place;
+                    cx.notify();
+                })))
+                .into_any_element()
+        })
+        .collect();
+    Some(
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(12.))
+            .child(section_head(root.tr("srv.recentTitle"), Some(list.len())))
+            .child(div().rounded(px(R_M)).bg(c(PANEL)).flex().flex_col().children(rows))
+            .into_any_element(),
+    )
 }
 
 pub fn view(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) -> AnyElement {
@@ -672,6 +735,7 @@ pub fn view(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) ->
         .flex_col()
         .gap(px(SECTION_GAP))
         .child(div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("srv.friendsTitle"), n_friends.filter(|n| *n > 0))).child(friends_body))
+        .children(recent(root, root_place, cx))
         // Private before public (owner, 2026-11-13): the public list runs long with more pages on demand, and the
         // private servers under it were out of sight.
         .child(div().flex().flex_col().gap(px(12.)).child(private_head).children(picker).children(buying).children(error).child(private(root, width, cx)))
@@ -905,6 +969,7 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
                                     let tip: SharedString = [(ping > 0).then(|| root.tr("srv.pingTip")), (fps > 0.).then(|| root.tr("srv.fpsTip"))].into_iter().flatten().collect::<Vec<_>>().join("\n").into();
                                     div().id(("srv-facts", i)).flex_1().min_w_0().child(facts(line).text_size(px(T_S))).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()).into_any_element()
                                 })
+                                .child(copy_button(root, ("srv-copy", i), &job, cx))
                                 .child(Button::new(("srv-join", i), root.tr("srv.join")).icon("play").small().disabled(is_full || job.is_empty()).tip(if is_full { root.tr("srv.full") } else { String::new() }).on_click(cx.listener(move |r, _, _, cx| {
                                     crate::pages::games::pick_for_server(r, join.clone());
                                     cx.notify();
