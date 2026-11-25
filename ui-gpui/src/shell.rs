@@ -3693,7 +3693,11 @@ impl Root {
         // (A figure: its tag (the word on its own colour, as the FPS-monitoring HUD's RAM / GPU / CPU tags, Dribbble
         // 27365272), then the number, then a smaller, dimmer "%" just after it.)
         let chip_label_w = |s: &str| tw(&s.to_uppercase(), BAR_CHIP, FontWeight::BOLD) + 2. * BAR_CHIP_PAD;
-        let number_w = tw("100", BAR_FIGURE, FontWeight::SEMIBOLD);
+        // (Each number with its "%" keeps the room of two digits, hugging its tag; what a one-digit number leaves is
+        // after its "%", where the groups' gap is. As the room changed with each number, every group after it moved left
+        // and right; as the room of "100", a one-digit number sat far from its tag. Only a 100 widens the pill.)
+        let widest = if cpu >= 100 || ram >= 100 || gpu.is_some_and(|g| g >= 100) { "100" } else { "88" };
+        let number_w = tw(widest, BAR_FIGURE, FontWeight::SEMIBOLD);
         let pct_w = number_w + 1. + tw("%", BAR_UNIT, FontWeight::MEDIUM);
         let pair_w = |l: &str, v: f32| chip_label_w(l) + 6. + v;
         let row_gap = |items: &[f32], pad_l: f32, pad_r: f32, gap: f32| {
@@ -3795,8 +3799,6 @@ impl Root {
         let value = |s: String| div().flex_none().text_size(px(BAR_VALUE)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(s);
         // (A figure that changes rolls its digits, as Apple's numericText does.)
         // (Each figure's tag in its own colour, the expanded card's (capsule.rs): CPU blue, RAM violet, GPU green.)
-        // (The number sits in a box as wide as "100", against its "%": a figure growing from 6 to 37 changed what the
-        // groups shared out, and every group after it moved.)
         let figure = |id: &'static str, name: &str, chip_tone: u32, pct: i64, tip: String, window: &mut Window| {
             let tip: SharedString = tip.into();
             let tone = if pct as f64 >= LOAD_BUSY { load_colour(pct as f64) } else { c(TEXT) };
@@ -3824,10 +3826,11 @@ impl Root {
                     div()
                         .flex()
                         .flex_none()
+                        .min_w(px(pct_w))
                         .items_baseline()
                         .gap(px(1.))
                         .text_color(tone)
-                        .child(div().flex_none().w(px(number_w)).flex().justify_end().text_size(px(BAR_FIGURE)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(capsule::roll(id, pct.to_string(), 17., window)))
+                        .child(div().flex_none().text_size(px(BAR_FIGURE)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(capsule::roll(id, pct.to_string(), 17., window)))
                         .child(div().flex_none().text_size(px(BAR_UNIT)).font_weight(FontWeight::MEDIUM).opacity(0.5).child("%")),
                 )
                 .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
