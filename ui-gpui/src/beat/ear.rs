@@ -199,9 +199,12 @@ const KEPT: usize = 512;
 const TEMPO_EVERY: u64 = 32;
 /// The looks heard before the first guess (about 1.4 s: a beat is given from then).
 const WARM: u64 = 128;
-/// The times between beats looked at, in beats a minute.
+/// The times between beats looked at, in beats a minute. Steady eighth notes make every song pulse at twice its
+/// pace too, and the comb leans to the quicker (it is counted at 1.5 of its gaps as well, where eighth notes always
+/// fall): a lo-fi song at 75 was beaten at 150. Above 140 the slower of the two is taken, as BTrack keeps to 80–160:
+/// a song quicker than that is beaten every second beat, still on the music.
 const SLOWEST: f32 = 60.;
-const FASTEST: f32 = 190.;
+const FASTEST: f32 = 140.;
 /// The score's weight on what came before (BTrack's 0.9), and how sharply it wants exactly a beat between highs.
 const ALPHA: f32 = 0.9;
 const TIGHT: f32 = 5.;
