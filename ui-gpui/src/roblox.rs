@@ -1148,7 +1148,7 @@ fn faces(users: &[i64]) -> HashMap<i64, String> {
     let (mut out, missing) = pics::known("faces", users);
     // A face Roblox is still drawing ("Pending": every avatar change, a fitting saved too, has it draw them all again)
     // is asked again, as thumbs_from does and Roblox's own pages do: the profile's ring showed the whole avatar in
-    // the face's place after a save (owner 2026-11-24).
+    // the face's place after a save.
     let got = each(missing.chunks(100).collect(), |chunk: &[i64]| {
         let ids: Vec<String> = chunk.iter().map(i64::to_string).collect();
         let url = format!("https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={}&size=150x150&format=Png&isCircular=false", ids.join(","));
@@ -4098,7 +4098,7 @@ pub struct Letter {
 
 /// The newest 30 messages of the signed-in account's inbox, and every one Roblox counts unread besides: older pages of
 /// the inbox, then its archive, are read on until as many unread are found as Roblox counts (its count, the Inbox
-/// button's, takes in ones past the first 30 and archived ones: the owner, 2026-11-25, had 7 counted and 1 to see).
+/// button's, takes in ones past the first 30 and archived ones: 7 were counted with 1 to see in the first 30).
 pub fn letters(cookie: &str) -> Result<Vec<Letter>, String> {
     let page = |tab: &str, n: i64| ask(&format!("https://privatemessages.roblox.com/v1/messages?pageNumber={n}&pageSize=30&messageTab={tab}"), cookie, "messages");
     let rows = |d: &Value| d.get("collection").and_then(Value::as_array).cloned().unwrap_or_default();

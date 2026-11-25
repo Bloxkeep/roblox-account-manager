@@ -696,8 +696,8 @@ pub(crate) enum Kernel {
 
 /// The part `(x, y, width, height)` of `src` made `w`×`h`, a row at a time as `catmull_rom` (no cut copy of the part,
 /// no float copy of the picture): the theme's picture (scene.rs) went through `image`'s crop and resize, and Rust's
-/// heap rose by some 140 MB each time it was drawn at the owner's window size (a 19.8 MB cut copy, an 80 MB float
-/// copy; the koi pond, 2026-11-25).
+/// heap rose by some 140 MB each time it was drawn in a large window (a 19.8 MB cut copy, an 80 MB float
+/// copy at about 2860 x 1470).
 pub(crate) fn resize_part(src: &image::RgbaImage, part: (u32, u32, u32, u32), w: u32, h: u32, kernel: Kernel) -> image::RgbaImage {
     // Per output pixel along one side: the first input pixel and the weights from it on, summing to 1.
     let weights = |from: u32, to: u32| -> Vec<(usize, Vec<f32>)> {

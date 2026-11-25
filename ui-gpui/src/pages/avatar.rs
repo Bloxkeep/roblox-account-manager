@@ -423,7 +423,7 @@ fn pack_worn(av: &Data) -> [i64; 4] {
     let Some(Ok(a)) = &av.got else { return [0; 4] };
     // An R6 body moves as Roblox's standard R6 animations do whatever pack is worn: packs are made for R15 only
     // (create.roblox.com/docs/avatar/animation-packs), and an R15 pack's motions on R6's four limbs walked it like a
-    // crawl seen from behind (owner 2026-11-24). Their ids are those of Roblox's R6 Animate script.
+    // crawl seen from behind. Their ids are those of Roblox's R6 Animate script.
     if a.rig != "R15" {
         return R6_STANDARD;
     }

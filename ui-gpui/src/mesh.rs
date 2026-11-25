@@ -1185,7 +1185,7 @@ impl Model {
         let level = far > 0. && (away[1] / far).abs() < 0.95;
         // Roblox's own camera stands off to one side (its pictures show the avatar a little turned); here it keeps
         // that height and distance but stands straight in front, so the avatar faces you when first shown and again
-        // after a double click puts the view back (owner 2026-11-24: "chưa chính diện lắm").
+        // after a double click puts the view back.
         let eye = if eye == [0.; 3] || far < radius * 1.5 || !level {
             [center[0], center[1] + radius * 0.25, center[2] - radius * 3.6]
         } else {
@@ -1457,7 +1457,7 @@ impl Model {
             let rho = (wx * wx + wz * wz).sqrt();
             if !walled {
                 // No room, over the page or Roblox's background: only the tiles' lines, faint and dark, and gone far
-                // off, so a walk or a run shows going by (owner 2026-11-24: Shift's run didn't show at all).
+                // off, so a walk or a run shows going by (with nothing on the floor a run looked like standing still).
                 let tile = self.radius * 0.6;
                 let near = |v: f32| {
                     let f = (v / tile).rem_euclid(1.);
