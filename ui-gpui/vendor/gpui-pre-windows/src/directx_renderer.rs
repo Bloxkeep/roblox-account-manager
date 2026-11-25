@@ -60,6 +60,15 @@ pub(crate) struct DirectXRenderer {
     shared: std::collections::HashMap<isize, SharedTexture>,
     /// Where this frame's surfaces start in the polychrome sprite buffer (they are drawn as sprites after the scene's).
     surface_base: usize,
+    /// (Bloxkeep) This frame's path vertices and path sprites, all batches' in one buffer each, written to the card
+    /// once a frame: a buffer written with WRITE_DISCARD while the card still reads it makes the driver give a new
+    /// copy, so one write per path batch (a page drawing many shapes between other things has dozens) kept a copy
+    /// per batch per frame in flight, 100+ MB of write-combined memory. For each batch, in drawing order: the first
+    /// vertex, how many, the first sprite, how many; `path_batch_at` is the next one to draw.
+    path_vertices: Vec<PathRasterizationSprite>,
+    path_sprites: Vec<PathSprite>,
+    path_batches: Vec<[u32; 4]>,
+    path_batch_at: usize,
 }
 
 /// A texture another device fills (see `shared`).
@@ -212,6 +221,10 @@ impl DirectXRenderer {
             skip_draws: false,
             shared: std::collections::HashMap::new(),
             surface_base: 0,
+            path_vertices: Vec::new(),
+            path_sprites: Vec::new(),
+            path_batches: Vec::new(),
+            path_batch_at: 0,
         })
     }
 
@@ -389,10 +402,12 @@ impl DirectXRenderer {
             match batch {
                 PrimitiveBatch::Shadows(range) => self.draw_shadows(range.start, range.len()),
                 PrimitiveBatch::Quads(range) => self.draw_quads(range.start, range.len()),
-                PrimitiveBatch::Paths(range) => {
-                    let paths = &scene.paths[range];
-                    self.draw_paths_to_intermediate(paths)?;
-                    self.draw_paths_from_intermediate(paths)
+                PrimitiveBatch::Paths(_) => {
+                    let at = self.path_batch_at;
+                    self.path_batch_at += 1;
+                    let [v0, vn, s0, sn] = *self.path_batches.get(at).context("path batch missing")?;
+                    self.draw_paths_to_intermediate(v0, vn)?;
+                    self.draw_paths_from_intermediate(s0, sn)
                 }
                 PrimitiveBatch::Underlines(range) => self.draw_underlines(range.start, range.len()),
                 PrimitiveBatch::MonochromeSprites { texture_id, range } => {
@@ -589,6 +604,66 @@ impl DirectXRenderer {
             )?;
         }
 
+        // Paths: every batch's vertices and sprites, in drawing order, each written once (see `path_vertices`).
+        self.path_vertices.clear();
+        self.path_sprites.clear();
+        self.path_batches.clear();
+        self.path_batch_at = 0;
+        if !scene.paths.is_empty() {
+            for batch in scene.batches() {
+                let PrimitiveBatch::Paths(range) = batch else { continue };
+                let paths = &scene.paths[range];
+                let (v0, s0) = (self.path_vertices.len(), self.path_sprites.len());
+                for path in paths {
+                    self.path_vertices.extend(path.vertices.iter().map(|v| PathRasterizationSprite {
+                        xy_position: v.xy_position,
+                        st_position: v.st_position,
+                        color: path.color,
+                        bounds: path.clipped_bounds(),
+                    }));
+                }
+                // When copying paths from the intermediate texture to the drawable, each pixel must only be copied
+                // once, in case of transparent paths. If all paths have the same draw order, their bounds are all
+                // disjoint, so each path's bounds are copied on their own; a batch of different draw orders is
+                // copied as one rect round them all.
+                if let (Some(first), Some(last)) = (paths.first(), paths.last()) {
+                    if first.order == last.order {
+                        self.path_sprites.extend(paths.iter().map(|path| PathSprite { bounds: path.clipped_bounds() }));
+                    } else {
+                        let mut bounds = first.clipped_bounds();
+                        for path in paths.iter().skip(1) {
+                            bounds = bounds.union(&path.clipped_bounds());
+                        }
+                        self.path_sprites.push(PathSprite { bounds });
+                    }
+                }
+                self.path_batches.push([
+                    v0 as u32,
+                    (self.path_vertices.len() - v0) as u32,
+                    s0 as u32,
+                    (self.path_sprites.len() - s0) as u32,
+                ]);
+            }
+            if !self.path_vertices.is_empty() {
+                self.pipelines.path_rasterization_pipeline.update_buffer(
+                    &devices.device,
+                    &devices.device_context,
+                    &self.path_vertices,
+                )?;
+            }
+            if !self.path_sprites.is_empty() {
+                self.pipelines.path_sprite_pipeline.update_buffer(
+                    &devices.device,
+                    &devices.device_context,
+                    &self.path_sprites,
+                )?;
+            }
+            // (A frame with very many shapes leaves big lists behind: let them go rather than keep the peak.)
+            if self.path_vertices.capacity() > 4 * self.path_vertices.len().max(16_384) {
+                self.path_vertices = Vec::new();
+            }
+        }
+
         // Surfaces (shared textures) are drawn by the polychrome sprite pipeline: one sprite each, after the scene's
         // own, its tile the whole texture.
         self.surface_base = scene.polychrome_sprites.len();
@@ -662,8 +737,8 @@ impl DirectXRenderer {
         )
     }
 
-    fn draw_paths_to_intermediate(&mut self, paths: &[Path<ScaledPixels>]) -> Result<()> {
-        if paths.is_empty() {
+    fn draw_paths_to_intermediate(&mut self, first_vertex: u32, vertex_count: u32) -> Result<()> {
+        if vertex_count == 0 {
             return Ok(());
         }
 
@@ -682,28 +757,20 @@ impl DirectXRenderer {
             );
         }
 
-        // Collect all vertices and sprites for a single draw call
-        let mut vertices = Vec::new();
-
-        for path in paths {
-            vertices.extend(path.vertices.iter().map(|v| PathRasterizationSprite {
-                xy_position: v.xy_position,
-                st_position: v.st_position,
-                color: path.color,
-                bounds: path.clipped_bounds(),
-            }));
-        }
-
-        self.pipelines.path_rasterization_pipeline.update_buffer(
-            &devices.device,
+        // (The vertices were written with the scene; the shader starts at `first_vertex`.)
+        anyhow::ensure!(
+            first_vertex as usize + vertex_count as usize <= self.pipelines.path_rasterization_pipeline.buffer_size,
+            "DirectX vertex range exceeds the path buffer"
+        );
+        update_batch_start(
             &devices.device_context,
-            &vertices,
+            self.globals.batch_params_buffer.as_ref().context("batch params buffer missing")?,
+            first_vertex,
         )?;
-
         self.pipelines.path_rasterization_pipeline.draw(
             &devices.device_context,
             D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-            vertices.len() as u32,
+            vertex_count,
             1,
         )?;
 
@@ -725,47 +792,20 @@ impl DirectXRenderer {
         Ok(())
     }
 
-    fn draw_paths_from_intermediate(&mut self, paths: &[Path<ScaledPixels>]) -> Result<()> {
-        let Some(first_path) = paths.first() else {
+    fn draw_paths_from_intermediate(&mut self, first_sprite: u32, sprite_count: u32) -> Result<()> {
+        if sprite_count == 0 {
             return Ok(());
-        };
-
-        // When copying paths from the intermediate texture to the drawable,
-        // each pixel must only be copied once, in case of transparent paths.
-        //
-        // If all paths have the same draw order, then their bounds are all
-        // disjoint, so we can copy each path's bounds individually. If this
-        // batch combines different draw orders, we perform a single copy
-        // for a minimal spanning rect.
-        let sprites = if paths.last().unwrap().order == first_path.order {
-            paths
-                .iter()
-                .map(|path| PathSprite {
-                    bounds: path.clipped_bounds(),
-                })
-                .collect::<Vec<_>>()
-        } else {
-            let mut bounds = first_path.clipped_bounds();
-            for path in paths.iter().skip(1) {
-                bounds = bounds.union(&path.clipped_bounds());
-            }
-            vec![PathSprite { bounds }]
-        };
-
+        }
         let devices = self.devices.as_ref().context("devices missing")?;
         let resources = self.resources.as_ref().context("resources missing")?;
-        self.pipelines.path_sprite_pipeline.update_buffer(
-            &devices.device,
-            &devices.device_context,
-            &sprites,
-        )?;
-
         // Draw the sprites with the path texture
-        self.pipelines.path_sprite_pipeline.draw_with_texture(
+        self.pipelines.path_sprite_pipeline.draw_range_with_texture(
             &devices.device_context,
             slice::from_ref(&resources.path_intermediate_srv),
+            self.globals.batch_params_buffer.as_ref().context("batch params buffer missing")?,
             slice::from_ref(&self.globals.sampler),
-            sprites.len() as u32,
+            first_sprite,
+            sprite_count,
         )
     }
 
