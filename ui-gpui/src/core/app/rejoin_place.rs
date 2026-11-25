@@ -2,7 +2,9 @@
 // tile that crashed, was kicked or lost its connection came back at Roblox's own size (or maximised) over the others, and
 // had to be arranged again (a user's request, 2026-11-11). Each account's window place is noted while it is an ordinary
 // window; a maximised one is left to Roblox and Settings' Maximise. A window that was minimised is minimised again once
-// its rejoin is in the game (a user's 4 minimised windows came back open after a drop, 2026-11-24).
+// its rejoin is in the game (a user's 4 minimised windows came back open after a drop, 2026-11-24). One rule for every
+// rejoin: its window comes back where and as the account's last one was. A minimised window's place is the one it
+// opens at (Windows keeps it: its normal position), so one minimised in its tile has that tile to go back to.
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -85,8 +87,8 @@ impl App {
             }
             // A rejoin's new window: first seen, it takes the place the account's last window had.
             if rejoin && !st.place_noted.borrow().contains(&pid) && !st.going_back.borrow().contains_key(&pid) {
-                // ("On joining a game": Show keeps it up; Minimise minimises every window anyway.)
-                if st.last_minimised.borrow().contains(&id) && self.on_join_of(preset_id).is_empty() {
+                // ("When a window joins a game" on Minimise minimises every window anyway.)
+                if st.last_minimised.borrow().contains(&id) && self.on_join_of(preset_id) != "minimise" {
                     st.to_minimise.borrow_mut().insert(pid, now);
                 }
                 let last = st.last_place.borrow().get(&id).copied();
@@ -115,6 +117,11 @@ impl App {
             }
             if roblox_processes::is_minimised(main) {
                 st.last_minimised.borrow_mut().insert(id);
+                // Where it opens again (a tile given while minimised, or where it stood); none when it opens maximised.
+                match roblox_processes::resting_place(main) {
+                    Some(rect) => st.last_place.borrow_mut().insert(id, rect),
+                    None => st.last_place.borrow_mut().remove(&id),
+                };
                 continue;
             }
             // (Still to be minimised again: that is what the account's window is.)

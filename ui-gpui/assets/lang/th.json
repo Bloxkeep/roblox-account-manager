@@ -4349,9 +4349,8 @@
   "ram.useBestTip": "เกิน 90% พร้อมพื้นที่ค่าเริ่มต้นของ Mem Reduct",
   "ram.fromMemReduct": "ไอเดียจาก Mem Reduct",
   "set.onJoin": "เมื่อหน้าต่างเข้าเกม",
-  "set.onJoinDesc": "รวมถึงตอน rejoin ด้วย เหมือนเดิม: หน้าต่างที่ rejoin กลับมาแบบหน้าต่างก่อนหน้าของบัญชี",
-  "set.onJoin.keep": "เหมือนเดิม",
-  "set.onJoin.show": "แสดง",
+  "set.onJoinDesc": "หน้าต่างที่ย่อไว้ยังคงตำแหน่งตามตัวเลือกด้านบน และเปิดขึ้นที่ตำแหน่งนั้น หน้าต่างที่ rejoin กลับมาแบบหน้าต่างก่อนหน้าของบัญชี",
+  "set.onJoin.keep": "เปิดไว้",
   "set.onJoin.minimise": "ย่อ",
   "pf.media.songAdd": "เพิ่มเพลง",
   "pf.media.songOf": "เพลงที่ {at}/{all}"

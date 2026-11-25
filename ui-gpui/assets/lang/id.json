@@ -4475,9 +4475,8 @@
   "ram.useBestTip": "Di atas 90%, dengan area bawaan Mem Reduct",
   "ram.fromMemReduct": "Ide dari Mem Reduct",
   "set.onJoin": "Saat jendela masuk game",
-  "set.onJoinDesc": "Termasuk saat rejoin. Seperti sebelumnya: jendela rejoin kembali seperti jendela terakhir akun itu.",
-  "set.onJoin.keep": "Seperti sebelumnya",
-  "set.onJoin.show": "Tampilkan",
+  "set.onJoinDesc": "Jendela yang diminimalkan tetap punya tempatnya sesuai pilihan di atas dan terbuka di sana. Jendela rejoin kembali seperti jendela terakhir akun itu.",
+  "set.onJoin.keep": "Biarkan terbuka",
   "set.onJoin.minimise": "Minimalkan",
   "pf.media.songAdd": "Tambah lagu",
   "pf.media.songOf": "Lagu {at} dari {all}"

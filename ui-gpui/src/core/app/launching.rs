@@ -1777,7 +1777,9 @@ impl App {
     }
 
     /// Tiles every Roblox window on one monitor: tracked accounts first (by name), then any other clients.
-    /// `auto`: tiling after a launch: minimised windows (a light-AFK preset's) stay minimised and get no tile.
+    /// `auto`: tiling after a launch: minimised windows stay minimised. A light-AFK preset's, or one the person put
+    /// away, gets no tile; one that "When a window joins a game" minimises gets its tile as the place it opens at
+    /// (`resting_clients`).
     /// `at_mouse`: the hotkey: on the screen the mouse is on, wherever Bloxkeep is (owner, 2026-11-02).
     pub async fn arrange_windows(self: &Rc<Self>, monitor: i32, auto: bool, at_mouse: bool) -> Res<Value> {
         let screens = win_kit::all_screens();
@@ -1815,9 +1817,10 @@ impl App {
         let layout = s.as_ref().map(|s| s.window_layout.clone()).unwrap_or_else(|| "fill".into());
         let custom = s.as_ref().map(|s| Size::new(s.window_width, s.window_height)).unwrap_or_default();
         let area = screen.working_area;
+        let resting = if auto { self.resting_clients() } else { Vec::new() };
         let done = {
             let (pids, layout) = (pids.clone(), layout.clone());
-            rt::blocking(move || roblox_processes::arrange_grid(&pids, area, &layout, auto, app_window, custom, at_mouse)).await
+            rt::blocking(move || roblox_processes::arrange_grid(&pids, area, &layout, auto, &resting, app_window, custom, at_mouse)).await
         };
         self.forget_going_back();
         // What it came to, as the person sees it: each window in its place, or what's wrong with it (window_report).
@@ -1840,6 +1843,16 @@ impl App {
         ));
         drop(turn);
         Ok(json!(done))
+    }
+
+    /// The clients whose windows "When a window joins a game" minimises (Settings' choice, or their preset's), other
+    /// than a light-AFK preset's and the main accounts': minimised or about to be, each still has its place among the
+    /// tiles. Only the accounts' own clients: a window opened outside Bloxkeep is never minimised by it, so one put
+    /// away there is the person's doing and gets no tile, as before.
+    pub fn resting_clients(&self) -> Vec<i32> {
+        let mut skip = self.afk_clients();
+        skip.extend(self.main_pids());
+        running(self).into_iter().map(|(_, r)| (r.0, r.1.preset_id)).filter(|(pid, preset)| !skip.contains(pid) && self.on_join_of(*preset) == "minimise").map(|x| x.0).collect()
     }
 
     pub fn afk_clients(&self) -> HashSet<i32> {
@@ -1885,12 +1898,14 @@ impl App {
             }
             return; // locked, switched off (in Settings or the preset), or another launch started (it tiles when it is done)
         }
-        // Two or more tiles, so one window isn't stretched over the whole screen as a grid of one.
+        // Two or more tiles, so one window isn't stretched over the whole screen as a grid of one. A window minimised
+        // as it joined (`resting_clients`) counts: it takes its tile minimised.
         let mut afk = self.afk_clients();
         afk.extend(self.main_pids());
+        let resting = self.resting_clients();
         let tiles = roblox_processes::visible_windows(&roblox_processes::get_player_pids())
             .iter()
-            .filter(|(pid, w)| !afk.contains(pid) && !w.is_empty() && !roblox_processes::is_minimised(roblox_processes::main_window_of(w)))
+            .filter(|(pid, w)| !afk.contains(pid) && !w.is_empty() && (resting.contains(pid) || !roblox_processes::is_minimised(roblox_processes::main_window_of(w))))
             .count();
         let states = window_report::states(
             &roblox_processes::get_player_pids().into_iter().filter(|p| !afk.contains(p)).map(roblox_processes::main_window).collect::<Vec<_>>(),

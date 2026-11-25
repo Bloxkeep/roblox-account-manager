@@ -1119,7 +1119,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         .child(setting(root.tr("ps.opt.arrange"), stacked, false, tri(root, cx, "ps-arrange", f.arrange, follow_set(tile_on), |f, v| f.arrange = v)))
         // (A light-AFK preset minimises its windows anyway.)
         .when(f.profile != "afk", |d| {
-            let set_word = root.tr(&format!("set.onJoin.{}", match s(&root.state["settings"], "onJoin") { "show" => "show", "minimise" => "minimise", _ => "keep" }));
+            let set_word = root.tr(&format!("set.onJoin.{}", if s(&root.state["settings"], "onJoin") == "minimise" { "minimise" } else { "keep" }));
             let follow = root.i18n.tv("ps.opt.followSet", &[("state", &set_word.to_lowercase())]);
             d.child(setting(
                 root.tr("set.onJoin"),
@@ -1128,7 +1128,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                 chips(
                     cx,
                     "ps-onjoin",
-                    vec![("".into(), follow, false), ("show".into(), root.tr("set.onJoin.show"), false), ("minimise".into(), root.tr("set.onJoin.minimise"), false)],
+                    vec![("".into(), follow, false), ("show".into(), root.tr("set.onJoin.keep"), false), ("minimise".into(), root.tr("set.onJoin.minimise"), false)],
                     &f.on_join,
                     |f, v| f.on_join = v.to_string(),
                 ),

@@ -962,10 +962,17 @@ fn add_note(text: &str) {
 /// (`lift`). Zero leaves the order of the PC's windows as it is.
 /// `raise`: the hotkey: the windows come over every other app even with Bloxkeep away (in the tray, minimized).
 /// `skip_minimized` (after a launch): the windows come over every other app too, but the keyboard stays where it is.
-pub fn arrange_grid(pids: &[i32], area: Rect, layout: &str, skip_minimized: bool, app: isize, custom: Size, raise: bool) -> i32 {
+/// `resting`: clients whose windows stay minimised (Settings' "When a window joins a game": Minimize it) and take a
+/// tile all the same, as the place they open at: where a window stands and whether it is open are two things, as
+/// Windows keeps them (a window's show state and its normal position). Left out of the tiles, as any minimised
+/// window is after a launch, they opened later at Roblox's own size over the others, never tiled.
+pub fn arrange_grid(pids: &[i32], area: Rect, layout: &str, skip_minimized: bool, resting: &[i32], app: isize, custom: Size, raise: bool) -> i32 {
     // A hidden window isn't tiled: it would be placed unseen, a gap among the others.
-    let windows: Vec<isize> = pids.iter().map(|&pid| main_window(pid)).filter(|&h| h != 0 && !is_hidden(h) && !(skip_minimized && is_iconic(h))).collect();
-    let done = arrange(&windows, area, layout, app, custom, raise);
+    let of: Vec<(i32, isize)> = pids.iter().map(|&pid| (pid, main_window(pid))).filter(|&(pid, h)| h != 0 && !is_hidden(h) && !(skip_minimized && is_iconic(h) && !resting.contains(&pid))).collect();
+    let rest: Vec<isize> = of.iter().filter(|(pid, h)| resting.contains(pid) && is_iconic(*h)).map(|x| x.1).collect();
+    let all: Vec<isize> = of.iter().map(|x| x.1).collect();
+    let done = arrange(&all, &rest, area, layout, app, custom, raise);
+    let windows: Vec<isize> = all.iter().copied().filter(|h| !rest.contains(h)).collect();
     // Left in the PC's order, the tiles behind Bloxkeep or another app stayed hidden: 4 accounts opened showed 2 tiles
     // ("2 in place; 45420 under Potassium; 45628 under Potassium", owner's error.log, 2026-11-24), and the hotkey was
     // needed. Lifted without being clicked, so whatever the person types in keeps the keyboard.
@@ -980,11 +987,14 @@ pub fn arrange_grid(pids: &[i32], area: Rect, layout: &str, skip_minimized: bool
 /// message a move sends: smaller tiles left windows overlapping past the screen's edge (2026-10-21). Sent without
 /// it (SWP_NOSENDCHANGING), Roblox takes the size (tried on the owner's PC, 853 × 764). A window that grows back
 /// anyway, or more windows than fit, are spread with `overlap_spots` so every title bar shows.
-fn arrange(windows: &[isize], area: Rect, layout: &str, app: isize, custom: Size, raise: bool) -> i32 {
+/// `all`: every window with a tile, in their order; `rest`: those of them that stay minimised (see `arrange_grid`).
+pub(crate) fn arrange(all: &[isize], rest: &[isize], area: Rect, layout: &str, app: isize, custom: Size, raise: bool) -> i32 {
     LAST_ARRANGE_NOTE.lock().unwrap_or_else(|e| e.into_inner()).clear();
-    if windows.is_empty() {
+    if all.is_empty() {
         return 0;
     }
+    let shown: Vec<isize> = all.iter().copied().filter(|h| !rest.contains(h)).collect();
+    let windows = &shown[..];
     let mut restored = false;
     for &h in windows {
         if is_iconic(h) || is_zoomed(h) {
@@ -998,7 +1008,10 @@ fn arrange(windows: &[isize], area: Rect, layout: &str, app: isize, custom: Size
         until_restored(windows);
     }
     onto_screen_first(windows, area);
-    place(windows, area, layout, custom);
+    place(all, rest, area, layout, custom);
+    if !rest.is_empty() {
+        add_note(&format!("{} kept minimised, each given its tile to open at; ", rest.len()));
+    }
     // Any that a late restore or Roblox itself put back (still maximised, or off the screen asked for): again, twice at most.
     for _ in 0..2 {
         sleep_ms(300);
@@ -1021,16 +1034,16 @@ fn arrange(windows: &[isize], area: Rect, layout: &str, app: isize, custom: Size
             show_async(h, SW_RESTORE);
         }
         until_restored(&missed);
-        place(windows, area, layout, custom);
+        place(all, rest, area, layout, custom);
     }
     // Lifted over every app, clicked or by the hotkey. Stacked under Bloxkeep's window instead (RaiseAsync), they stayed
     // under whatever covered Bloxkeep: Ctrl+Alt+A with Bloxkeep open behind Discord or Edge left all but the last window
     // under that app ("0 in place; 10904 under Discord", owner's error.log, 2026-11-08).
-    if app != 0 || raise {
+    if (app != 0 || raise) && !windows.is_empty() {
         lift(windows);
         add_note("lifted over other apps; ");
     }
-    windows.len() as i32
+    all.len() as i32
 }
 
 /// Windows on another screen are moved onto the one asked for first, their size kept, and given time to take its scale.
@@ -1066,25 +1079,40 @@ fn until_restored(windows: &[isize]) {
     sleep_ms(150); // the restore's own size settles
 }
 
-fn place(windows: &[isize], area: Rect, layout: &str, custom: Size) {
-    let (cols, width, height) = grid_cells(windows.len() as i32, area.size(), layout, custom);
+/// The tiles of `all`, each window in turn: one of `rest` (still minimised) gets its tile as the place it opens at
+/// and stays as it is; the others are moved there.
+fn place(all: &[isize], rest: &[isize], area: Rect, layout: &str, custom: Size) {
+    let (cols, width, height) = grid_cells(all.len() as i32, area.size(), layout, custom);
     let cell = Size::new(width, height);
-    let count = windows.len() as i32;
+    let count = all.len() as i32;
     let side_by_side = (count + cols - 1) / cols * height <= area.height;
-    let tiles: Vec<Rect>;
+    let every: Vec<Rect> = if side_by_side {
+        (0..count).map(|i| Rect::new(area.x + i % cols * width, area.y + i / cols * height, width, height)).collect()
+    } else {
+        overlap_spots(count, area, cell).iter().map(|&p| Rect::at(p, cell)).collect()
+    };
+    let resting = |h: isize| rest.contains(&h) && is_iconic(h);
+    for (i, &h) in all.iter().enumerate() {
+        if resting(h) {
+            restore_to(h, over_borders(every[i]));
+        }
+    }
+    let (windows, tiles): (Vec<isize>, Vec<Rect>) = all.iter().zip(&every).filter(|x| !resting(*x.0)).map(|(h, t)| (*h, *t)).unzip();
+    let windows = &windows[..];
+    if windows.is_empty() {
+        return;
+    }
     if side_by_side {
-        tiles = (0..count).map(|i| Rect::new(area.x + i % cols * width, area.y + i / cols * height, width, height)).collect();
         for (i, &h) in windows.iter().enumerate() {
             move_then_size(h, 0, tiles[i], SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS);
         }
     } else {
-        let spots = overlap_spots(count, area, cell);
-        tiles = spots.iter().map(|&p| Rect::at(p, cell)).collect();
+        let spots: Vec<Point> = tiles.iter().map(|t| Point::new(t.x, t.y)).collect();
         stack(windows, &spots, cell, SWP_NOSENDCHANGING);
     }
     if let Some(size) = kept_size(windows, cell) {
         add_note(&format!("laid over each other: windows kept {}×{}, bigger than the {}×{} tiles; ", size.width, size.height, cell.width, cell.height));
-        stack(windows, &overlap_spots(count, area, size), size, 0);
+        stack(windows, &overlap_spots(windows.len() as i32, area, size), size, 0);
     } else {
         add_note(&if side_by_side {
             format!("tiled {cols} across, {}×{}; ", cell.width, cell.height)
@@ -1148,11 +1176,24 @@ fn close_gaps(windows: &[isize], tiles: &[Rect]) {
         let (Some(all), Some(seen)) = (window_rect(h), seen_frame(h)) else {
             continue;
         };
+        *UNSEEN_BORDERS.lock().unwrap_or_else(|e| e.into_inner()) = Some([seen.left() - all.left(), seen.top() - all.top(), all.right() - seen.right(), all.bottom() - seen.bottom()]);
         let t = tiles[i];
         place_window(
             h,
             Rect::from_ltrb(t.left() - (seen.left() - all.left()), t.top() - (seen.top() - all.top()), t.right() + (all.right() - seen.right()), t.bottom() + (all.bottom() - seen.bottom())),
         );
+    }
+}
+
+/// A Roblox window's unseen borders (left, top, right, bottom) as last measured on one in its tile (`close_gaps`).
+static UNSEEN_BORDERS: Mutex<Option<[i32; 4]>> = Mutex::new(None);
+
+/// A tile grown by those borders, for a minimised window (Windows can't say its borders until it shows): opened, it
+/// fills its tile as the others do. The tile itself while none was measured yet.
+fn over_borders(t: Rect) -> Rect {
+    match *UNSEEN_BORDERS.lock().unwrap_or_else(|e| e.into_inner()) {
+        Some([l, top, r, b]) => Rect::from_ltrb(t.left() - l, t.top() - top, t.right() + r, t.bottom() + b),
+        None => t,
     }
 }
 
@@ -1256,7 +1297,8 @@ pub fn restore_to(h: isize, r: Rect) -> bool {
     const SW_SHOWMINNOACTIVE: u32 = 7;
     const WS_EX_TOOLWINDOW: u32 = 0x80;
     const GWL_EXSTYLE: i32 = -20;
-    if h == 0 || !is_iconic(h) {
+    // (Not one that doesn't answer: its placement is set by a message to it.)
+    if h == 0 || !is_iconic(h) || is_hung(h) {
         return false;
     }
     // rcNormalPosition is in work-area coordinates (but a tool window's): moved by the work area's offset from its screen.
@@ -1281,6 +1323,57 @@ pub fn restore_to(h: isize, r: Rect) -> bool {
         wp.rcNormalPosition = normal;
         SetWindowPlacement(hwnd(h), &wp) != 0
     }
+}
+
+/// A minimised window opens maximised the next time (Settings' Maximise for a window that stays minimised). It stays
+/// minimised. False when it would already.
+pub fn restore_maximised(h: isize) -> bool {
+    const WPF_RESTORETOMAXIMIZED: u32 = 2;
+    const SW_SHOWMINNOACTIVE: u32 = 7;
+    if h == 0 || !is_iconic(h) || is_hung(h) {
+        return false;
+    }
+    // SAFETY: the structure's length is set as Windows requires.
+    unsafe {
+        let mut wp: WINDOWPLACEMENT = std::mem::zeroed();
+        wp.length = std::mem::size_of::<WINDOWPLACEMENT>() as u32;
+        if GetWindowPlacement(hwnd(h), &mut wp) == 0 || wp.flags & WPF_RESTORETOMAXIMIZED != 0 {
+            return false;
+        }
+        wp.flags |= WPF_RESTORETOMAXIMIZED;
+        wp.showCmd = SW_SHOWMINNOACTIVE;
+        SetWindowPlacement(hwnd(h), &wp) != 0
+    }
+}
+
+/// Where a minimised window opens again, as an ordinary window (`restore_to`'s other way round); None when it isn't
+/// minimised, opens maximised, or has no title bar (put away from Roblox's full screen: its place is the whole
+/// screen, no place for a window).
+pub fn resting_place(h: isize) -> Option<Rect> {
+    const WPF_RESTORETOMAXIMIZED: u32 = 2;
+    const WS_EX_TOOLWINDOW: u32 = 0x80;
+    const GWL_EXSTYLE: i32 = -20;
+    if h == 0 || !is_iconic(h) || (style(h) & WS_CAPTION) != WS_CAPTION {
+        return None;
+    }
+    // SAFETY: the structure's length is set as Windows requires; plain calls.
+    let (wp, ex) = unsafe {
+        let mut wp: WINDOWPLACEMENT = std::mem::zeroed();
+        wp.length = std::mem::size_of::<WINDOWPLACEMENT>() as u32;
+        if GetWindowPlacement(hwnd(h), &mut wp) == 0 {
+            return None;
+        }
+        (wp, GetWindowLongW(hwnd(h), GWL_EXSTYLE) as u32)
+    };
+    let n = wp.rcNormalPosition;
+    if wp.flags & WPF_RESTORETOMAXIMIZED != 0 || n.right <= n.left || n.bottom <= n.top {
+        return None;
+    }
+    // (In work-area coordinates, but a tool window's: back by the work area's offset from its screen.)
+    let r = Rect::new(n.left, n.top, n.right - n.left, n.bottom - n.top);
+    let screen = screen_from_rect(r);
+    let (dx, dy) = if ex & WS_EX_TOOLWINDOW == 0 { (screen.working_area.x - screen.bounds.x, screen.working_area.y - screen.bounds.y) } else { (0, 0) };
+    Some(Rect::new(r.x + dx, r.y + dy, r.width, r.height))
 }
 
 /// The size a window's edge was dragged to, when it kept a bigger one (Roblox's least size); None when it took it or

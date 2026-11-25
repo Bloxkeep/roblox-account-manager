@@ -4343,9 +4343,8 @@
   "ram.useBestTip": "90% 超、Mem Reduct の既定の領域",
   "ram.fromMemReduct": "Mem Reduct のアイデア",
   "set.onJoin": "ウィンドウがゲームに入ったとき",
-  "set.onJoinDesc": "再参加も同じ。これまでどおり：再参加したウィンドウはそのアカウントの前のウィンドウと同じ状態に戻ります。",
-  "set.onJoin.keep": "これまでどおり",
-  "set.onJoin.show": "表示する",
+  "set.onJoinDesc": "最小化したウィンドウも上の設定どおりの位置を保ち、開くとそこに表示されます。再参加したウィンドウはそのアカウントの前のウィンドウと同じ状態に戻ります。",
+  "set.onJoin.keep": "開いたままにする",
   "set.onJoin.minimise": "最小化する",
   "pf.media.songAdd": "曲を追加",
   "pf.media.songOf": "{all}曲中{at}曲目"

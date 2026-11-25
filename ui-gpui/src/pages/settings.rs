@@ -1188,14 +1188,10 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             },
         ),
     ));
-    // What a window does once in its game, a join or a rejoin: some want every window in front of them, some all
-    // minimised to save RAM (the owner, 2026-11-25). As it was: a rejoin's window as the account's last one was.
-    let on_join = match s(st, "onJoin") {
-        "show" => "show",
-        "minimise" => "minimise",
-        _ => "keep",
-    }
-    .to_string();
+    // Whether a window stays open once in its game, a join or a rejoin (minimised, Roblox draws less). The row
+    // above says where it stands; the two hold together, a minimised window opening into its tile or maximised. (A
+    // "show" kept from when this row had that choice is left open, as it meant.)
+    let on_join = if s(st, "onJoin") == "minimise" { "minimise" } else { "keep" }.to_string();
     windows.push(row_below(
         root.tr("set.onJoin"),
         Some(root.tr("set.onJoinDesc")),
@@ -1203,7 +1199,7 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             root,
             cx,
             "s-onjoin",
-            ["keep", "show", "minimise"].iter().map(|k| (k.to_string(), root.tr(&format!("set.onJoin.{k}")), false)).collect(),
+            ["keep", "minimise"].iter().map(|k| (k.to_string(), root.tr(&format!("set.onJoin.{k}")), false)).collect(),
             &on_join,
             |r, v, cx| set(r, json!({ "onJoin": if v == "keep" { "" } else { v.as_str() } }), cx),
         ),

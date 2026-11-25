@@ -4350,9 +4350,8 @@
   "ram.useBestTip": "%90 üstü, Mem Reduct'ın varsayılan alanlarıyla",
   "ram.fromMemReduct": "Fikir Mem Reduct'tan",
   "set.onJoin": "Bir pencere oyuna girince",
-  "set.onJoinDesc": "Yeniden katılınca da. Önceki gibi: yeniden katılan pencere, hesabın son penceresi nasılsa öyle döner.",
-  "set.onJoin.keep": "Önceki gibi",
-  "set.onJoin.show": "Göster",
+  "set.onJoinDesc": "Küçültülmüş pencere, yukarıdaki seçime göre yerini korur ve orada açılır. Yeniden katılan pencere, hesabın son penceresi nasılsa öyle döner.",
+  "set.onJoin.keep": "Açık bırak",
   "set.onJoin.minimise": "Küçült",
   "pf.media.songAdd": "Şarkı ekle",
   "pf.media.songOf": "Şarkı {at}/{all}"

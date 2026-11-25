@@ -4350,9 +4350,8 @@
   "ram.useBestTip": "90% 초과, Mem Reduct 기본 영역",
   "ram.fromMemReduct": "Mem Reduct에서 온 아이디어",
   "set.onJoin": "창이 게임에 들어가면",
-  "set.onJoinDesc": "재접속도 포함. 이전처럼: 재접속한 창은 그 계정의 이전 창 상태로 돌아옵니다.",
-  "set.onJoin.keep": "이전처럼",
-  "set.onJoin.show": "표시",
+  "set.onJoinDesc": "최소화된 창도 위 설정대로 자리를 유지하며, 열면 그 자리에 나타납니다. 재접속한 창은 그 계정의 이전 창 상태로 돌아옵니다.",
+  "set.onJoin.keep": "열어 두기",
   "set.onJoin.minimise": "최소화",
   "pf.media.songAdd": "노래 추가",
   "pf.media.songOf": "{all}곡 중 {at}번째"

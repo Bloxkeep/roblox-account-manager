@@ -4475,9 +4475,8 @@
   "ram.useBestTip": "Über 90 %, mit den Standardbereichen von Mem Reduct",
   "ram.fromMemReduct": "Idee von Mem Reduct",
   "set.onJoin": "Wenn ein Fenster einem Spiel beitritt",
-  "set.onJoinDesc": "Auch nach einem Rejoin. Wie vorher: ein neu beigetretenes Fenster kommt so zurück, wie das letzte des Kontos war.",
-  "set.onJoin.keep": "Wie vorher",
-  "set.onJoin.show": "Anzeigen",
+  "set.onJoinDesc": "Ein minimiertes Fenster behält seinen Platz aus der Wahl darüber und öffnet sich dort. Nach einem Rejoin kommt das Fenster so zurück, wie das letzte des Kontos war.",
+  "set.onJoin.keep": "Offen lassen",
   "set.onJoin.minimise": "Minimieren",
   "pf.media.songAdd": "Songs hinzufügen",
   "pf.media.songOf": "Song {at} von {all}"

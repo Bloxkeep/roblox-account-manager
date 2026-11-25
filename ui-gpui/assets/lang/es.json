@@ -4474,9 +4474,8 @@
   "ram.useBestTip": "Más del 90 %, con las áreas por defecto de Mem Reduct",
   "ram.fromMemReduct": "Idea de Mem Reduct",
   "set.onJoin": "Cuando una ventana entra a un juego",
-  "set.onJoinDesc": "También al volver a entrar. Como antes: la ventana vuelve como estaba la última de la cuenta.",
-  "set.onJoin.keep": "Como antes",
-  "set.onJoin.show": "Mostrarla",
+  "set.onJoinDesc": "Una ventana minimizada conserva su sitio según la opción de arriba y se abre ahí. Al volver a entrar, la ventana vuelve como estaba la última de la cuenta.",
+  "set.onJoin.keep": "Dejarla abierta",
   "set.onJoin.minimise": "Minimizarla",
   "pf.media.songAdd": "Añadir canciones",
   "pf.media.songOf": "Canción {at} de {all}"

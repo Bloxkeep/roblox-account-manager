@@ -55,8 +55,10 @@ pub const PRESET_SERVERS: [&str; 10] = ["any", "most", "fewest", "ping", "random
 /// `LaunchPreset::profile` for the light AFK setup (RobloxGameSettings.LightAfk).
 pub const AFK_PROFILE: &str = "afk";
 
-/// What a window does once in its game (Settings' and a preset's `on_join`): one of these, or "" (as it was / follows
-/// Settings). Anything else is "".
+/// What a window does once in its game (Settings' and a preset's `on_join`): "minimise", or "" (left open; a
+/// preset's: follows Settings). A preset's "show" leaves its windows open where Settings minimise. Anything else is "".
+/// Where the window stands (Settings' Maximise or tiles, a preset's Arrange) is another thing and holds either way: a
+/// minimised window has its tile or its maximised state as what it opens to.
 pub const ON_JOIN_RECENT: std::time::Duration = std::time::Duration::from_secs(60);
 
 pub fn on_join_value(v: &str) -> &'static str {
@@ -70,6 +72,8 @@ pub fn on_join_value(v: &str) -> &'static str {
 pub const RESTART_CHOICES: [i32; 4] = [2, 4, 6, 12];
 /// Roblox gives its window its size as it finishes starting up: a window not in a game yet is left this long first.
 pub const MAXIMISE_WITHOUT_LOG: Duration = Duration::from_secs(10);
+/// A window asked to minimise as it joined is taken as left up (in use, or it never took the ask) only after this.
+pub const PUT_AWAY_WAIT: Duration = Duration::from_secs(5);
 /// At least this long after the last client started, so a preset's windows (opened together) aren't all reopened at once.
 pub const RESTART_SPACING: Duration = Duration::from_secs(60);
 /// A client asked to close for a restart that is still there after this is left alone (tried again later).
@@ -84,6 +88,8 @@ pub const HEAVY_FOR: Duration = Duration::from_secs(3 * 60);
 pub struct PresetsState {
     /// Windows of a light-AFK preset already minimised once in their game (by process id).
     pub afk_minimised: RefCell<HashSet<i32>>,
+    /// When each of them was asked to minimise (it does so a moment later, on its own thread).
+    pub put_away: RefCell<HashMap<i32, Stamp>>,
     /// Windows maximised for Settings' "Maximise" (by process id), and at which point of starting up.
     pub maximised: RefCell<HashMap<i32, String>>,
     /// When each window Bloxkeep opened was first seen (by process id): one whose client writes no log is maximised a while after.
@@ -882,14 +888,17 @@ impl App {
     /// A light-AFK preset's window, or one whose "On joining a game" is Minimise, is minimised once in its game (Roblox
     /// draws less then). Only once, so a window brought back up stays up; one in use at that moment is left alone. A
     /// window that reached its game a while ago isn't (the choice made just now doesn't put away windows already
-    /// playing), but a light-AFK one is, as before.
+    /// playing), but a light-AFK one is, as before. A main account's window is the one played on: left as the person
+    /// has it, as the tiles leave it (a light-AFK preset's still goes).
     pub fn minimise_afk_windows(&self, now: Stamp, windows: &HashMap<i32, Vec<isize>>) {
         self.presets.afk_minimised.borrow_mut().retain(|pid| windows.contains_key(pid));
+        self.presets.put_away.borrow_mut().retain(|pid, _| windows.contains_key(pid));
         if self.held_vault().is_none() || input_turn::busy() {
             return;
         }
         let mut foreground: Option<i32> = None;
         let runs: Vec<(i32, Option<Guid>)> = self.controller.running.borrow().values().map(|(pid, launch)| (*pid, launch.preset_id)).collect();
+        let main = self.main_pids();
         for (pid, preset_id) in runs {
             let joined = self.controller.logs.borrow().state_of(pid).filter(|s| s.status == "ingame").map(|s| s.at);
             let list = windows.get(&pid);
@@ -904,6 +913,10 @@ impl App {
             let afk = self.preset_for(preset_id).is_some_and(|p| p.profile == AFK_PROFILE);
             let who = if afk { "Light AFK" } else { "On joining" };
             self.presets.afk_minimised.borrow_mut().insert(pid);
+            if !afk && main.contains(&pid) {
+                log::note(&format!("{who}: window {pid} left as it is, a main account's."));
+                continue;
+            }
             if !afk && joined.is_some_and(|at| now.secs_since(at) > ON_JOIN_RECENT.as_secs_f64()) {
                 continue;
             }
@@ -912,14 +925,16 @@ impl App {
                 continue;
             }
             log::note(&format!("{who}: window {pid} minimised, in its game."));
+            self.presets.put_away.borrow_mut().insert(pid, now);
             roblox_processes::minimise(roblox_processes::main_window_of(list.expect("checked above")));
         }
     }
 
     /// Settings' "Maximise" for windows Bloxkeep opened this run: once up a few seconds or in a game, and again on joining if
     /// Roblox resized it. Maximised, not fullscreen, so windows don't fight over Roblox's one fullscreen switch. Not light-AFK or
-    /// tiled presets' windows, nor one the person minimised; not while they're busy in another window (Windows brings a maximised
-    /// one to the front).
+    /// tiled presets' windows; not while they're busy in another window (Windows brings a maximised one to the front).
+    /// A minimised window stays minimised and opens maximised (it was passed over, so with "When a window joins a
+    /// game" on Minimise the choice of Maximise did nothing).
     pub fn maximise_new_windows(&self, now: Stamp, windows: &HashMap<i32, Vec<isize>>) {
         self.presets.maximised.borrow_mut().retain(|pid, _| windows.contains_key(pid));
         self.presets.window_first_seen.borrow_mut().retain(|pid, _| windows.contains_key(pid));
@@ -943,9 +958,6 @@ impl App {
                     continue;
                 }
             }
-            if self.on_join_of(preset_id) == "minimise" {
-                continue;
-            }
             if self.going_back(pid) {
                 continue; // a rejoin going back to its account's place (rejoin_place.rs)
             }
@@ -963,18 +975,33 @@ impl App {
             if step.is_empty() || done.is_some_and(|done| done == step || done == "ingame") {
                 continue;
             }
-            if *foreground.get_or_insert_with(roblox_processes::foreground_pid) != pid && anti_afk::person_active() {
-                continue; // the next tick: not over what the person is doing
-            }
             let main = roblox_processes::main_window_of(list);
-            // Put away while it was loading: it stays away (maximised, it also lost its RAM limit for resting windows).
+            // One that is minimised as it joins: not maximised in view first (it would come to the front only to be
+            // put away), and once in its game not before the step that minimises it has seen it and its minimise,
+            // asked a moment ago, has come about (maximised in between, it stayed up).
+            if self.on_join_of(preset_id) == "minimise" && !roblox_processes::is_minimised(main) {
+                let asked = self.presets.put_away.borrow().get(&pid).copied();
+                if step != "ingame" || !self.presets.afk_minimised.borrow().contains(&pid) || asked.is_some_and(|at| now.secs_since(at) < secs(PUT_AWAY_WAIT)) {
+                    continue;
+                }
+            }
+            // Put away: it stays away (maximised, it also lost its RAM limit for resting windows). A minimised one
+            // opens maximised when it is opened; nothing shows, so this doesn't wait for the person.
             if roblox_processes::is_minimised(main) || roblox_processes::is_hidden(main) {
+                let hidden = roblox_processes::is_hidden(main);
+                let set = !hidden && roblox_processes::restore_maximised(main);
                 log::note(&format!(
-                    "Maximise: window {pid} left as it is, {} while loading.",
-                    if roblox_processes::is_hidden(main) { "hidden" } else { "minimised" }
+                    "Maximise: window {pid} left {}{}.",
+                    if hidden { "hidden" } else { "minimised" },
+                    if set { "; it opens maximised" } else { "" }
                 ));
                 self.presets.maximised.borrow_mut().insert(pid, "ingame".into());
                 continue;
+            }
+            // A window about to be minimised as it joins is minimised first (the step before this one), then opens
+            // maximised; before its game it is maximised as any other.
+            if *foreground.get_or_insert_with(roblox_processes::foreground_pid) != pid && anti_afk::person_active() {
+                continue; // the next tick: not over what the person is doing
             }
             log::note(&format!("Maximise: window {pid} maximised ({}).", if step == "ingame" { "in its game" } else { "up 10 s" }));
             roblox_processes::maximise(main);

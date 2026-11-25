@@ -4749,9 +4749,8 @@
   "ram.useBestTip": "Powyżej 90%, z domyślnymi obszarami Mem Reduct",
   "ram.fromMemReduct": "Pomysł z Mem Reduct",
   "set.onJoin": "Gdy okno wchodzi do gry",
-  "set.onJoinDesc": "Także po ponownym dołączeniu. Jak wcześniej: okno wraca tak, jak było ostatnie okno konta.",
-  "set.onJoin.keep": "Jak wcześniej",
-  "set.onJoin.show": "Pokaż",
+  "set.onJoinDesc": "Zminimalizowane okno zachowuje swoje miejsce według wyboru powyżej i tam się otwiera. Po ponownym dołączeniu okno wraca tak, jak było ostatnie okno konta.",
+  "set.onJoin.keep": "Zostaw otwarte",
   "set.onJoin.minimise": "Zminimalizuj",
   "pf.media.songAdd": "Dodaj utwory",
   "pf.media.songOf": "Utwór {at} z {all}"

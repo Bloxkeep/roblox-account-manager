@@ -1655,9 +1655,8 @@
     "ram.useBestTip": "Above 90%, with Mem Reduct's default areas",
     "ram.fromMemReduct": "Idea from Mem Reduct",
     "set.onJoin": "When a window joins a game",
-    "set.onJoinDesc": "Rejoins too. With As before, a rejoined window comes back the way the account's last one was.",
-    "set.onJoin.keep": "As before",
-    "set.onJoin.show": "Show it",
+    "set.onJoinDesc": "A minimized window still takes its place from the choice above, ready when you open it. A rejoined window comes back as the account's last one was.",
+    "set.onJoin.keep": "Leave it open",
     "set.onJoin.minimise": "Minimize it",
     "pf.media.songAdd": "Add songs",
     "pf.media.songOf": "Song {at} of {all}"
@@ -3316,9 +3315,8 @@
     "ram.useBestTip": "Trên 90%, các vùng mặc định của Mem Reduct",
     "ram.fromMemReduct": "Ý tưởng từ Mem Reduct",
     "set.onJoin": "Khi vào game",
-    "set.onJoinDesc": "Áp dụng cả khi rejoin. Với Giữ như trước, cửa sổ rejoin sẽ giống cửa sổ trước đó của tài khoản.",
-    "set.onJoin.keep": "Giữ như trước",
-    "set.onJoin.show": "Hiện ra",
+    "set.onJoinDesc": "Cửa sổ thu nhỏ vẫn giữ chỗ theo lựa chọn ở trên, mở ra là đúng chỗ. Cửa sổ rejoin trở lại như cửa sổ trước của tài khoản.",
+    "set.onJoin.keep": "Để mở",
     "set.onJoin.minimise": "Thu nhỏ",
     "pf.media.songAdd": "Thêm bài hát",
     "pf.media.songOf": "Bài {at}/{all}"

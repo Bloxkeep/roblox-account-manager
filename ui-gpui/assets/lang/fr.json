@@ -4589,9 +4589,8 @@
   "ram.useBestTip": "Au-delà de 90 %, avec les zones par défaut de Mem Reduct",
   "ram.fromMemReduct": "Idée de Mem Reduct",
   "set.onJoin": "Quand une fenêtre rejoint un jeu",
-  "set.onJoinDesc": "Aussi après un rejoin. Comme avant : la fenêtre revient comme était la dernière du compte.",
-  "set.onJoin.keep": "Comme avant",
-  "set.onJoin.show": "L'afficher",
+  "set.onJoinDesc": "Une fenêtre réduite garde sa place selon le choix ci-dessus et s’y ouvre. Après un rejoin, la fenêtre revient comme était la dernière du compte.",
+  "set.onJoin.keep": "La laisser ouverte",
   "set.onJoin.minimise": "La réduire",
   "pf.media.songAdd": "Ajouter des titres",
   "pf.media.songOf": "Titre {at} sur {all}"

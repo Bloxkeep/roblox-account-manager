@@ -4349,9 +4349,8 @@
   "ram.useBestTip": "ເກີນ 90%, ພື້ນທີ່ເລີ່ມຕົ້ນຂອງ Mem Reduct",
   "ram.fromMemReduct": "ແນວຄິດຈາກ Mem Reduct",
   "set.onJoin": "ເມື່ອໜ້າຕ່າງເຂົ້າເກມ",
-  "set.onJoinDesc": "ລວມທັງຕອນ rejoin. ຄືເກົ່າ: ໜ້າຕ່າງທີ່ rejoin ກັບມາຄືໜ້າຕ່າງກ່ອນໜ້າຂອງບັນຊີ.",
-  "set.onJoin.keep": "ຄືເກົ່າ",
-  "set.onJoin.show": "ສະແດງ",
+  "set.onJoinDesc": "ໜ້າຕ່າງທີ່ຫຍໍ້ລົງຍັງຮັກສາບ່ອນຂອງມັນຕາມຕົວເລືອກຂ້າງເທິງ ແລະເປີດຂຶ້ນຢູ່ບ່ອນນັ້ນ. ໜ້າຕ່າງທີ່ rejoin ກັບມາຄືໜ້າຕ່າງກ່ອນໜ້າຂອງບັນຊີ.",
+  "set.onJoin.keep": "ເປີດໄວ້",
   "set.onJoin.minimise": "ຫຍໍ້ລົງ",
   "pf.media.songAdd": "ເພີ່ມເພງ",
   "pf.media.songOf": "ເພງ {at}/{all}"
