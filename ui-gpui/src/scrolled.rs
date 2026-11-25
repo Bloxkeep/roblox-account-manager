@@ -27,14 +27,15 @@ pub fn body(id: &'static str, body: impl IntoElement) -> Div {
     {
         h.set_offset(point(px(0.), px(-y)));
     }
-    with_bar(id, &h, div().id(id).size_full().overflow_y_scroll().scroll_fade(px(EDGE)).track_scroll(&h).child(body))
+    with_bar(id, &h, div().id(id).size_full().overflow_y_scroll().track_scroll(&h).child(body))
 }
 
-/// How far a scrolling body fades out at an edge it goes on past (`scroll_fade`): its top once scrolled down, under
-/// the bar floating over the page, and its foot while more lies below, over the status bar. Apple's soft scroll edge
-/// (Human Interface Guidelines, Scroll views). A body cut flush there read as a fault, a tab's ring halved under the
-/// Roblox tab's capsule and a row of game names sliced over the status bar; a colour laid over the foot only hid it
-/// on a plain panel, never on a theme's picture or glass.
+/// How far whatever scrolls up and down fades out at an edge it goes on past: its top once scrolled down (a page's,
+/// under the bar floating over it), its foot while more lies below (over the status bar). Apple's soft scroll edge
+/// (Human Interface Guidelines, Scroll views). The rule for every scrolling box in the app, a page's body or a short
+/// list in a card or a menu alike (`set_scroll_fade`, at the start): cut flush, a tab's ring was halved under the
+/// Roblox tab's capsule and a row of game names sliced over the status bar. A colour laid over the foot only hid the
+/// cut on a plain panel, never on a theme's picture or glass.
 pub const EDGE: f32 = 28.;
 
 /// A scrolling element that already has its own handle, put in a box with the bar beside it.
@@ -44,7 +45,7 @@ pub fn with_bar<H: gpui_kit::component::scroll::ScrollbarHandle + Clone>(id: &'s
         .min_h_0()
         .size_full()
         .relative()
-        // (The scroller fades at its own edges: `scroll_fade(px(EDGE))` on it.)
+        // (The scroller fades at its own edges, as every scrolling box does: EDGE.)
         .child(scroller)
         .child(crate::pages::auto::scroll_bar_named(SharedString::from(format!("{id}-bar")), h))
 }

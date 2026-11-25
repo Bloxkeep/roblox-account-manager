@@ -692,6 +692,8 @@ pub fn tnum() -> gpui_kit::FontFeatures {
 pub fn dress(cx: &mut gpui_kit::App) {
     use gpui_kit::component::{Theme, ThemeMode};
     use gpui_kit::px;
+    // (Every scrolling box fades at an edge it goes on past: scrolled::EDGE.)
+    gpui_kit::set_scroll_fade(Some(px(crate::scrolled::EDGE)));
     Theme::change(if light() { ThemeMode::Light } else { ThemeMode::Dark }, None, cx);
     Theme::update(cx, |t| {
         t.font_family = FONT.into();

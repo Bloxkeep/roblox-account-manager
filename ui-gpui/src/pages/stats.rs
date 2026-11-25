@@ -596,7 +596,7 @@ pub fn stats(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             if st.tab == Tab::Console {
                 d.child(console(root, inner, cx))
             } else {
-                d.child(crate::scrolled::with_bar("stats-body", &st.scroll, div().id("stats-body").size_full().overflow_y_scroll().scroll_fade(px(crate::scrolled::EDGE)).track_scroll(&st.scroll).child(div().px(px(SIDE)).pt(px(4.)).pb(px(32.)).child(body))))
+                d.child(crate::scrolled::with_bar("stats-body", &st.scroll, div().id("stats-body").size_full().overflow_y_scroll().track_scroll(&st.scroll).child(div().px(px(SIDE)).pt(px(4.)).pb(px(32.)).child(body))))
             }
         })
         .into_any_element()

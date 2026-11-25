@@ -2104,7 +2104,8 @@ pub fn grip() -> Svg {
 }
 
 /// A list that scrolls inside a dialog or a card, at most `max_h` tall, with its scrollbar always there so a list
-/// longer than its box can be seen to go on (no fade: the page has no gradients). `handle` keeps where it is.
+/// longer than its box can be seen to go on (its rows fade at an edge they go on past, as every scrolling box's:
+/// scrolled::EDGE). `handle` keeps where it is.
 pub fn scroll_list(id: impl Into<ElementId>, handle: &ScrollHandle, max_h: f32, content: impl IntoElement) -> Div {
     div()
         .relative()

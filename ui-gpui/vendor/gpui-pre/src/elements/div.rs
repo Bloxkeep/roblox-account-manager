@@ -60,6 +60,17 @@ thread_local! {
     static TOOLTIP_SEEN_AT: Cell<Option<std::time::Instant>> = const { Cell::new(None) };
 }
 
+thread_local! {
+    static SCROLL_FADE: Cell<Option<Pixels>> = const { Cell::new(None) };
+}
+
+/// Bloxkeep: the length every element that scrolls up and down fades its scroll edges over (`scroll_fade`), unless it
+/// sets its own (0: hard edges). None, as at the start: only the elements that ask fade. One rule for an app's every
+/// list, where each page naming its own length left some cut flush and others not.
+pub fn set_scroll_fade(length: Option<Pixels>) {
+    SCROLL_FADE.with(|f| f.set(length));
+}
+
 /// Bloxkeep: whether a tooltip was on screen within `within` (the next one shows at once, without its fade).
 pub fn tooltip_seen_within(within: Duration) -> bool {
     TOOLTIP_SEEN_AT.with(|t| t.get()).is_some_and(|at| at.elapsed() < within)
@@ -1614,6 +1625,7 @@ pub trait StatefulInteractiveElement: InteractiveElement {
     /// top once scrolled down, the bottom while more lies below), instead of being cut flush there: the scroll edge
     /// of Apple's guidelines (Scroll views, Scroll edge effects, the soft style) for content that runs under bars
     /// floating over it. The fade grows with the first pixels scrolled, so it never jumps in. See `MaskFade`.
+    /// Without it the app's own length is used (`set_scroll_fade`); 0 here keeps this element's edges hard.
     fn scroll_fade(mut self, length: Pixels) -> Self {
         self.interactivity().scroll_fade = Some(length);
         self
@@ -2514,9 +2526,13 @@ impl Interactivity {
     /// Bloxkeep: the soft edges of what scrolls in the overflow mask `mask` (`scroll_fade`): the top by how far it is
     /// scrolled down, the bottom by how much more lies below, each up to the length asked for. None: hard edges.
     fn scroll_edges(&self, mask: Option<&crate::ContentMask<Pixels>>) -> Option<crate::MaskFade<Pixels>> {
-        let (Some(mask), Some(length), Some(offset)) = (mask, self.scroll_fade, self.scroll_offset.as_ref()) else {
+        let length = self.scroll_fade.or_else(|| SCROLL_FADE.with(|f| f.get()));
+        let (Some(mask), Some(length), Some(offset)) = (mask, length, self.scroll_offset.as_ref()) else {
             return None;
         };
+        // (A low box keeps most of itself whole: a fade of the full length from both edges would leave a short
+        // list of two rows nothing to read.)
+        let length = length.min(mask.bounds.size.height * 0.2);
         let offset = offset.borrow().y;
         let top = length.min(-offset);
         let bottom = length.min(self.scroll_max.get().y + offset);
