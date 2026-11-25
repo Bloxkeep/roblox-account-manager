@@ -65,28 +65,63 @@ fn cols_of(shown: &[&Value], width: f32, sectioned: bool) -> Cols {
 /// The accounts as a list. With groups among them, a part a group (the owner, 2026-11-18: "chia ngăn"): its head
 /// (folds it; its name, how many; select all of it), then its own lines; the accounts in no group last. `shown` comes
 /// ordered by group (accounts::shown_accounts). Every part has the same columns.
-pub fn rows(root: &Root, shown: &[&Value], width: f32, cx: &mut Context<Root>) -> Div {
-    let sectioned = shown.iter().any(|a| !s(a, "group").is_empty());
-    let cols = cols_of(shown, width, sectioned);
-    if !sectioned {
-        return block(root, "acc-rows", shown, &cols, cx);
+/// `from`: the list `shown` was taken from (accounts::shown_accounts), what the columns and the groups' parts are
+/// kept against.
+pub fn rows(root: &Root, from: &std::rc::Rc<Vec<Value>>, shown: &[&Value], width: f32, cx: &mut Context<Root>) -> Div {
+    let laid = laid(from, shown, width);
+    let cols = &laid.cols;
+    if !cols.sectioned {
+        return block(root, "acc-rows", shown, cols, cx);
     }
     let mut col = div().w_full().flex().flex_col().gap(px(14.));
-    let mut from = 0;
-    while from < shown.len() {
-        let group = s(shown[from], "group");
-        let to = from + shown[from..].iter().take_while(|a| s(a, "group") == group).count();
-        col = col.child(part(root, group, &shown[from..to], &cols, cx));
-        from = to;
+    for (range, ids) in &laid.parts {
+        col = col.child(part(root, s(shown[range.start], "group"), &shown[range.clone()], ids, cols, cx));
     }
     col
 }
 
+/// The columns and the groups' parts of a list, worked out from every account in it.
+struct Laid {
+    cols: Cols,
+    /// Each group's part: its lines, and their accounts' ids (for its Select all).
+    parts: Vec<(std::ops::Range<usize>, std::rc::Rc<Vec<String>>)>,
+}
+
+thread_local! {
+    /// The last list's `Laid`, with the list it was worked out from (held, so it is that list and no other made
+    /// since), how many of it were shown and the width. Worked out on every frame, it went through every account
+    /// several times: on a scroll of 1,000 accounts, more than drawing the lines in view.
+    static LAID: std::cell::RefCell<Option<(std::rc::Rc<Vec<Value>>, usize, u32, std::rc::Rc<Laid>)>> = const { std::cell::RefCell::new(None) };
+}
+
+fn laid(from: &std::rc::Rc<Vec<Value>>, shown: &[&Value], width: f32) -> std::rc::Rc<Laid> {
+    let kept = LAID.with(|l| l.borrow().as_ref().filter(|(f, n, w, _)| std::rc::Rc::ptr_eq(f, from) && *n == shown.len() && *w == width.to_bits()).map(|(_, _, _, it)| it.clone()));
+    if let Some(it) = kept {
+        return it;
+    }
+    let sectioned = shown.iter().any(|a| !s(a, "group").is_empty());
+    let cols = cols_of(shown, width, sectioned);
+    let mut parts = Vec::new();
+    if sectioned {
+        let mut at = 0;
+        while at < shown.len() {
+            let group = s(shown[at], "group");
+            let to = at + shown[at..].iter().take_while(|a| s(a, "group") == group).count();
+            parts.push((at..to, std::rc::Rc::new(shown[at..to].iter().map(|a| id_of(a)).collect())));
+            at = to;
+        }
+    }
+    let it = std::rc::Rc::new(Laid { cols, parts });
+    LAID.with(|l| *l.borrow_mut() = Some((from.clone(), shown.len(), width.to_bits(), it.clone())));
+    it
+}
+
 /// One group's part of the list.
-fn part(root: &Root, group: &str, members: &[&Value], cols: &Cols, cx: &mut Context<Root>) -> Div {
+fn part(root: &Root, group: &str, members: &[&Value], ids: &std::rc::Rc<Vec<String>>, cols: &Cols, cx: &mut Context<Root>) -> Div {
     let shut = root.acc_fold.contains(group);
-    let ids: Vec<String> = members.iter().map(|a| id_of(a)).collect();
-    let all_on = ids.iter().all(|i| root.selected.contains(i));
+    let ids = ids.clone();
+    // (Fewer picked than the part has: not all of them, without looking each up.)
+    let all_on = root.selected.len() >= ids.len() && ids.iter().all(|i| root.selected.contains(i));
     let name = if group.is_empty() { root.tr("grp.none") } else { group.to_string() };
     let key = group.to_string();
     let words: SharedString = crate::pages::lock::plain(root.tr(if all_on { "acc.selectNone" } else { "acc.selectAll" })).into();
@@ -116,7 +151,7 @@ fn part(root: &Root, group: &str, members: &[&Value], cols: &Cols, cx: &mut Cont
         )
         .child(tool(SharedString::from(format!("grp-pick-{group}")), Some(if all_on { "x" } else { "check" }), false).child(words).on_click(cx.listener(move |r, _, _, cx| {
             if all_on {
-                for id in &ids {
+                for id in ids.iter() {
                     r.selected.remove(id);
                 }
             } else {
