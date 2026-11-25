@@ -506,46 +506,118 @@ fn more(root: &Root, user: i64, size: f32, grounded: bool, cx: &mut Context<Root
         .child(popup(PopAt::BelowRight(size + 4.), "pf-song-pop", open, menu))
 }
 
+thread_local! {
+    /// The song's bar being held (which one, and where along it the mouse is, 0 to 1): shown there at once, the song
+    /// sent there when the button lets go.
+    static HELD: std::cell::Cell<Option<(&'static str, f32)>> = const { std::cell::Cell::new(None) };
+}
+
+/// Where the bar `id` is held now, if it is.
+fn held(id: &'static str) -> Option<f32> {
+    HELD.with(|h| h.get()).filter(|h| h.0 == id).map(|h| h.1)
+}
+
+/// Over a song's bar: a press goes to that place and a drag carries it along (past the bar's ends too, the mouse
+/// followed over the whole window while held); the song goes there when the button lets go, so the music app is told
+/// once, not at every step.
+fn track(id: &'static str, go: impl Fn(&mut Root, f32, &mut Context<Root>) + 'static, cx: &mut Context<Root>) -> Div {
+    let this = cx.entity();
+    let go = std::rc::Rc::new(go);
+    let pad = canvas(|b, window, _| window.insert_hitbox(b, HitboxBehavior::Normal), move |b, hitbox, window, _| {
+        window.set_cursor_style(CursorStyle::PointingHand, &hitbox);
+        let part = move |x: Pixels| (f32::from(x - b.origin.x) / f32::from(b.size.width).max(1.)).clamp(0., 1.);
+        let down = this.clone();
+        window.on_mouse_event(move |e: &MouseDownEvent, phase, window, cx| {
+            if phase == DispatchPhase::Bubble && e.button == MouseButton::Left && hitbox.is_hovered(window) {
+                HELD.with(|h| h.set(Some((id, part(e.position.x)))));
+                down.update(cx, |_, cx| cx.notify());
+            }
+        });
+        if held(id).is_none() {
+            return;
+        }
+        let moved = this.clone();
+        window.on_mouse_event(move |e: &MouseMoveEvent, phase, _, cx| {
+            if phase != DispatchPhase::Bubble || held(id).is_none() {
+                return;
+            }
+            // (Let go outside the window, no up comes: the move without the button ends the hold.)
+            if e.pressed_button != Some(MouseButton::Left) {
+                HELD.with(|h| h.set(None));
+            } else {
+                HELD.with(|h| h.set(Some((id, part(e.position.x)))));
+            }
+            moved.update(cx, |_, cx| cx.notify());
+        });
+        let (up, go) = (this.clone(), go.clone());
+        window.on_mouse_event(move |e: &MouseUpEvent, phase, _, cx| {
+            if phase != DispatchPhase::Bubble || e.button != MouseButton::Left {
+                return;
+            }
+            let Some(to) = held(id) else { return };
+            HELD.with(|h| h.set(None));
+            up.update(cx, |r, cx| go(r, to, cx));
+        });
+    });
+    div().absolute().inset_0().child(pad.size_full())
+}
+
+/// What a bar shows: the place played, or where it is held while held; and whether it is held.
+fn shown(id: &'static str, at: u64, length: Option<u64>) -> (u64, f32, bool) {
+    match (held(id), length) {
+        (Some(p), Some(l)) if l > 0 => ((l as f32 * p) as u64, p, true),
+        _ => (at, length.map_or(0., |l| (at as f32 / l.max(1) as f32).min(1.)), false),
+    }
+}
+
+/// The bar's knob while it is held, at the end of the part played.
+fn knob(part: f32, top: f32) -> Div {
+    div().absolute().left(relative(part)).top(px(top)).ml(px(-6.)).size(px(12.)).rounded_full().bg(c(TEXT)).shadow_sm()
+}
+
 /// A song's bar under its two times, as the header's card has it: played so far and its whole length, the bar filled
-/// that far; `zones` lies over the bar and takes the click that goes to a place.
-fn bar_under(at: u64, length: Option<u64>, zones: Div) -> Div {
-    let part = length.map_or(0., |l| (at as f32 / l.max(1) as f32).min(1.));
+/// that far; the track (`zones`) lies over the bar and takes the press and drag that go to a place.
+fn bar_under(id: &'static str, at: u64, length: Option<u64>, zones: Div) -> Div {
+    let (at, part, holding) = shown(id, at, length);
     let stamp = |ms: Option<u64>| div().text_size(px(T_XS)).text_color(c(TEXT_2)).font_features(tnum()).child(ms.map_or("–:––".to_string(), time));
     div().w_full().flex().flex_col()
         .child(div().flex().justify_between().child(stamp(Some(at))).child(stamp(length)))
         .child(div().relative().mt(px(4.)).w_full().h(px(14.))
             .child(div().absolute().left_0().right_0().top(px(5.)).h(px(4.)).rounded_full().bg(c(LINE)))
             .child(div().absolute().left_0().top(px(5.)).h(px(4.)).w(relative(part)).rounded_full().bg(c(TEXT)))
+            .when(holding, |d| d.child(knob(part, 1.)))
             .child(zones))
 }
 
 /// The same in one line, as the row has it: the time, the bar, the length.
-fn bar_between(at: u64, length: Option<u64>, zones: Div) -> Div {
-    let part = length.map_or(0., |l| (at as f32 / l.max(1) as f32).min(1.));
+fn bar_between(id: &'static str, at: u64, length: Option<u64>, zones: Div) -> Div {
+    let (at, part, holding) = shown(id, at, length);
     let stamp = |ms: Option<u64>| div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(ms.map_or("–:––".to_string(), time));
     div().flex().items_center().gap(px(10.))
         .child(stamp(Some(at)))
         .child(div().relative().flex_1().h(px(18.))
             .child(div().absolute().left_0().right_0().top(px(7.)).h(px(4.)).rounded_full().bg(c(LINE)))
             .child(div().absolute().left_0().top(px(7.)).h(px(4.)).w(relative(part)).rounded_full().bg(c(FACE)))
+            .when(holding, |d| d.child(knob(part, 3.)))
             .child(zones))
         .child(stamp(length))
 }
 
-/// Over the bar of Spotify's song: a click goes to that place in it (Windows' media controls take it to Spotify),
-/// shown at once.
+/// Over the bar of Spotify's song: a press or a drag goes to that place in it (Windows' media controls take it to
+/// Spotify), shown at once.
 fn spotify_zones(cx: &mut Context<Root>) -> Div {
-    let mut zones = div().absolute().inset_0().flex();
-    for k in 0..40usize {
-        let to = (k as f32 + 0.5) / 40.;
-        zones = zones.child(div().id(("pf-sp-seek", k)).flex_1().h_full().cursor_pointer().on_mouse_down(MouseButton::Left, cx.listener(move |r, _, _, cx| {
-            let Some((_, length)) = r.music(cx).and_then(|m| m.at()) else { return };
-            let ms = (length as f32 * to) as u64;
-            r.change_music(cx, |m| m.sought(ms));
-            cx.background_executor().spawn(async move { crate::media::seek(ms) }).detach();
-        })));
-    }
-    zones
+    track("sp", |r, to, cx| {
+        let Some((_, length)) = r.music(cx).and_then(|m| m.at()) else { return };
+        let ms = (length as f32 * to) as u64;
+        r.change_music(cx, |m| m.sought(ms));
+        cx.background_executor().spawn(async move { crate::media::seek(ms) }).detach();
+    }, cx)
+}
+
+/// Over the bar of the chosen file's song: the same.
+fn file_zones(user: i64, file: &str, cx: &mut Context<Root>) -> Div {
+    let file = file.to_string();
+    track("file", move |r, to, cx| seek(r, user, &file, to, cx), cx)
 }
 
 fn time(ms: u64) -> String {
@@ -619,6 +691,24 @@ fn song_tones(pic: Option<&str>, ground: u32, cx: &mut Context<Root>) -> (Hsla, 
     }
 }
 
+/// The song the profile moves with, while one plays: whose sound it is (the chosen file plays in Bloxkeep, else the
+/// music app's), and its cover's colour (the music app's own colour, or Bloxkeep's gold, when it has none).
+pub(super) fn playing_now(root: &Root, user: i64, cx: &mut Context<Root>) -> Option<(crate::beat::Source, u32)> {
+    if let Some(p) = root.profile.song.as_ref().filter(|p| p.user == user && p.playing) {
+        let tone = cover(&p.file).and_then(|u| images::tone(&u, cx));
+        return Some((crate::beat::Source::Own, tone.unwrap_or(0xffc83d)));
+    }
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_BEAT").is_ok() {
+        let tone = root.music(cx).and_then(|m| m.cover.clone()).and_then(|u| images::tone(&u, cx));
+        return Some((crate::beat::Source::Own, tone.unwrap_or(0x1ed760)));
+    }
+    let m = root.music(cx).filter(|m| m.playing)?;
+    let (player, cover) = (m.player, m.cover.clone());
+    let tone = cover.and_then(|u| images::tone(&u, cx));
+    Some((crate::beat::Source::App(player), tone.unwrap_or(player.colour())))
+}
+
 /// The album's picture of Spotify's song, filling a square of `size`.
 fn spotify_cover(m: &crate::media::Playing, size: f32, cx: &mut Context<Root>) -> Option<AnyElement> {
     let (src, key) = images::pic_pair(m.cover.as_deref()?, size, size, cx)?;
@@ -652,7 +742,7 @@ pub(super) fn card(root: &Root, user: i64, w: f32, ground: u32, art: Option<Stri
             let pic = div().absolute().inset_0().children(spotify_cover(m, PIC, cx)).into_any_element();
             let (ground, edge) = song_tones(m.cover.as_deref(), ground, cx);
             // (Where the song is, as a file's song has it: Spotify tells Windows, and takes a new place from it.)
-            let bar = m.at().map(|(at, length)| bar_under(at, Some(length), spotify_zones(cx)));
+            let bar = m.at().map(|(at, length)| bar_under("sp", at, Some(length), spotify_zones(cx)));
             // (Another song: its picture, name and line come in anew, rising into place, kit::line_in.)
             let song = format!("pf-sp|{}|{}", m.title, m.artist);
             return shell.bg(ground).border_color(edge).gap(px(16.))
@@ -679,17 +769,11 @@ pub(super) fn card(root: &Root, user: i64, w: f32, ground: u32, art: Option<Stri
     let pic = pic_url.and_then(|u| images::pic_pair(&u, PIC, PIC, cx))
         .map(|(src, key)| div().absolute().inset_0().child(fade_in(img(src).size_full().rounded(px(R_L)).object_fit(ObjectFit::Cover), &key)).into_any_element())
         .unwrap_or_else(|| div().into_any_element());
-    // The bar: a click on it goes there.
-    let mut zones = div().absolute().inset_0().flex();
-    for k in 0..40usize {
-        let (f, to) = (file.clone(), (k as f32 + 0.5) / 40.);
-        zones = zones.child(div().id(("pf-song-seek", k)).flex_1().h_full().cursor_pointer()
-            .on_mouse_down(MouseButton::Left, cx.listener(move |r, _, _, cx| seek(r, user, &f, to, cx))));
-    }
+    let zones = file_zones(user, &file, cx);
     let (back, next) = skips(root, user, 36., cx);
     shell.bg(ground).border_color(edge)
         .child(head(pic, marquee("pf-song-title", title).into_any_element(), song_line(root, user), Some(playing), None))
-        .child(div().pt(px(18.)).child(bar_under(at, length, zones)))
+        .child(div().pt(px(18.)).child(bar_under("file", at, length, zones)))
         .child(div().pt(px(10.)).flex().items_center().gap(px(10.))
             .children(back)
             .child(IconButton::new("pf-song-play", if playing { "pause" } else { "play" }).size(40.).round()
@@ -712,7 +796,7 @@ pub(super) fn row(root: &Root, user: i64, inner: f32, art: Option<String>, cx: &
     let Some(file) = path(Kind::Song, user) else {
         if let (Some(m), Some([back, play, next])) = (&root.music(cx), root.music_keys(["pf-sp-back", "pf-sp-play", "pf-sp-next"], cx)) {
             let (ground, edge) = song_tones(m.cover.as_deref(), RAISED, cx);
-            let bar = m.at().map(|(at, length)| bar_between(at, Some(length), spotify_zones(cx)));
+            let bar = m.at().map(|(at, length)| bar_between("sp", at, Some(length), spotify_zones(cx)));
             let (under, beside) = if inner >= 760. { (None, bar) } else { (bar, None) };
             return shell.bg(ground).border_color(edge)
                 .child(div().relative().size(px(PIC)).flex_none().rounded(px(R_L)).overflow_hidden().bg(c(RAISED_2)).flex().items_center().justify_center()
@@ -746,13 +830,8 @@ pub(super) fn row(root: &Root, user: i64, inner: f32, art: Option<String>, cx: &
     let (ground, edge) = song_tones(pic_url.as_deref(), RAISED, cx);
     let pic = pic_url.and_then(|u| images::pic_pair(&u, PIC, PIC, cx));
     let wide = inner >= 760.;
-    let mut zones = div().absolute().inset_0().flex();
-    for k in 0..40usize {
-        let (f, to) = (file.clone(), (k as f32 + 0.5) / 40.);
-        zones = zones.child(div().id(("pf-song-seek", k)).flex_1().h_full().cursor_pointer()
-            .on_mouse_down(MouseButton::Left, cx.listener(move |r, _, _, cx| seek(r, user, &f, to, cx))));
-    }
-    let progress = bar_between(at, length, zones);
+    let zones = file_zones(user, &file, cx);
+    let progress = bar_between("file", at, length, zones);
     let (back, next) = skips(root, user, 40., cx);
     let (under, beside) = if wide { (None, Some(progress)) } else { (Some(progress), None) };
     shell.bg(ground).border_color(edge)

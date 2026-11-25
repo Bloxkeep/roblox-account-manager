@@ -62,15 +62,17 @@ flate2 = { version = "1", optional = true }
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Time", "Win32_Graphics_Gdi", "Win32_Graphics_Dwm", "Win32_Graphics_GdiPlus", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Diagnostics_Debug", "Win32_System_Registry", "Win32_System_LibraryLoader", "Win32_System_RemoteDesktop", "Win32_System_RestartManager", "Win32_Security", "Win32_Security_Cryptography", "Win32_Security_WinTrust", "Win32_Storage_FileSystem", "Win32_Storage_Packaging_Appx", "Win32_UI_Input", "Win32_UI_Shell", "Win32_UI_Shell_Common", "Win32_UI_HiDpi", "Win32_UI_Controls", "Win32_UI_Controls_Dialogs", "Win32_UI_Accessibility", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Ole", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_IO", "Win32_System_Environment", "Win32_System_Performance", "Win32_NetworkManagement_IpHelper", "Win32_NetworkManagement_Ndis", "Win32_Networking_WinSock", "Win32_System_ProcessStatus", "Win32_System_Kernel", "Win32_System_Console", "Win32_System_Power", "Win32_System_WindowsProgramming", "Win32_Globalization"] }
 webview2-com = { version = "0.38", optional = true }
 windows = { version = "0.61", optional = true, features = ["Foundation", "Foundation_Collections", "Globalization", "Graphics_Imaging", "Media_Ocr", "Security_Cryptography", "Storage_Streams", "Win32_Foundation", "Win32_System_WinRT", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_UI_Shell", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging", "Win32_Media_MediaFoundation", "Win32_Media_Audio", "Media", "Media_Control", "Graphics", "Graphics_Capture", "Graphics_DirectX", "Graphics_DirectX_Direct3D11", "Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D11", "Win32_Graphics_Dxgi", "Win32_Graphics_Dxgi_Common", "Win32_System_WinRT_Direct3D11", "Win32_System_WinRT_Graphics_Capture"] }
+# (Its own name for the COM objects Bloxkeep makes, windows::core::implement: beat.rs.)
+windows-core = { version = "0.61", optional = true }
 gpui-pre = { version = "=0.3.11", optional = true, features = ["test-support"] }
 # (Always: video.rs's frames are drawn on its Direct3D device, gpui_windows::d3d11_device.)
 gpui-pre-windows = { version = "=0.3.11" }
 
 [features]
 # The Rust core (src/core/), being joined in: `cargo check --features core`.
-core = ["dep:backtrace", "dep:uuid", "dep:indexmap", "dep:rand", "dep:num-bigint", "dep:sha1_smol", "dep:sha2", "dep:aes-gcm", "dep:pbkdf2", "dep:argon2", "dep:crypto_secretbox", "dep:zeroize", "dep:getrandom", "dep:tungstenite", "dep:velopack", "dep:tiny-skia", "dep:fontdue", "dep:ttf-parser", "dep:zip", "dep:unicode-normalization", "dep:unicode-segmentation", "dep:aho-corasick", "dep:flate2", "dep:webview2-com", "dep:windows", "serde_json/preserve_order", "image/jpeg", "image/gif", "image/bmp", "image/webp"]
+core = ["dep:backtrace", "dep:uuid", "dep:indexmap", "dep:rand", "dep:num-bigint", "dep:sha1_smol", "dep:sha2", "dep:aes-gcm", "dep:pbkdf2", "dep:argon2", "dep:crypto_secretbox", "dep:zeroize", "dep:getrandom", "dep:tungstenite", "dep:velopack", "dep:tiny-skia", "dep:fontdue", "dep:ttf-parser", "dep:zip", "dep:unicode-normalization", "dep:unicode-segmentation", "dep:aho-corasick", "dep:flate2", "dep:webview2-com", "dep:windows", "dep:windows-core", "serde_json/preserve_order", "image/jpeg", "image/gif", "image/bmp", "image/webp"]
 # GPUI draws the hidden window into a picture (its test support): --shot, for checking screens without showing a window.
-shot = ["dep:gpui-pre", "gpui-pre-windows/test-support", "dep:windows", "dep:backtrace"]
+shot = ["dep:gpui-pre", "gpui-pre-windows/test-support", "dep:windows", "dep:windows-core", "dep:backtrace"]
 
 [profile.release]
 opt-level = 3

@@ -17,7 +17,7 @@ use gpui_kit::{prelude::*, *};
 use serde_json::json;
 
 /// The themes: their name, and the ring a pick of the theme brings with it.
-pub const THEMES: [(&str, &str); 9] = [
+pub const THEMES: [(&str, &str); 14] = [
     ("none", "none"),
     ("xmas", "lights"),
     ("halloween", "bats"),
@@ -27,8 +27,40 @@ pub const THEMES: [(&str, &str); 9] = [
     ("sakura", "petals"),
     ("autumn", "leaves"),
     ("summer", "sun"),
+    ("aurora", "aurora"),
+    ("neon", "neon"),
+    ("storm", "electric"),
+    ("fireflies", "fireflies"),
+    ("embers", "fire"),
 ];
-pub const RINGS: [&str; 12] = ["none", "classic", "lights", "frost", "bats", "pumpkin", "mai", "hearts", "orbit", "petals", "leaves", "sun"];
+pub const RINGS: [&str; 18] = [
+    "none", "classic", "lights", "frost", "bats", "pumpkin", "mai", "hearts", "orbit", "petals", "leaves", "sun", "aurora", "neon", "electric", "fireflies", "fire", "glitch",
+];
+
+/// How strongly the profile moves with its song: off, or light to strong (kept per account; medium until set).
+pub const PULSES: [&str; 4] = ["off", "light", "medium", "strong"];
+
+pub fn pulse(user: i64) -> &'static str {
+    #[cfg(feature = "shot")]
+    if let Ok(v) = std::env::var("BLOXKEEP_SHOT_PULSE") {
+        return known(&PULSES, Some(&v)).unwrap_or("medium");
+    }
+    known(&PULSES, crate::prefs::get(&format!("profilePulse:{user}")).as_ref().and_then(|v| v.as_str())).unwrap_or("medium")
+}
+
+pub fn keep_pulse(user: i64, v: &str) {
+    crate::prefs::set(&format!("profilePulse:{user}"), json!(v));
+}
+
+/// The pulse's strength, 0 when off.
+pub fn power(pulse: &str) -> f32 {
+    match pulse {
+        "light" => 0.45,
+        "medium" => 0.75,
+        "strong" => 1.,
+        _ => 0.,
+    }
+}
 
 /// What the account picked: the theme, the ring, and whether the season picks for it on its days.
 #[derive(Clone, Copy, PartialEq)]
@@ -360,6 +392,23 @@ impl Pen<'_> {
             self.w.paint_path(path, col(hex, a));
         }
     }
+    /// Many four-cornered shapes as one (a ring of bars: one path, one draw).
+    pub(crate) fn quads(&mut self, quads: &[[(f32, f32); 4]], hex: u32, a: f32) {
+        if quads.is_empty() || a <= 0.01 {
+            return;
+        }
+        let mut p = PathBuilder::fill();
+        for q in quads {
+            p.move_to(self.at(q[0].0, q[0].1));
+            for &(x, y) in &q[1..] {
+                p.line_to(self.at(x, y));
+            }
+            p.close();
+        }
+        if let Ok(path) = p.build() {
+            self.w.paint_path(path, col(hex, a));
+        }
+    }
     /// A picture, centred on x, y, `s` across, turned by `rot` (the pictures that turn), seen at `a`, squashed to
     /// `sx`, `sy` of itself (a wing's beat, a leaf's turn).
     pub(crate) fn spr(&mut self, name: &'static str, x: f32, y: f32, s: f32, rot: f32, a: f32, sx: f32, sy: f32) {
@@ -380,6 +429,54 @@ impl Pen<'_> {
             let _ = w.paint_image(b, b, Corners::default(), data, frame, false);
         });
     }
+    /// A box shaded from one colour to another (`angle` as CSS has it: 180 runs top to bottom).
+    pub(crate) fn grad(&mut self, x: f32, y: f32, w: f32, h: f32, angle: f32, from: (u32, f32), to: (u32, f32)) {
+        if from.1 <= 0.01 && to.1 <= 0.01 {
+            return;
+        }
+        let b = self.bx(x, y, w, h);
+        self.w.paint_quad(fill(b, linear_gradient(angle, linear_color_stop(col(from.0, from.1), 0.), linear_color_stop(col(to.0, to.1), 1.))));
+    }
+    /// A wavy ground across the box (a drift, a hill, the sea), from its top line down to `bottom`.
+    pub(crate) fn hills(&mut self, w: f32, y: f32, amp: f32, waves: f32, phase: f32, bottom: f32, hex: u32, a: f32) {
+        let mut pts: Vec<(f32, f32)> = (0..=48).map(|i| {
+            let x = i as f32 / 48. * w;
+            let u = x / w.max(1.) * TAU * waves + phase;
+            (x, y + u.sin() * amp + (u * 2.3 + phase * 0.7).sin() * amp * 0.35)
+        }).collect();
+        pts.push((w, bottom));
+        pts.push((0., bottom));
+        self.shape(&pts, hex, a);
+    }
+    /// A soft beam from a point, `len` long at `angle`, `spread` wide (a radian or so at most).
+    pub(crate) fn ray(&mut self, x: f32, y: f32, angle: f32, len: f32, spread: f32, hex: u32, a: f32) {
+        let (a0, a1) = (angle - spread / 2., angle + spread / 2.);
+        self.shape(&[(x, y), (x + a0.cos() * len, y + a0.sin() * len), (x + a1.cos() * len, y + a1.sin() * len)], hex, a);
+    }
+    /// A small four-pointed twinkle.
+    pub(crate) fn twinkle(&mut self, x: f32, y: f32, r: f32, hex: u32, a: f32) {
+        let q = r * 0.22;
+        self.shape(&[(x, y - r), (x + q, y - q), (x + r, y), (x + q, y + q), (x, y + r), (x - q, y + q), (x - r, y), (x - q, y - q)], hex, a);
+    }
+}
+
+/// A colour mixed toward another, `u` of the way.
+fn mix(a: u32, b: u32, u: f32) -> u32 {
+    let u = u.clamp(0., 1.);
+    let ch = |s: u32| {
+        let (x, y) = (((a >> s) & 0xff) as f32, ((b >> s) & 0xff) as f32);
+        ((x + (y - x) * u).round() as u32) << s
+    };
+    ch(16) | ch(8) | ch(0)
+}
+
+/// A number from 0 to 1 that stays the same for the same seed (the lightning's path, a glitch's slices).
+fn hash(n: u32) -> f32 {
+    let mut x = n.wrapping_mul(0x9E37_79B1) ^ 0x85EB_CA6B;
+    x ^= x >> 15;
+    x = x.wrapping_mul(0x2C1B_3C6D);
+    x ^= x >> 12;
+    (x & 0xffff) as f32 / 65_535.
 }
 
 // ───────────────────────── The themes ─────────────────────────
@@ -487,6 +584,21 @@ fn init(theme: &str, w: f32, h: f32, k: f32, t: f32) -> Sim {
             s.a = many((26. * w / 1220.).round() as usize + 4, |_| Pt { x: rnd(0., w), y: rnd(0., h), r: rnd(3., 8.) * k, v: rnd(16., 34.) * k, ph: rnd(0., 6.), ..Default::default() });
             s.b = many(3, |i| Pt { x: rnd(0., w), y: h * (0.55 + i as f32 * 0.13), v: rnd(30., 55.) * k, s: rnd(30., 42.) * k, ..Default::default() });
         }
+        "aurora" | "neon" => {
+            s.a = many((90. * area).round() as usize + 8, |_| Pt { x: rnd(0., w), y: rnd(0., h * 0.55), r: rnd(0.5, 1.5) * k.max(0.6), ph: rnd(0., 6.), s: rnd(0.8, 2.5), ..Default::default() });
+        }
+        "storm" => {
+            s.a = many(((150. * area).round() as usize).max(30), |_| Pt { x: rnd(-0.2 * w, w), y: rnd(-h, h), v: rnd(520., 760.) * k, l: rnd(10., 22.) * k, s: rnd(0.18, 0.4), ..Default::default() });
+            s.b = many(6, |i| Pt { x: w * (i as f32 / 5.), y: rnd(-0.05, 0.12) * h, r: rnd(110., 190.) * k, v: rnd(6., 14.) * k, ..Default::default() });
+            s.next = t + rnd(1.5, 3.);
+        }
+        "fireflies" => {
+            s.a = many(((34. * area).round() as usize).max(10), |_| Pt { x: rnd(0., w), y: rnd(0.15, 0.9) * h, vx: rnd(-14., 14.) * k, vy: rnd(-8., 8.) * k, ph: rnd(0., TAU), s: rnd(0.6, 1.6), r: rnd(1.6, 3.) * k.max(0.6), ..Default::default() });
+            s.b = many((w / (7. * k.max(0.4))).round() as usize, |i| Pt { x: i as f32 * 7. * k.max(0.4) + rnd(-3., 3.), l: rnd(12., 34.) * k, ph: rnd(0., TAU), ..Default::default() });
+        }
+        "embers" => {
+            s.a = many(((110. * area).round() as usize).max(24), |_| Pt { x: rnd(0., w), y: rnd(0., h), v: rnd(24., 70.) * k, r: rnd(1.2, 3.2) * k.max(0.6), ph: rnd(0., TAU), s: rnd(0.6, 1.6), n: rnd(0., 2.99) as u8, ..Default::default() });
+        }
         _ => {}
     }
     s
@@ -522,7 +634,126 @@ fn lights(p: &mut Pen, t: f32, w: f32, k: f32) {
     }
 }
 
+/// The top of `Pen::hills`' ground at `x`.
+fn hill_y(x: f32, w: f32, y: f32, amp: f32, waves: f32, phase: f32) -> f32 {
+    let u = x / w.max(1.) * TAU * waves + phase;
+    y + u.sin() * amp + (u * 2.3 + phase * 0.7).sin() * amp * 0.35
+}
+
+/// A colour along a run of colours, `u` from 0 to 1 and round again.
+fn cycle(u: f32, run: &[u32]) -> u32 {
+    let n = run.len() as f32;
+    let at = u.rem_euclid(1.) * n;
+    let i = at.floor() as usize % run.len();
+    mix(run[i], run[(i + 1) % run.len()], at.fract())
+}
+
+/// What lies under a theme's moving things: its sky, its light and its ground (shades, glows and shapes only). The
+/// left foot of the banner is under the profile's picture, so what stands on the ground stands right of it.
+fn back(theme: &str, p: &mut Pen, t: f32, w: f32, h: f32, k: f32) {
+    match theme {
+        "xmas" => {
+            p.grad(0., 0., w, h * 0.75, 180., (0x0b1d45, 0.5), (0x0b1d45, 0.));
+            // Warm lights out of focus, drifting.
+            for i in 0..7 {
+                let f = i as f32;
+                let x = w * (0.08 + 0.14 * f) + (t * 0.13 + f * 1.7).sin() * 30. * k;
+                let y = h * (0.4 + 0.22 * (t * 0.09 + f * 2.3).sin());
+                p.glow(x, y, (44. + 16. * (f * 1.3).sin()) * k, BULBS[i % 5], 0.14 + 0.06 * (t * 0.8 + f).sin());
+            }
+            p.hills(w, h - 24. * k, 6. * k, 1.6, 0.4, h, 0xc9dcf2, 0.6);
+            p.hills(w, h - 13. * k, 5. * k, 2.3, 2.1, h, 0xffffff, 0.94);
+        }
+        "halloween" => {
+            p.grad(0., h * 0.25, w, h * 0.75, 180., (0x3a1460, 0.), (0x3a1460, 0.6));
+            p.glow(w * 0.6, h + 20. * k, w * 0.35, 0xff7a1f, 0.22);
+            // A graveyard on its hill: a bare tree and stones.
+            let (gy, ga, gw, gp) = (h - 26. * k, 8. * k, 0.8, 1.1);
+            p.hills(w, gy, ga, gw, gp, h, 0x140a1f, 0.96);
+            let tx = w * 0.36;
+            let ty = hill_y(tx, w, gy, ga, gw, gp) + 2. * k;
+            let ink = 0x140a1f;
+            p.line(&[(tx, ty), (tx + 4. * k, ty - 40. * k), (tx - 2. * k, ty - 72. * k)], 6. * k, ink, 0.96);
+            p.line(&[(tx + 3. * k, ty - 44. * k), (tx + 26. * k, ty - 62. * k), (tx + 38. * k, ty - 60. * k)], 3. * k, ink, 0.96);
+            p.line(&[(tx, ty - 58. * k), (tx - 22. * k, ty - 80. * k), (tx - 30. * k, ty - 78. * k)], 2.5 * k, ink, 0.96);
+            p.line(&[(tx - 1. * k, ty - 70. * k), (tx + 10. * k, ty - 90. * k)], 2. * k, ink, 0.96);
+            for (u, s) in [(0.45f32, 1.), (0.51, 0.75), (0.58, 1.1), (0.66, 0.85)] {
+                let x = u * w;
+                let y = hill_y(x, w, gy, ga, gw, gp) + 4. * k;
+                p.rect(x - 9. * k * s, y - 22. * k * s, 18. * k * s, 22. * k * s, 0x1f1530, 1.);
+                p.dot(x, y - 22. * k * s, 9. * k * s, 0x1f1530, 1.);
+            }
+        }
+        "tet" => {
+            p.grad(0., 0., w, h * 0.85, 180., (0x8a0f14, 0.5), (0x8a0f14, 0.));
+            p.glow(w * 0.72, h + 10. * k, w * 0.32, 0xffb52e, 0.22);
+        }
+        "valentine" => {
+            p.grad(0., h * 0.15, w, h * 0.85, 180., (0xff4d8d, 0.), (0xff4d8d, 0.32));
+            for i in 0..8 {
+                let f = i as f32;
+                let y = h + 40. * k - ((t * 10. * k + f * 97.) % (h + 80. * k));
+                p.glow(w * (0.08 + 0.12 * f) + (t * 0.3 + f).sin() * 20. * k, y, (34. + 12. * (f * 1.9).sin()) * k, if i % 2 == 0 { 0xff7aa8 } else { 0xffb3c8 }, 0.18);
+            }
+        }
+        "space" => {
+            p.grad(0., 0., w, h, 180., (0x070b24, 0.55), (0x070b24, 0.25));
+            p.glow(w * 0.3 + (t * 0.05).sin() * 40. * k, h * 0.45, w * 0.26, 0x7b3fe4, 0.24);
+            p.glow(w * 0.56, h * 0.72 + (t * 0.07).cos() * 20. * k, w * 0.2, 0x1fb6c9, 0.17);
+            p.glow(w * 0.78, h * 0.3, w * 0.18, 0xd63ad6, 0.15);
+        }
+        "sakura" => {
+            p.grad(0., 0., w, h, 160., (0xffc1d6, 0.3), (0xffc1d6, 0.));
+            // A blossoming branch from the top right corner, swaying a little.
+            let sway = |u: f32| (t * 0.8).sin() * 3. * k * u;
+            let main = [(w + 10. * k, 6. * k), (w - 80. * k, 26. * k), (w - 170. * k, 22. * k), (w - 250. * k, 42. * k), (w - 310. * k, 38. * k)];
+            let wood = 0x4a2c2a;
+            for (i, pair) in main.windows(2).enumerate() {
+                let u = i as f32 / 4.;
+                p.line(&[(pair[0].0, pair[0].1 + sway(u)), (pair[1].0, pair[1].1 + sway(u + 0.25))], (7. - 1.4 * i as f32) * k, wood, 0.95);
+            }
+            for (from, to) in [(1usize, (-30f32, 40f32)), (2, (-20., -14.)), (3, (-26., 30.)), (2, (10., 34.))] {
+                let (x, y) = main[from];
+                let u = from as f32 / 4.;
+                p.line(&[(x, y + sway(u)), (x + to.0 * k, y + to.1 * k + sway(u + 0.2))], 2.4 * k, wood, 0.95);
+            }
+            for i in 0..11 {
+                let j = (i % 4) + 1;
+                let (x, y) = main[j];
+                let (dx, dy) = ((hash(i as u32) - 0.5) * 60. * k, (hash(i as u32 + 40) - 0.3) * 34. * k);
+                p.spr("cherry_blossom", x + dx, y + dy + sway(j as f32 / 4. + 0.2), (17. + hash(i as u32 + 80) * 10.) * k, hash(i as u32 + 120) * TAU, 1., 1., 1.);
+            }
+        }
+        "autumn" => {
+            p.grad(0., 0., w, h, 180., (0xffb347, 0.1), (0xc4501b, 0.4));
+            for i in 0..5 {
+                let f = i as f32;
+                p.ray(-20. * k, -30. * k, 0.42 + f * 0.13 + (t * 0.2 + f).sin() * 0.02, w * 0.95, 0.06, 0xffd58a, 0.06 + 0.03 * (t * 0.6 + f * 1.4).sin());
+            }
+            p.hills(w, h - 10. * k, 4. * k, 3., 0.3, h, 0x8a3a12, 0.85);
+        }
+        "summer" => {
+            p.grad(0., 0., w, h * 0.65, 180., (0x3fb0ff, 0.32), (0x3fb0ff, 0.));
+            for i in 0..12 {
+                p.ray(w - 90. * k, 60. * k, t * 0.08 + i as f32 * TAU / 12., 280. * k, 0.1, 0xfff2a8, 0.1);
+            }
+            p.hills(w, h - 30. * k, 4. * k, 2., t * 0.8, h, 0x1e88e5, 0.45);
+            p.hills(w, h - 18. * k, 3.5 * k, 3., 1. - t * 1.1, h, 0x4fc3f7, 0.45);
+        }
+        "aurora" => p.grad(0., 0., w, h, 180., (0x031225, 0.78), (0x0a2a3a, 0.4)),
+        "neon" => p.grad(0., 0., w, h * 0.62, 180., (0x1a0533, 0.8), (0x6a1279, 0.6)),
+        "storm" => p.grad(0., 0., w, h, 180., (0x0d1119, 0.72), (0x1b2333, 0.5)),
+        "fireflies" => p.grad(0., 0., w, h, 180., (0x0a1530, 0.6), (0x0c2a1a, 0.7)),
+        "embers" => {
+            p.grad(0., 0., w, h, 180., (0x1a0a05, 0.35), (0xc2310f, 0.5));
+            p.glow(w * 0.55, h + 30. * k, w * 0.45, 0xff7a1f, 0.32);
+        }
+        _ => {}
+    }
+}
+
 fn draw(theme: &str, s: &mut Sim, p: &mut Pen, t: f32, dt: f32, w: f32, h: f32, k: f32) {
+    back(theme, p, t, w, h, k);
     match theme {
         "xmas" => {
             lights(p, t, w, k);
@@ -666,19 +897,32 @@ fn draw(theme: &str, s: &mut Sim, p: &mut Pen, t: f32, dt: f32, w: f32, h: f32, 
                 s.next = t + rnd(0.9, 1.6);
                 let (x, y) = (rnd(0.3, 0.95) * w, rnd(0.12, 0.42) * h);
                 let n = rnd(0., 3.99) as u8;
-                for i in 0..42 {
-                    let a = i as f32 / 42. * TAU;
-                    let v = rnd(55., 120.) * k;
-                    s.b.push(Pt { x, y, vx: a.cos() * v, vy: a.sin() * v, l: 1., n, ..Default::default() });
+                // Two rings of sparks (the inner one another colour) and a flash where it bursts.
+                for i in 0..56 {
+                    let a = i as f32 / 56. * TAU + rnd(-0.03, 0.03);
+                    let v = if i % 2 == 0 { rnd(95., 135.) } else { rnd(45., 75.) } * k;
+                    s.b.push(Pt { x, y, vx: a.cos() * v, vy: a.sin() * v, l: 1., n: if i % 2 == 0 { n } else { n + 1 }, ..Default::default() });
                 }
+                s.d.push(Pt { x, y, l: 1., n, ..Default::default() });
             }
+            const FIRE: [u32; 4] = [0xffd166, 0xff5a5f, 0xff9de2, 0xfff3b0];
+            for f in &mut s.d {
+                f.l -= dt * 3.;
+                p.glow(f.x, f.y, 70. * k, FIRE[f.n as usize % 4], 0.45 * f.l.max(0.));
+            }
+            s.d.retain(|f| f.l > 0.);
             for f in &mut s.b {
                 f.vy += 45. * k * dt;
                 f.vx *= 0.985;
                 f.x += f.vx * dt;
                 f.y += f.vy * dt;
                 f.l -= dt * 0.8;
-                p.dot(f.x, f.y, 1.6 * k, [0xffd166, 0xff5a5f, 0xff9de2, 0xfff3b0][f.n as usize % 4], f.l.max(0.));
+                let hex = FIRE[f.n as usize % 4];
+                let a = f.l.max(0.);
+                // (A short tail behind each, and the last of them twinkle.)
+                p.line(&[(f.x - f.vx * 0.06, f.y - f.vy * 0.06), (f.x, f.y)], 1.4 * k, hex, a * 0.6);
+                let tw = if a < 0.4 { (t * 30. + f.x).sin().abs() } else { 1. };
+                p.dot(f.x, f.y, 1.7 * k, hex, a * tw);
             }
             s.b.retain(|f| f.l > 0.);
             for (i, u) in [0.56f32, 0.69, 0.81, 0.93].into_iter().enumerate() {
@@ -733,7 +977,11 @@ fn draw(theme: &str, s: &mut Sim, p: &mut Pen, t: f32, dt: f32, w: f32, h: f32, 
         }
         "space" => {
             for st in &s.a {
-                p.dot(st.x, st.y, st.r, 0xffffff, 0.35 + 0.6 * (t * st.s + st.ph).sin().abs());
+                let a = 0.35 + 0.6 * (t * st.s + st.ph).sin().abs();
+                p.dot(st.x, st.y, st.r, 0xffffff, a);
+                if st.r > 1.25 * k.max(0.6) {
+                    p.twinkle(st.x, st.y, st.r * 4., 0xdfe8ff, a * 0.7);
+                }
             }
             if t > s.next {
                 s.next = t + rnd(1.6, 3.2);
@@ -828,6 +1076,182 @@ fn draw(theme: &str, s: &mut Sim, p: &mut Pen, t: f32, dt: f32, w: f32, h: f32, 
                 p.dot(b.x - b.r * 0.35, b.y - b.r * 0.35, b.r * 0.22, 0xffffff, 0.8);
             }
         }
+        "aurora" => {
+            for st in &s.a {
+                p.dot(st.x, st.y, st.r, 0xffffff, 0.3 + 0.5 * (t * st.s + st.ph).sin().abs());
+            }
+            // Three curtains of light: a soft wide band, a brighter core, a bright lower edge and rays rising from it.
+            for (i, (hex, base, sp)) in [(0xa45cffu32, 0.2f32, 0.12f32), (0x30d5ff, 0.3, 0.16), (0x3dffa8, 0.4, 0.21)].into_iter().enumerate() {
+                let f = i as f32;
+                let edge = |x: f32| h * base + (x / w * 5.5 + t * sp * 3. + f * 2.).sin() * h * 0.07 + (x / w * 11. - t * sp * 5. + f).sin() * h * 0.025;
+                let thick = |x: f32| h * (0.17 + 0.07 * (x / w * 3. + t * sp * 2. + f * 1.3).sin());
+                let xs: Vec<f32> = (0..=40).map(|j| j as f32 / 40. * w).collect();
+                for (part, a) in [(1f32, 0.15f32), (0.5, 0.2)] {
+                    let mut pts: Vec<(f32, f32)> = xs.iter().map(|&x| (x, edge(x) - thick(x) * part)).collect();
+                    pts.extend(xs.iter().rev().map(|&x| (x, edge(x))));
+                    p.shape(&pts, hex, a);
+                }
+                let line: Vec<(f32, f32)> = xs.iter().map(|&x| (x, edge(x))).collect();
+                p.line(&line, 8. * k, hex, 0.14);
+                p.line(&line, 2.4 * k, mix(hex, 0xffffff, 0.4), 0.6);
+                for j in 0..30 {
+                    let x = (j as f32 + 0.5) / 30. * w + (t * 0.7 + j as f32).sin() * 6. * k;
+                    let y = edge(x);
+                    let len = thick(x) * (0.55 + 0.45 * (t * 1.3 + j as f32 * 1.7 + f).sin());
+                    p.line(&[(x, y), (x, y - len)], 4. * k, hex, 0.09 + 0.06 * (t * 2. + j as f32 * 0.9).sin());
+                }
+            }
+            let (gy, ga, gw, gp) = (h - 20. * k, 7. * k, 1.2, 0.8);
+            p.hills(w, gy, ga, gw, gp, h, 0x041019, 0.97);
+            let step = 21. * k.max(0.4);
+            for j in 0..(w / step) as usize {
+                // (Some trees stand out tall, most are low: not a saw's teeth.)
+                if hash(j as u32 + 300) < 0.25 {
+                    continue;
+                }
+                let x = j as f32 * step + hash(j as u32) * 14. * k;
+                let gy = hill_y(x, w, gy, ga, gw, gp) + 3. * k;
+                let tall = hash(j as u32 + 99);
+                let ht = (10. + tall * tall * 42.) * k;
+                p.shape(&[(x, gy - ht), (x + ht * 0.3, gy), (x - ht * 0.3, gy)], 0x041019, 0.97);
+            }
+        }
+        "neon" => {
+            let hz = h * 0.62;
+            for st in &s.a {
+                if st.y < hz - 6. {
+                    p.dot(st.x, st.y, st.r, 0xffffff, 0.2 + 0.45 * (t * st.s + st.ph).sin().abs());
+                }
+            }
+            // The sun on the horizon, cut in stripes that widen toward its foot.
+            let (sx, sr) = (w * 0.66, h * 0.3);
+            let sy = hz - sr * 0.3;
+            p.glow(sx, sy, sr * 2.4, 0xff2975, 0.34);
+            let rows = 22;
+            let row = sr * 2. / rows as f32;
+            for j in 0..rows {
+                let y0 = sy - sr + j as f32 * row;
+                if y0 >= hz {
+                    break;
+                }
+                let u = j as f32 / rows as f32;
+                let gap = if u > 0.45 { (u - 0.45) * 1.8 * row } else { 0. };
+                let dy = y0 + row / 2. - sy;
+                let half = (sr * sr - dy * dy).max(0.).sqrt();
+                p.rect(sx - half, y0, half * 2., (row - gap).min(hz - y0), mix(0xffd319, 0xff2975, u), 0.95);
+            }
+            // The floor, its lines running toward the eye.
+            p.grad(0., hz, w, h - hz, 180., (0x1a0533, 0.9), (0x0a0118, 0.96));
+            for j in -16i32..=16 {
+                let (top, foot) = (sx + j as f32 * 16. * k, sx + j as f32 * 130. * k);
+                p.line(&[(top, hz), (foot, h)], 1.3 * k, 0xff2bd6, 0.5);
+            }
+            for m in 0..10 {
+                let z = (m as f32 + (t * 0.6).fract()) / 10.;
+                let y = hz + (h - hz) * z * z;
+                p.line(&[(0., y), (w, y)], 1.3 * k, 0xff2bd6, 0.15 + 0.55 * z);
+            }
+            p.line(&[(0., hz), (w, hz)], 7. * k, 0xff2bd6, 0.22);
+            p.line(&[(0., hz), (w, hz)], 2. * k, 0xff7ae6, 0.95);
+        }
+        "storm" => {
+            for c in &mut s.b {
+                c.x += c.v * dt;
+                if c.x > w + c.r {
+                    c.x = -c.r;
+                }
+                p.glow(c.x, c.y, c.r * 1.2, 0x1c2230, 0.95);
+                p.glow(c.x + c.r * 0.4, c.y + c.r * 0.12, c.r * 0.9, 0x323b4e, 0.75);
+            }
+            // Lightning now and then: a forked bolt, a flicker and a flash over the whole banner.
+            if t > s.next {
+                s.next = t + rnd(2.5, 6.);
+                s.c.push(Pt { x: rnd(0.3, 0.95) * w, ph: t, n: rnd(0., 250.) as u8, ..Default::default() });
+            }
+            for b in &s.c {
+                let age = t - b.ph;
+                let a = match age {
+                    a if a < 0.07 => 1.,
+                    a if a < 0.13 => 0.25,
+                    a if a < 0.2 => 0.9,
+                    a => (1. - (a - 0.2) / 0.3).max(0.),
+                };
+                p.rect(0., 0., w, h, 0xdfe8ff, 0.2 * a);
+                let seed = b.n as u32 * 97;
+                let mut pts = vec![(b.x, 0.)];
+                for j in 1..=12 {
+                    let (px_, py_) = pts[j - 1];
+                    pts.push((px_ + (hash(seed + j as u32) - 0.5) * 34. * k, py_ + h * 0.065));
+                }
+                let fork: Vec<(f32, f32)> = (0..6).scan(pts[4], |at, j| {
+                    *at = (at.0 + (12. + hash(seed + 50 + j) * 16.) * k, at.1 + h * 0.05);
+                    Some(*at)
+                }).collect();
+                let fork: Vec<(f32, f32)> = std::iter::once(pts[4]).chain(fork).collect();
+                for path in [&pts, &fork] {
+                    p.line(path, 8. * k, 0x8fb4ff, 0.25 * a);
+                    p.line(path, 2.2 * k, 0xffffff, a);
+                }
+                p.glow(b.x, 10. * k, 120. * k, 0xcfe0ff, 0.5 * a);
+            }
+            s.c.retain(|b| t - b.ph < 0.5);
+            for d in &mut s.a {
+                d.y += d.v * dt;
+                d.x += d.v * dt * d.s;
+                if d.y > h {
+                    if s.d.len() < 60 {
+                        s.d.push(Pt { x: d.x, y: h - 2. * k, l: 1., ..Default::default() });
+                    }
+                    d.y = rnd(-40., -6.);
+                    d.x = rnd(-0.2 * w, w);
+                }
+                p.line(&[(d.x - d.l * d.s, d.y - d.l), (d.x, d.y)], 1.1 * k, 0xb8d2ff, 0.45);
+            }
+            for sp in &mut s.d {
+                sp.l -= dt * 4.;
+                let u = 1. - sp.l;
+                p.pill(sp.x, sp.y, (3. + u * 10.) * k, 2. * k, 0xb8d2ff, sp.l.max(0.) * 0.6);
+            }
+            s.d.retain(|sp| sp.l > 0.);
+        }
+        "fireflies" => {
+            for b in &s.b {
+                let sway = (t * 1.2 + b.ph).sin() * 3. * k;
+                p.shape(&[(b.x - 2.6 * k, h), (b.x + 2.6 * k, h), (b.x + sway, h - b.l)], 0x06140b, 0.96);
+            }
+            for f in &mut s.a {
+                f.vx = (f.vx + rnd(-40., 40.) * k * dt).clamp(-20. * k, 20. * k);
+                f.vy = (f.vy + rnd(-40., 40.) * k * dt).clamp(-14. * k, 14. * k);
+                f.x += f.vx * dt;
+                f.y += f.vy * dt;
+                if f.x < 0. || f.x > w {
+                    f.vx = -f.vx;
+                    f.x = f.x.clamp(0., w);
+                }
+                if f.y < h * 0.12 || f.y > h * 0.95 {
+                    f.vy = -f.vy;
+                    f.y = f.y.clamp(h * 0.12, h * 0.95);
+                }
+                let pulse = ((t * f.s * 2. + f.ph).sin() * 0.5 + 0.5).powi(2);
+                p.glow(f.x, f.y, 18. * k, 0xd9ff6a, 0.06 + 0.55 * pulse);
+                p.dot(f.x, f.y, f.r, 0xf4ffb0, 0.3 + 0.7 * pulse);
+            }
+        }
+        "embers" => {
+            for e in &mut s.a {
+                e.y -= e.v * dt;
+                e.x += (t * e.s + e.ph).sin() * 18. * k * dt;
+                if e.y < -10. {
+                    e.y = h + 10.;
+                    e.x = rnd(0., w);
+                }
+                let hex = [0xffb347, 0xff7a1f, 0xffd36b][e.n as usize % 3];
+                let low = (e.y / h).clamp(0., 1.);
+                let fl = 0.6 + 0.4 * (t * 9. * e.s + e.ph).sin();
+                p.glow(e.x, e.y, e.r * 7., hex, 0.5 * (0.3 + 0.7 * low) * fl);
+                p.dot(e.x, e.y, e.r, mix(hex, 0xffffff, 0.3), (0.5 + 0.5 * low) * fl);
+            }
+        }
         _ => {}
     }
 }
@@ -883,6 +1307,27 @@ fn wavy(r: f32, amp: f32, waves: f32, turn: f32) -> Vec<(f32, f32)> {
 
 /// A ring's part: behind the picture (`front` false) or over it. Drawn round 0, 0 (the pen's corner is the middle).
 fn ring_part(id: &str, p: &mut Pen, t: f32, r: f32, front: bool) {
+    // A soft light of the ring's colour behind the picture (bats, hearts and the orbit have their own).
+    let tone = match id {
+        "classic" => Some(0xffcf4a),
+        "lights" => Some(0xffd166),
+        "frost" => Some(0xbfe6ff),
+        "pumpkin" => Some(0xff8a1f),
+        "mai" => Some(0xf5c542),
+        "petals" => Some(0xff9ec0),
+        "leaves" => Some(0xe8892f),
+        "sun" => Some(0xffc83d),
+        "aurora" => Some(0x3dffa8),
+        "neon" => Some(0xff2bd6),
+        "electric" => Some(0x6fb6ff),
+        "fireflies" => Some(0xd9ff6a),
+        "fire" => Some(0xff6a1f),
+        "glitch" => Some(0x00fff0),
+        _ => None,
+    };
+    if !front && let Some(hex) = tone {
+        p.glow(0., 0., r * 2.1, hex, 0.3);
+    }
     match id {
         "classic" if front => {
             // A dashed gold circle, turning, with four beads.
@@ -899,6 +1344,13 @@ fn ring_part(id: &str, p: &mut Pen, t: f32, r: f32, front: bool) {
                 let a = turn + i as f32 * TAU / 4.;
                 p.dot(a.cos() * r * 1.1, a.sin() * r * 1.1, r * 0.05, 0xffcf4a, 1.);
             }
+            p.circle(0., 0., r * 1.03, r * 0.015, 0xffe7a0, 0.7);
+            p.circle(0., 0., r * 1.18, r * 0.012, 0xffcf4a, 0.45);
+            for i in 0..6 {
+                let a = -turn * 0.5 + i as f32 * TAU / 6. + 0.4;
+                let tw = (t * 2.2 + i as f32 * 1.9).sin().max(0.);
+                p.twinkle(a.cos() * r * 1.18, a.sin() * r * 1.18, r * 0.1 * tw, 0xfff4c8, tw);
+            }
         }
         "lights" if front => {
             p.line(&wavy(r * 1.1, r * 0.025, 14., 0.), r * 0.035, 0x1f5a34, 1.);
@@ -912,6 +1364,18 @@ fn ring_part(id: &str, p: &mut Pen, t: f32, r: f32, front: bool) {
             }
         }
         "frost" if front => {
+            // Ice spikes round it, then the frosted line, its snow and flakes.
+            for i in 0..18 {
+                let a = i as f32 * TAU / 18. + 0.2;
+                let len = r * (0.08 + 0.1 * hash(i as u32 + 7));
+                let tip = r * 1.1 + len;
+                p.shape(&[((a - 0.06).cos() * r * 1.1, (a - 0.06).sin() * r * 1.1), (a.cos() * tip, a.sin() * tip), ((a + 0.06).cos() * r * 1.1, (a + 0.06).sin() * r * 1.1)], 0xe8f7ff, 0.85);
+            }
+            for i in 0..3 {
+                let a = t * 0.3 + i as f32 * TAU / 3.;
+                let tw = (t * 2.6 + i as f32 * 2.).sin().max(0.);
+                p.twinkle(a.cos() * r * 1.32, a.sin() * r * 1.32, r * 0.12 * tw, 0xffffff, tw);
+            }
             p.circle(0., 0., r * 1.08, r * 0.07, 0xd6f0ff, 1.);
             for i in 0..9 {
                 let a = -PI * 0.85 + i as f32 * PI * 0.7 / 8.;
@@ -984,6 +1448,14 @@ fn ring_part(id: &str, p: &mut Pen, t: f32, r: f32, front: bool) {
         }
         "petals" if front => {
             p.circle(0., 0., r * 1.08, r * 0.045, 0xffb3c8, 1.);
+            // Petals let go of the ring and drift off it.
+            for i in 0..8 {
+                let u = (t * 0.22 + i as f32 / 8.).fract();
+                let a = i as f32 * TAU / 8. + t * 0.3 + u * 1.4;
+                let rad = r * (1.15 + u * 0.55);
+                let turn = (t * 2.4 + i as f32).cos().abs().max(0.2);
+                p.pill(a.cos() * rad, a.sin() * rad, r * 0.11 * turn, r * 0.065, 0xffc1d6, (1. - u) * 0.9);
+            }
             for i in 0..7 {
                 let a = t * 0.2 + i as f32 * TAU / 7.;
                 p.spr("cherry_blossom", a.cos() * r * 1.1, a.sin() * r * 1.1, r * if i % 2 == 1 { 0.24 } else { 0.32 }, a, 1., 1., 1.);
@@ -1004,6 +1476,116 @@ fn ring_part(id: &str, p: &mut Pen, t: f32, r: f32, front: bool) {
                 p.line(&[(a.cos() * r * 1.08, a.sin() * r * 1.08), (a.cos() * (r * 1.08 + l), a.sin() * (r * 1.08 + l))], r * 0.04, 0xffc83d, 1.);
             }
             p.circle(0., 0., r * 1.06, r * 0.05, 0xffc83d, 1.);
+        }
+        "sun" => {
+            // Behind the picture: soft beams turning slowly.
+            for i in 0..12 {
+                p.ray(0., 0., -t * 0.12 + i as f32 * TAU / 12., r * 1.75, 0.13, 0xfff0a0, 0.18);
+            }
+        }
+        "aurora" => {
+            if !front {
+                p.line(&wavy(r * 1.22, r * 0.05, 5., t * 0.8), r * 0.1, 0x30d5ff, 0.22);
+                p.line(&wavy(r * 1.3, r * 0.06, 4., -t * 0.6), r * 0.08, 0xa45cff, 0.2);
+            } else {
+                // A ring whose colour runs round it: green, blue, violet.
+                let n = 72;
+                for i in 0..n {
+                    let (a0, a1) = (i as f32 / n as f32 * TAU, (i + 1) as f32 / n as f32 * TAU + 0.012);
+                    let hex = cycle(i as f32 / n as f32 + t * 0.08, &[0x3dffa8, 0x30d5ff, 0xa45cff, 0x30d5ff]);
+                    p.line(&[(a0.cos() * r * 1.08, a0.sin() * r * 1.08), (a1.cos() * r * 1.08, a1.sin() * r * 1.08)], r * 0.07, hex, 0.95);
+                }
+                for i in 0..3 {
+                    let a = -t * 0.4 + i as f32 * TAU / 3.;
+                    let tw = (t * 2. + i as f32 * 2.1).sin().max(0.);
+                    p.twinkle(a.cos() * r * 1.2, a.sin() * r * 1.2, r * 0.12 * tw, 0xeafff6, tw);
+                }
+            }
+        }
+        "neon" if front => {
+            // A pink tube that flickers now and then, and a dashed blue one turning round it.
+            let flick = if hash((t * 8.) as u32) > 0.94 { 0.35 } else { 1. };
+            p.circle(0., 0., r * 1.08, r * 0.11, 0xff2bd6, 0.22 * flick);
+            p.circle(0., 0., r * 1.08, r * 0.04, 0xff8ae9, flick);
+            for i in 0..16 {
+                let a0 = t * 0.5 + i as f32 * TAU / 16.;
+                let pts: Vec<(f32, f32)> = (0..=4).map(|j| {
+                    let a = a0 + j as f32 / 4. * TAU / 16. * 0.55;
+                    (a.cos() * r * 1.2, a.sin() * r * 1.2)
+                }).collect();
+                p.line(&pts, r * 0.07, 0x00e5ff, 0.2);
+                p.line(&pts, r * 0.025, 0x9ff6ff, 0.95);
+            }
+        }
+        "electric" if front => {
+            p.circle(0., 0., r * 1.08, r * 0.03, 0x6fb6ff, 0.6);
+            // Arcs crackling round it, new ones fourteen times a second.
+            let seed = (t * 14.) as u32;
+            for arc in 0..4u32 {
+                let start = hash(seed * 7 + arc) * TAU;
+                let span = 0.6 + hash(seed * 13 + arc) * 0.9;
+                let pts: Vec<(f32, f32)> = (0..=14u32).map(|j| {
+                    let a = start + span * j as f32 / 14.;
+                    let off = if j == 0 || j == 14 { 0. } else { (hash(seed * 31 + arc * 17 + j) - 0.5) * r * 0.18 };
+                    (a.cos() * (r * 1.08 + off), a.sin() * (r * 1.08 + off))
+                }).collect();
+                p.line(&pts, r * 0.09, 0x4d9bff, 0.25);
+                p.line(&pts, r * 0.025, 0xeaf4ff, 0.95);
+            }
+            for j in 0..3u32 {
+                let a = hash(seed * 3 + j + 90) * TAU;
+                p.glow(a.cos() * r * 1.12, a.sin() * r * 1.12, r * 0.25, 0x8fc4ff, 0.5);
+                p.dot(a.cos() * r * 1.12, a.sin() * r * 1.12, r * 0.03, 0xffffff, 1.);
+            }
+        }
+        "fireflies" if front => {
+            p.circle(0., 0., r * 1.06, r * 0.02, 0x9fd86a, 0.45);
+            for i in 0..9 {
+                let f = i as f32;
+                let a = t * (0.2 + 0.05 * f) * if i % 2 == 0 { 1. } else { -1. } + f * 0.7;
+                let rad = r * (1.16 + 0.14 * (t * 0.7 + f * 1.3).sin());
+                let (x, y) = (a.cos() * rad, a.sin() * rad * 0.94);
+                let pulse = ((t * 2. + f * 1.7).sin() * 0.5 + 0.5).powi(2);
+                p.glow(x, y, r * 0.32, 0xd9ff6a, 0.05 + 0.5 * pulse);
+                p.dot(x, y, r * 0.04, 0xf4ffb0, 0.35 + 0.65 * pulse);
+            }
+        }
+        "fire" if front => {
+            // Tongues of flame licking outward, then the burning line over their feet.
+            for i in 0..30 {
+                let f = i as f32;
+                let a = f / 30. * TAU;
+                let flick = 0.55 + 0.45 * ((t * 7. + f * 2.1).sin() * (t * 4.3 + f * 1.3).cos()).abs();
+                let len = r * (0.16 + 0.24 * flick) * if i % 2 == 0 { 1. } else { 0.7 };
+                let tip = a + (t * 3. + f).sin() * 0.07;
+                let base = r * 1.06;
+                for (scale, half, hex, al) in [(1f32, 0.11f32, 0xff4d1f, 0.85f32), (0.55, 0.06, 0xffd23f, 0.95)] {
+                    p.shape(&[((a - half).cos() * base, (a - half).sin() * base), (tip.cos() * (base + len * scale), tip.sin() * (base + len * scale)), ((a + half).cos() * base, (a + half).sin() * base)], hex, al);
+                }
+            }
+            p.circle(0., 0., r * 1.06, r * 0.06, 0xff7a1f, 1.);
+            p.circle(0., 0., r * 1.06, r * 0.02, 0xffe08a, 0.9);
+        }
+        "glitch" if front => {
+            // A white line with a red and a blue copy, torn apart now and then, with slices and loose pixels.
+            let seed = (t * 10.) as u32;
+            let on = hash(seed) > 0.7;
+            let j = if on { (hash(seed * 3 + 1) - 0.5) * r * 0.14 } else { r * 0.015 };
+            p.circle(j, 0., r * 1.08, r * 0.04, 0xff004d, 0.85);
+            p.circle(-j, j * 0.3, r * 1.08, r * 0.04, 0x00fff0, 0.85);
+            p.circle(0., 0., r * 1.08, r * 0.03, 0xffffff, 0.95);
+            if on {
+                for n in 0..3u32 {
+                    let y = (hash(seed * 5 + n) - 0.5) * r * 2.2;
+                    let x = -r * 1.3 + hash(seed * 11 + n) * r * 0.5;
+                    p.rect(x, y, r * (0.4 + hash(seed * 17 + n) * 1.3), r * (0.03 + 0.04 * hash(seed * 19 + n)), if n % 2 == 0 { 0x00fff0 } else { 0xff004d }, 0.7);
+                }
+                for n in 0..6u32 {
+                    let a = hash(seed * 23 + n) * TAU;
+                    let s = r * 0.05;
+                    p.rect(a.cos() * r * 1.22 - s / 2., a.sin() * r * 1.22 - s / 2., s, s, if n % 2 == 0 { 0xffffff } else { 0x00fff0 }, 0.85);
+                }
+            }
         }
         _ => {}
     }
@@ -1036,6 +1618,290 @@ pub fn ring_tile(id: &'static str) -> AnyElement {
         pen.dot(0., 0., r, 0x4a4352, 1.);
         ring_part(id, &mut pen, t, r, true);
         crate::kit::looping()
+    })
+    .absolute()
+    .inset_0()
+    .into_any_element()
+}
+
+/// Keeps the window drawing 30 times a second while something here moves and the window is in front.
+pub fn clock(id: &'static str) -> AnyElement {
+    let d = div().absolute().size_0();
+    if crate::kit::looping() {
+        d.with_animation(id, Animation::new(std::time::Duration::from_secs(1)).repeat().with_max_fps(60.), |d, _| d).into_any_element()
+    } else {
+        d.into_any_element()
+    }
+}
+
+// ───────────────────────── With the music ─────────────────────────
+//
+// The profile moving with its song (beat.rs reads it), done as the Trap Nation videos do it (and js.nation, the open
+// one made after them): round the picture, the bass's curve as filled rings, one over another, each colour a step
+// later and reaching further when the bass is strong, so the colours trail behind the white; the picture swells with
+// the bass and everything shakes with it; sparks fly out from the picture toward the eye, faster as the bass hits.
+// The colours come from the song's cover. With them, from osu!'s main menu (ppy/osu, MIT): thin white bars all round
+// the picture, the song's bands read anew every 50 ms a few bars further on (so they run round) and sinking a little
+// each frame; light from the banner's sides at the beats; and in a loud part (a chorus, a drop: osu!'s kiai) all of it
+// stronger, the sides taking turns at each beat and the picture flashing white. And from the Monstercat videos (the
+// open Rainmeter one, marcopixel/Monstercat-Visualizer): a row of 63 bars standing on the banner's foot, each the
+// mean of its band and the two beside it. All shapes, nothing kept but the last 7 curves, 200 bar heights and the
+// sparks; `power` from 0.45 (light) to 1 (strong).
+
+use std::collections::VecDeque;
+
+/// The rings' colours, the white one on top, then ever further out: from the cover's colour, turned round the wheel.
+fn ring_tones(hex: u32) -> [u32; 7] {
+    [0xffffff, mix(hex, 0xffffff, 0.55), hex, turn_hue(hex, 40.), turn_hue(hex, -40.), turn_hue(hex, 85.), mix(turn_hue(hex, 180.), 0x000000, 0.25)]
+}
+
+/// How far each ring reaches past the others when the bass is strong, and how much its curve is smoothed.
+const REACH: [f32; 7] = [1., 1.12, 1.14, 1.3, 1.33, 1.36, 1.5];
+const SMOOTH: [usize; 7] = [0, 2, 2, 3, 3, 3, 5];
+
+/// A colour turned round the colour wheel by `deg`, its lightness and strength kept.
+fn turn_hue(hex: u32, deg: f32) -> u32 {
+    let mut h: Hsla = rgb(hex).into();
+    h.s = h.s.max(0.55);
+    h.l = h.l.clamp(0.45, 0.62);
+    h.h = (h.h + deg / 360.).rem_euclid(1.);
+    let c = Rgba::from(h);
+    ((c.r * 255.).round() as u32) << 16 | ((c.g * 255.).round() as u32) << 8 | (c.b * 255.).round() as u32
+}
+
+#[derive(Default)]
+struct Pulse {
+    curves: VecDeque<[f32; crate::beat::LOW]>,
+    ring_last: f32,
+    sparks: Vec<Pt>,
+    banner_last: f32,
+    shake: (f32, f32, f32, f32, f32, bool, bool),
+    shake_last: f32,
+    osu: Vec<f32>,
+    osu_read: f32,
+    osu_at: usize,
+    osu_last: f32,
+}
+
+/// osu!'s ring: 200 bars a round, drawn 3 times round (osu! draws 5), a round 72 degrees on from the last.
+const OSU_BARS: usize = 200;
+const OSU_ROUNDS: usize = 3;
+
+/// How strongly a beat lights up now (osu!'s timing): up in 65 ms, then down over the time between beats, slow first.
+fn beat_light(b: &crate::beat::Beat) -> f32 {
+    if b.since < 0.065 {
+        b.since / 0.065
+    } else {
+        let u = ((b.since - 0.065) / b.gap.max(0.25)).min(1.);
+        1. - u * u
+    }
+}
+
+/// A band's height between the bands (`u` 0 to 1, low to high), made to start from nothing: the bands fill their
+/// range (a quiet band is still near 0.25), osu!'s and Monstercat's bars start at silence.
+fn band_at(b: &crate::beat::Beat, u: f32) -> f32 {
+    use crate::beat::BANDS;
+    let x = u.clamp(0., 1.) * (BANDS - 1) as f32;
+    let (k, f) = (x.floor() as usize, x.fract());
+    let v = b.bands[k] * (1. - f) + b.bands[(k + 1).min(BANDS - 1)] * f;
+    ((v - 0.25) / 0.75).max(0.)
+}
+
+/// How white the picture flashes now: in a loud part, at each beat, up to a fifth (osu!'s logo in kiai).
+pub fn picture_flash(b: crate::beat::Beat, power: f32) -> f32 {
+    0.2 * (0.4 + b.level).min(1.) * beat_light(&b) * b.drop * power
+}
+
+thread_local! {
+    static PULSE: RefCell<Pulse> = RefCell::new(Pulse::default());
+}
+
+/// How far everything is shaken now (px across, down): a swing that starts anew, another way and strength, each time it
+/// has run an eighth of a turn, as far as 13 px with the bass full and `power` 1.
+pub fn shake(punch: f32, power: f32) -> (f32, f32) {
+    let t = now();
+    PULSE.with(|s| {
+        let mut s = s.borrow_mut();
+        let dt = (t - s.shake_last).clamp(0., 0.05);
+        s.shake_last = t;
+        let (mut ph, ax, ay, sx, sy, cx_, cy_) = s.shake;
+        ph += PI / 3. * punch * dt * 60.;
+        if ph > PI / 8. || ax == 0. {
+            ph = 0.;
+            let sign = |_: ()| if rnd(0., 1.) < 0.5 { -1. } else { 1. };
+            s.shake = (ph, rnd(0.9, 1.6), rnd(0.9, 1.6), rnd(0.9, 1.6) * sign(()), rnd(0.9, 1.6) * sign(()), rnd(0., 1.) < 0.5, rnd(0., 1.) < 0.5);
+        } else {
+            s.shake = (ph, ax, ay, sx, sy, cx_, cy_);
+        }
+        let (_, ax, ay, sx, sy, cx_, cy_) = s.shake;
+        let trig = |c: bool, v: f32| if c { v.cos() } else { v.sin() };
+        (trig(cx_, ph * sx) * 8. * ax * punch * power, trig(cy_, ph * sy) * 8. * ay * punch * power)
+    })
+}
+
+/// The song round the picture (`r` its radius, already swollen with the bass), laid behind it in a box centred on it.
+pub fn pulse_ring(b: crate::beat::Beat, hex: u32, power: f32, r: f32) -> AnyElement {
+    use crate::beat::LOW;
+    canvas(|_, _, _| {}, move |bounds: Bounds<Pixels>, _, window, cx| {
+        let mut p = Pen { w: window, cx, o: bounds.center() };
+        let t = now();
+        PULSE.with(|s| {
+            let mut s = s.borrow_mut();
+            // (One curve a frame; ring n draws the one n frames old.)
+            if t - s.ring_last > 0.012 {
+                s.ring_last = t;
+                s.curves.push_front(b.low);
+                s.curves.truncate(REACH.len());
+            }
+            let tones = ring_tones(hex);
+            p.glow(0., 0., r * (1.8 + 0.6 * b.punch * power), hex, (0.2 + 0.45 * b.punch * power).min(0.65));
+            // osu!'s bars: each holds the highest it was given, read every 50 ms (5 bars on each time), and sinks
+            // 0.24 % of itself (and a little more) each ms; in a loud part they are read at full height, else half.
+            if s.osu.len() != OSU_BARS {
+                s.osu = vec![0.; OSU_BARS];
+            }
+            let ms = (t - s.osu_last).clamp(0., 0.1) * 1000.;
+            s.osu_last = t;
+            if t - s.osu_read >= 0.05 || t < s.osu_read {
+                s.osu_read = t;
+                let mult = 0.5 + 0.5 * b.drop;
+                let at = s.osu_at;
+                for i in 0..OSU_BARS {
+                    let v = band_at(&b, ((i + at) % OSU_BARS) as f32 / OSU_BARS as f32) * mult;
+                    if v > s.osu[i] {
+                        s.osu[i] = v;
+                    }
+                }
+                s.osu_at = (at + 5) % OSU_BARS;
+            }
+            for a in s.osu.iter_mut() {
+                *a = (*a - ms * 0.0024 * (*a + 0.03)).max(0.);
+            }
+            let half = r * (2. * (1. - (TAU / OSU_BARS as f32).cos())).sqrt() / 2.;
+            let mut bars = Vec::with_capacity(OSU_BARS * OSU_ROUNDS);
+            for j in 0..OSU_ROUNDS {
+                for (i, &a) in s.osu.iter().enumerate() {
+                    let len = (r * 2.5 * a * power).min(r * 1.6);
+                    if len < 1. {
+                        continue;
+                    }
+                    let th = TAU * (i as f32 / OSU_BARS as f32 + j as f32 / 5.) - PI / 2.;
+                    let (c, sn) = (th.cos(), th.sin());
+                    let (nx, ny) = (-sn * half, c * half);
+                    let (r1, r2) = (r, r + len);
+                    bars.push([(c * r1 + nx, sn * r1 + ny), (c * r2 + nx, sn * r2 + ny), (c * r2 - nx, sn * r2 - ny), (c * r1 - nx, sn * r1 - ny)]);
+                }
+            }
+            // (White, stronger than osu!'s fifth: osu! adds its light and Bloxkeep lays it over; the ring at half, up to 0.9
+            // at a beat in a loud part.)
+            let ring_a = 0.5 + b.drop * ((0.9 * (0.4 + b.level).min(1.)) - 0.5).max(0.) * beat_light(&b);
+            p.quads(&bars, 0xffffff, 0.35 * ring_a * (0.5 + 0.5 * power));
+            for layer in (0..REACH.len()).rev() {
+                let Some(curve) = s.curves.get(layer).or(s.curves.back()) else { continue };
+                let m = SMOOTH[layer];
+                let reach = |i: usize| {
+                    // (A triangle's weights over the neighbours, `m` each side.)
+                    let (mut sum, mut wsum) = (0., 0.);
+                    for j in i.saturating_sub(m)..=(i + m).min(LOW - 1) {
+                        let wgt = (m + 1 - j.abs_diff(i)) as f32;
+                        sum += curve[j] * wgt;
+                        wsum += wgt;
+                    }
+                    let v = sum / wsum.max(1.);
+                    (r * 0.12 * ((1. + 4. * v).powf(REACH[layer]) - 1.) * power).min(r * (0.32 + 0.1 * layer as f32))
+                };
+                let pts: Vec<(f32, f32)> = (0..LOW).map(|i| {
+                    let a = -PI / 2. + PI * i as f32 / (LOW - 1) as f32;
+                    let rad = r + reach(i);
+                    (a.cos() * rad, a.sin() * rad)
+                }).collect();
+                // The right half, then the left one mirrored, back to the top.
+                let shape: Vec<(f32, f32)> = pts.iter().copied().chain(pts.iter().rev().map(|&(x, y)| (-x, y))).collect();
+                let soft: Vec<(f32, f32)> = shape.iter().map(|&(x, y)| (x * 1.05, y * 1.05)).collect();
+                let al = 0.95 - 0.04 * layer as f32;
+                p.shape(&soft, tones[layer], 0.22);
+                p.shape(&shape, tones[layer], al);
+            }
+        });
+    })
+    .absolute()
+    .inset_0()
+    .into_any_element()
+}
+
+/// The song over the banner: sparks flying out from the picture (at `from`, in the banner) toward the eye, and a flash of
+/// the cover's colour at each beat.
+pub fn pulse_banner(b: crate::beat::Beat, hex: u32, power: f32, from: (f32, f32), pic_r: f32) -> AnyElement {
+    canvas(|_, _, _| {}, move |bounds: Bounds<Pixels>, _, window, cx| {
+        let (w, h) = (f32::from(bounds.size.width), f32::from(bounds.size.height));
+        let k = (h / 290.).clamp(0.55, 1.2);
+        let t = now();
+        window.with_content_mask(Some(ContentMask { bounds }), |win| {
+            let mut p = Pen { w: win, cx, o: bounds.origin };
+            PULSE.with(|s| {
+                let mut s = s.borrow_mut();
+                let dt = (t - s.banner_last).clamp(0., 0.05);
+                s.banner_last = t;
+                let n = ((w * h / 2_400.) as usize).clamp(80, 220);
+                let fresh = || Pt { x: rnd(-PI * 0.97, 0.2), y: rnd(10., 120.), l: rnd(0., 200.), v: rnd(1.1, 1.45), ph: rnd(0., 1.), vr: rnd(0.1, 0.25), s: rnd(0.05, 0.4), n: u8::from(rnd(0., 1.) < 0.4), ..Default::default() };
+                while s.sparks.len() < n {
+                    s.sparks.push(fresh());
+                }
+                s.sparks.truncate(n);
+                p.glow(from.0, from.1, w * 0.35, hex, 0.3 * b.punch * power);
+                // osu!'s side lights: a fifth of the width, the edge at 0.6; as strong as the bass (from a tenth);
+                // both sides at the first beat of each four, or in a loud part one side each beat, in turn.
+                let loud = b.drop > 0.5;
+                let div = if loud { (1. - 0.25 * 0.95) / 0.8 } else { (1. - 0.25) / 0.55 };
+                let side = (0.1 + (b.bass - 0.25) / div).clamp(0.1, 1.) * beat_light(&b) * power;
+                let (left, right) = if loud { (b.beats % 2 == 0, b.beats % 2 == 1) } else { (b.beats % 4 == 0, b.beats % 4 == 0) };
+                let fw = w * 0.2;
+                if left {
+                    p.grad(0., 0., fw, h, 90., (hex, 0.6 * side), (hex, 0.));
+                }
+                if right {
+                    p.grad(w - fw, 0., fw, h, 90., (hex, 0.), (hex, 0.6 * side));
+                }
+                // Monstercat's row: 63 bars, 18 wide to a gap of 7, from past the picture to the banner's right, on
+                // its foot; each the mean of its band and the two beside it, 1 % at least; a soft shadow under.
+                let (x0, x1) = (from.0 + pic_r + 28. * k, w - 28. * k);
+                if x1 - x0 > 120. {
+                    const CAT: usize = 63;
+                    let unit = (x1 - x0) / (CAT as f32 * 25. - 7.);
+                    let raw: Vec<f32> = (0..CAT).map(|i| band_at(&b, i as f32 / (CAT - 1) as f32)).collect();
+                    let tall = h * 0.3 * power;
+                    let mut row = Vec::with_capacity(CAT);
+                    for i in 0..CAT {
+                        let (a, z) = (i.saturating_sub(1), (i + 1).min(CAT - 1));
+                        let v = 0.01 + (raw[a] + raw[i] + raw[z]) / 3.;
+                        let (x, bh) = (x0 + i as f32 * 25. * unit, (v * tall).max(2.));
+                        let bw = 18. * unit;
+                        row.push([(x, h - bh), (x + bw, h - bh), (x + bw, h), (x, h)]);
+                    }
+                    let shade: Vec<[(f32, f32); 4]> = row.iter().map(|q| q.map(|(x, y)| (x + 2., y + 2.))).collect();
+                    p.quads(&shade, 0x000000, 0.25);
+                    p.quads(&row, mix(hex, 0xffffff, 0.35), 0.9);
+                }
+                let light = mix(hex, 0xffffff, 0.6);
+                for sp in &mut s.sparks {
+                    // Out from the middle and toward the eye (x and depth move together), at the bass's speed, with a
+                    // small wobble of its own; from the eye's plane it starts again.
+                    let speed = (sp.v * b.punch).max(0.15) * dt * 60.;
+                    sp.l += speed;
+                    sp.ph += sp.vr * (0.025 + 0.375 * b.punch) * dt * 60.;
+                    if sp.l > 196. {
+                        *sp = Pt { l: 0., ..fresh() };
+                    }
+                    let near = 200. - sp.l;
+                    let reach = sp.y * k * (sp.l / 200.) * (150. / near.max(4.));
+                    let a = sp.x + (TAU * sp.ph).sin() * sp.s * (0.1 + 0.9 * b.punch) * 0.3;
+                    let (x, y) = (from.0 + a.cos() * reach * 1.6, from.1 + a.sin() * reach);
+                    let size = (0.5 + 3.5 * (sp.l / 200.).powi(3)) * k;
+                    let al = (sp.l / 40.).min(1.) * 0.9;
+                    p.dot(x, y, size, if sp.n == 0 { 0xffffff } else { light }, al);
+                }
+            });
+        });
     })
     .absolute()
     .inset_0()

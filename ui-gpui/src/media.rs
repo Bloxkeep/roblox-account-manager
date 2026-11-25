@@ -424,6 +424,26 @@ mod win {
         Ok(found)
     }
 
+    /// The program that plays the music app's sound (its sound session's), for the profile's beat (beat.rs).
+    pub fn pid_of(player: Player) -> Option<u32> {
+        unsafe {
+            let _ = RoInitialize(RO_INIT_MULTITHREADED);
+            let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).ok()?;
+            let manager: IAudioSessionManager2 = devices.GetDefaultAudioEndpoint(eRender, eMultimedia).ok()?.Activate(CLSCTX_ALL, None).ok()?;
+            let list = manager.GetSessionEnumerator().ok()?;
+            for i in 0..list.GetCount().ok()? {
+                let Ok(control) = list.GetSession(i).and_then(|s| s.cast::<IAudioSessionControl2>()) else { continue };
+                let Ok(name) = control.GetSessionInstanceIdentifier() else { continue };
+                let said = name.to_string().unwrap_or_default().to_lowercase();
+                CoTaskMemFree(Some(name.0 as *const _));
+                if said.contains(player.program()) && let Ok(pid) = control.GetProcessId() && pid != 0 {
+                    return Some(pid);
+                }
+            }
+        }
+        None
+    }
+
     fn volume_of(player: Player) -> Option<f32> {
         match sessions(player.program()) {
             Ok(list) => list.first().and_then(|v| unsafe { v.GetMasterVolume() }.ok()),
@@ -465,6 +485,17 @@ pub fn now() -> Option<Playing> {
     return win::now();
     #[allow(unreachable_code)]
     None
+}
+
+/// The program that plays the music app's sound now. Blocks for a moment: call it off the window.
+pub fn pid_of(player: Player) -> Option<u32> {
+    #[cfg(all(windows, any(feature = "core", feature = "shot")))]
+    return win::pid_of(player);
+    #[allow(unreachable_code)]
+    {
+        let _ = player;
+        None
+    }
 }
 
 /// Play/pause, next or back in the music app. Blocks for a moment: call it off the window.
