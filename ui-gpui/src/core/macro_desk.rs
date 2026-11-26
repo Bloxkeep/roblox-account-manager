@@ -1,7 +1,7 @@
 // MacroDesk.cs.
 //! The real desktop for macros: Roblox windows found through Bloxkeep's own bookkeeping, a window's turn the way
-//! anti-AFK's nudge takes one (anti_afk.rs: shown unseen when minimised or hidden, brought forward with the foreground
-//! thread's input shared, your window given back after), and input sent with SendInput as scan codes (games read
+//! anti-AFK's nudge takes one (a loan, window_loan.rs: shown unseen when minimised or hidden, brought forward with the
+//! foreground thread's input shared, your window and the Roblox window's place and state given back after), and input sent with SendInput as scan codes (games read
 //! those). Nothing here reads or writes Roblox's memory, hooks it, or posts messages to it.
 use std::collections::HashMap;
 use std::ffi::c_void;
@@ -23,11 +23,11 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     GA_ROOT, GWL_EXSTYLE, GetAncestor, GetClientRect, GetCursorPos, GetForegroundWindow, GetSystemMetrics, GetWindowLongW, GetWindowThreadProcessId, IsHungAppWindow,
-    IsIconic, IsWindow, IsWindowVisible, LWA_ALPHA, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SW_HIDE, SW_RESTORE, SW_SHOWMINNOACTIVE,
-    SW_SHOWNOACTIVATE, SetCursorPos, SetLayeredWindowAttributes, SetWindowLongW, ShowWindowAsync, WS_EX_LAYERED, WS_EX_TRANSPARENT, WindowFromPoint,
+    IsWindow, LWA_ALPHA, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SetCursorPos, SetLayeredWindowAttributes, SetWindowLongW,
+    WS_EX_LAYERED, WS_EX_TRANSPARENT, WindowFromPoint,
 };
 
-use crate::core::anti_afk::{self, Before};
+use crate::core::anti_afk;
 use crate::core::base::{Cancel, Fail, Guid, Res, Stamp};
 use crate::core::log;
 use crate::core::macro_model::MacroKey;
@@ -35,6 +35,7 @@ use crate::core::macro_ocr;
 use crate::core::macro_player::{IMacroDesk, IMacroTurn, MacroWindow, macro_geometry};
 use crate::core::roblox_processes;
 use crate::core::win_kit::{self, Picture, Point, Rect, hwnd};
+use crate::core::window_loan::{self, How, Loan};
 use crate::core::window_shot;
 
 /// The account's Roblox as Bloxkeep knows it: its process, the frame rate limit it was given, whether its log says it is in a game.
@@ -48,6 +49,8 @@ pub type RawWorksFn = Arc<dyn Fn() -> bool + Send + Sync>;
 pub const PERSON_QUIET: Duration = Duration::from_secs(5);
 /// Windows takes a moment to make the window the one in front.
 const FRONT_TIME: Duration = Duration::from_millis(250);
+/// Bloxkeep closing: how long a window put back down is waited for (each of the two asks).
+const ABORT_WAIT: Duration = Duration::from_millis(150);
 
 /// error.log: SendInput is being refused (UIPI, a secure desktop); written when that starts and ends.
 static SEND_FAILING: AtomicBool = AtomicBool::new(false);
@@ -156,21 +159,6 @@ fn foreground() -> isize {
 fn is_window(h: isize) -> bool {
     // SAFETY: plain query of a handle.
     unsafe { IsWindow(hwnd(h)) != 0 }
-}
-
-fn is_iconic(h: isize) -> bool {
-    // SAFETY: plain query of a handle.
-    unsafe { IsIconic(hwnd(h)) != 0 }
-}
-
-fn is_visible(h: isize) -> bool {
-    // SAFETY: plain query of a handle.
-    unsafe { IsWindowVisible(hwnd(h)) != 0 }
-}
-
-fn show_async(h: isize, command: i32) {
-    // SAFETY: plain call, posted to the window's thread.
-    unsafe { ShowWindowAsync(hwnd(h), command) };
 }
 
 fn cursor_pos() -> Option<Point> {
@@ -393,17 +381,14 @@ impl IMacroDesk for MacroDesk {
             return Ok(None);
         }
         let person = anti_afk::person_tick();
-        let minimized = is_iconic(h);
-        let unshown = !is_visible(h);
-        let place = anti_afk::place(h);
-        // Minimised or hidden: shown unseen (but not click-through: the macro's clicks must land on it).
-        let before = if minimized || unshown { anti_afk::hide_for_input(h, place, minimized) } else { anti_afk::note(h, place) };
-        let turn = Turn::new(h, foreground(), person, self.person_at.clone(), self.raw_works.clone(), Some(before), minimized, unshown, self.turns.clone());
-        if minimized {
-            show_async(h, SW_RESTORE);
-        } else if unshown {
-            show_async(h, SW_SHOWNOACTIVATE);
-        }
+        // Lent: its place in the stack and state noted; minimised or hidden, shown unseen (but not click-through: the
+        // macro's clicks must land on it). Left alone by the app's other window rules until the turn gives it back.
+        let Some(loan) = window_loan::borrow(h, How::TURN) else {
+            self.note_refused(window.pid, "its window is gone or isn't responding");
+            return Ok(None);
+        };
+        let (minimized, unshown) = (loan.was().minimised, loan.was().unshown);
+        let turn = Turn::new(h, person, self.person_at.clone(), self.raw_works.clone(), loan, self.turns.clone());
         // A zero move first: Windows lets the app that last sent input change the window in front.
         turn.send(&[mouse(0, 0, MOUSEEVENTF_MOVE, 0)]);
         anti_afk::focus(h);
@@ -470,14 +455,12 @@ struct TurnState {
 /// A window in front for a macro's input.
 pub struct Turn {
     h: isize,
-    previous: isize,
     person: u32,
     person_at: Option<PersonAtFn>,
     raw_works: Option<RawWorksFn>,
     cursor: Option<Point>,
-    before: Option<Before>,
-    minimized: bool,
-    unshown: bool,
+    /// The window as lent (taken when the turn gives it back).
+    loan: Mutex<Option<Loan>>,
     started: Stamp,
     client: Mutex<Rect>,
     state: Mutex<TurnState>,
@@ -488,18 +471,14 @@ pub struct Turn {
 unsafe impl Send for TurnState {}
 
 impl Turn {
-    #[allow(clippy::too_many_arguments)]
-    fn new(h: isize, previous: isize, person: u32, person_at: Option<PersonAtFn>, raw_works: Option<RawWorksFn>, before: Option<Before>, minimized: bool, unshown: bool, turns: Turns) -> Turn {
+    fn new(h: isize, person: u32, person_at: Option<PersonAtFn>, raw_works: Option<RawWorksFn>, loan: Loan, turns: Turns) -> Turn {
         Turn {
             h,
-            previous,
             person,
             person_at,
             raw_works,
             cursor: cursor_pos(),
-            before,
-            minimized,
-            unshown,
+            loan: Mutex::new(Some(loan)),
             started: Stamp::utc_now(),
             client: Mutex::new(Rect::default()),
             state: Mutex::new(TurnState { through: Vec::new(), down: HeldInputs::new(), sent: false, done: false, last_sent: tick_count() }),
@@ -565,13 +544,10 @@ impl Turn {
         true
     }
 
-    fn hiding(&self) -> bool {
-        is_window(self.h) && (self.minimized && !is_iconic(self.h) || self.unshown && is_visible(self.h))
-    }
-
-    /// Our windows, the pointer, your window and the Roblox window's place back; nothing is sent after it.
-    /// True when the window is being minimised or hidden again and is shown once it is.
-    fn put_back(&self) -> bool {
+    /// Our windows, the pointer, your window and the Roblox window's place and state back (a re-minimise or re-hide
+    /// waited for up to `wait`, twice); nothing is sent after it. `person`: a person's input came during the turn, so a
+    /// window they now have in front is left open (window_loan::back).
+    fn put_back(&self, person: bool, wait: Duration) {
         let through = {
             let mut st = self.state();
             st.done = true;
@@ -588,18 +564,10 @@ impl Turn {
             // SAFETY: plain call.
             unsafe { SetCursorPos(c.x, c.y) };
         }
-        anti_afk::give_back(self.previous);
-        let Some(before) = &self.before else {
-            return false;
-        };
-        anti_afk::put_back(before);
-        if self.minimized {
-            show_async(self.h, SW_SHOWMINNOACTIVE);
+        let loan = self.loan.lock().unwrap_or_else(|e| e.into_inner()).take();
+        if let Some(loan) = loan {
+            loan.give_back_with(Some(person), wait);
         }
-        if self.unshown {
-            show_async(self.h, SW_HIDE);
-        }
-        self.minimized || self.unshown
     }
 }
 
@@ -746,16 +714,8 @@ impl IMacroTurn for Turn {
         if !self.let_go_all() {
             return;
         }
-        if self.put_back()
-            && let Some(before) = &self.before
-        {
-            let mut i = 0;
-            while i < 10 && self.hiding() {
-                std::thread::sleep(Duration::from_millis(50));
-                i += 1;
-            }
-            anti_afk::show(before);
-        }
+        let person = self.person_input();
+        self.put_back(person, window_loan::WAIT);
         if self.state().sent {
             std::thread::sleep(Duration::from_millis(30)); // our last input reaches GetLastInputInfo
             anti_afk::note_own_input(self.person);
@@ -767,16 +727,8 @@ impl IMacroTurn for Turn {
         if !self.let_go_all() {
             return;
         }
-        if self.put_back()
-            && let Some(before) = &self.before
-        {
-            let mut i = 0;
-            while i < 10 && self.hiding() {
-                std::thread::sleep(Duration::from_millis(30));
-                i += 1;
-            }
-            anti_afk::show(before);
-        }
+        let person = self.person_input();
+        self.put_back(person, ABORT_WAIT);
     }
 }
 

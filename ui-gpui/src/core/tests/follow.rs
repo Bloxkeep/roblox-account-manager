@@ -191,13 +191,13 @@ async fn body(
     // ── kept through a drop, a game picked in the window, and Bloxkeep closing ──
     let opened = GameTarget { follow: Some(follow.clone()), ..GameTarget::new(PLACE, Some(SERVER.into()), None, None) };
     let launch = |target: &GameTarget| Rc::new(PendingLaunch::new(id, HashSet::new(), Stamp::utc_now().plus_secs(-1200.0), Some(target.clone()), false, None));
-    app.queue_rejoin(id, &launch(&opened), None);
+    app.queue_rejoin(id, &launch(&opened), None, crate::core::close_plan::End::Unasked);
     let queued = waiting().map(|w| w.0);
     c.check("a drop of a window that follows a player: its rejoin still follows them", queued.as_ref().is_some_and(|q| q.follow.as_ref() == Some(follow)), &queued);
     app.controller.rejoin_queue.borrow_mut().clear();
     let mut picked = ClientState::new("disconnected", Some(OTHER_PLACE), None, Some(277), Stamp::utc_now());
     picked.chosen_place = Some(OTHER_PLACE);
-    app.queue_rejoin(id, &launch(&opened), Some(&picked));
+    app.queue_rejoin(id, &launch(&opened), Some(&picked), crate::core::close_plan::End::Unasked);
     let queued = waiting().map(|w| w.0);
     c.check(
         "…a game picked in the window since: still following the player (fails on the old code: a new GameTarget dropped it)",

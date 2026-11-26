@@ -791,8 +791,8 @@ pub fn view(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) ->
         .gap(px(SECTION_GAP))
         .child(div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("srv.friendsTitle"), n_friends.filter(|n| *n > 0))).child(friends_body))
         .children(recent(root, root_place, width, cx))
-        // Private before public (owner, 2026-11-13): the public list runs long with more pages on demand, and the
-        // private servers under it were out of sight.
+        // Private before public: the public list runs long with more pages on demand, and the private servers
+        // under it were out of sight.
         .child(div().flex().flex_col().gap(px(12.)).child(private_head).children(picker).children(buying).children(error).child(private(root, width, cx)))
         .child(public(root, width, cx))
         .into_any_element()
@@ -1083,7 +1083,6 @@ fn private(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             let tone = if full { WARN } else { TEXT_2 };
             block()
                     .w(px(card_w))
-                    .h_full()
                     .p(px(14.))
                     .flex()
                     .flex_col()
@@ -1110,5 +1109,7 @@ fn private(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             .into_any_element()
         })
         .collect();
-    grid(GRID_GAP).children(cards).into_any_element()
+    // Each row as tall as its tallest card: stretched by the row, not h_full (a share of the whole list's height: with
+    // many servers every card grew to it and the list ran over the public servers under it).
+    grid(GRID_GAP).items_stretch().children(cards).into_any_element()
 }

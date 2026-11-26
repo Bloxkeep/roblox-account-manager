@@ -21,7 +21,7 @@ use crate::{
 };
 
 /// The page's parts, one shown at a time and picked on the left, as Bloxkeep's own Settings has its parts
-/// (settings.rs): everything on one long page was too much (the owner, 2026-11-25).
+/// (settings.rs): everything on one long page was too much.
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub enum Part {
     #[default]
@@ -77,7 +77,7 @@ pub struct Data {
     /// Why the visibility read failed (Roblox's code, or the network's words), shown as it is.
     vis_failed: Option<String>,
     /// Account status, as Roblox's own page has it: nothing against it (Ok None), a ban or a warning, or the read
-    /// failed. It was only behind the card's ⋮ menu, where the owner never found it (2026-11-15).
+    /// failed. It was only behind the card's ⋮ menu, where a user never found it.
     held: Option<Result<Option<roblox::Held>, String>>,
     /// The account's violations (Roblox's Account status page lists them), None while read; every one shown or the
     /// first five.

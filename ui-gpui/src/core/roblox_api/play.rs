@@ -235,14 +235,15 @@ pub struct PrivateServer {
 }
 
 /// The game's private servers this account can join (GET /v1/games/{placeId}/private-servers; nextPageCursor is
-/// sent back as exclusiveStartKeyCursor). At most three pages; 429 and a lost sign-in fail.
+/// sent back as cursor: a name Roblox doesn't know is ignored and page one comes again). Ten servers a page, at most
+/// ten pages; a page that brings nothing new ends it. 429 and a lost sign-in fail.
 pub fn get_private_servers(cookie: &str, place_id: i64, ct: &Cancel) -> Res<Vec<PrivateServer>> {
     let mut list = Vec::new();
     let mut cursor: Option<String> = None;
-    for _page in 0..3 {
+    for _page in 0..10 {
         let url = format!(
             "https://games.roblox.com/v1/games/{place_id}/private-servers{}",
-            cursor.as_deref().map(|c| format!("?exclusiveStartKeyCursor={}", escape_data_string(c))).unwrap_or_default()
+            cursor.as_deref().map(|c| format!("?cursor={}", escape_data_string(c))).unwrap_or_default()
         );
         let req = request("GET", &url, Some(cookie), false, realm::GLOBAL);
         let res = send(&req, ct)?;
@@ -260,7 +261,15 @@ pub fn get_private_servers(cookie: &str, place_id: i64, ct: &Cancel) -> Res<Vec<
             .into());
         }
         let (page, next) = read_private_servers(&res.text());
-        list.extend(page);
+        let before = list.len();
+        for s in page {
+            if !list.iter().any(|k: &PrivateServer| k.access_code.eq_ignore_ascii_case(&s.access_code)) {
+                list.push(s);
+            }
+        }
+        if list.len() == before || next == cursor {
+            break;
+        }
         cursor = next;
         if cursor.as_deref().is_none_or(str::is_empty) {
             break;
@@ -439,6 +448,15 @@ pub fn resolve_share(cookie: &str, share_code: &str, share_type: Option<&str>, c
     }
     if !res.is_success() {
         log::note(&format!("Share link ({kind}): HTTP {}, errors {}", res.status, errors(&body).1));
+        // The account reading it holds a notice from Roblox (403 "User is moderated"): the link is fine. Flagged, so the
+        // caller reads it with another account, and the person is told about the account rather than to check the link.
+        if super::is_moderated(res.status, &body) {
+            return Err(RobloxApiException {
+                moderated: true,
+                ..RobloxApiException::new(l::t("Roblox has a notice on this account to accept first. Open its roblox.com and accept it."))
+            }
+            .into());
+        }
         return Err(RobloxApiException {
             ..RobloxApiException::new(l::f("Couldn't open the share link (HTTP {0}). Check the link, or try again in a moment.", &[&res.status]))
         }

@@ -578,8 +578,8 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
                 .collect();
             rows.push(row_below(root.tr("rc.graphics"), None, chips(root, cx, "s-rc-graphics", g_items, &pick(&gl, graphics), |r, v, cx| set(r, json!({ "robloxConfig": { "graphics": v } }), cx))));
             // ONE box: the number is typed in it, and its chevron opens the usual ones. (A list with arrows beside it,
-            // then with a − and a + beside it, were two controls for one number: the owner, 2026-11-15, "bẩn tưởi",
-            // then "thiết kế như thế vẫn quá ngu".) What is typed is kept on Enter or on leaving the box (shell.rs).
+            // then with a − and a + beside it, were two controls for one number.) What is typed is kept on
+            // Enter or on leaving the box (shell.rs).
             let open = root.settings.menu == Some("s-rc-fps");
             let mut fps_box = field(&root.fps_box, None).w(px(150.)).h(px(34.));
             if fps > 0 && fps != FPS_MAX {
@@ -610,7 +610,7 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
         }
     }
     // The main account: which ones are, and a way to choose them, beside the settings that leave it out (people
-    // didn't find the ⋮ menu's line: the owner, 2026-11-15). The star on an account's card sets it too.
+    // didn't find the ⋮ menu's line). The star on an account's card sets it too.
     let mains: Vec<String> = root.accounts().iter().filter(|a| flag(a, "isMain")).map(crate::pages::accounts::label).collect();
     let now = if mains.is_empty() { root.tr("main.none") } else { mains.join(", ") };
     let picking = root.settings.main_pick.is_some();

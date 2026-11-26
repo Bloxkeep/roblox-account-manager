@@ -1,9 +1,9 @@
 // Where the app's memory in RAM (Task Manager's number: private pages in the working set) lies, by kind: the app's own
 // heap (Rust's allocations and the C code sharing it), Windows' other heaps, thread stacks, and the rest (memory taken
-// straight from Windows: the graphics driver's, Direct3D's, a decoder's), the biggest of those by allocation. The
-// owner, 2026-11-22: "điều tra kỹ đi" — the memory line said what Rust's heap holds but not what else was in RAM.
-// The heap's own memory is told by where the heap samples (heap.rs sites) lie, not by walking the heap: HeapWalk reads
-// every block's header and brought every page of the heap back into RAM (a shot: 49 MB in RAM before, 243 after).
+// straight from Windows: the graphics driver's, Direct3D's, a decoder's), the biggest of those by allocation. — the
+// memory line said what Rust's heap holds but not what else was in RAM. The heap's own memory is told by where the
+// heap samples (heap.rs sites) lie, not by walking the heap: HeapWalk reads every block's header and brought every
+// page of the heap back into RAM (a shot: 49 MB in RAM before, 243 after).
 #![cfg(windows)]
 
 use std::{
@@ -176,10 +176,10 @@ fn modules() -> HashSet<String> {
         .collect()
 }
 
-/// For error.log, every 10 s or so: a big block that came since the last look and isn't Rust's heap (the owner's alpha.15,
-/// 2026-11-22: 55 MB, all zero, all in RAM, came between two memory lines 10 minutes apart, with nothing to say whose),
-/// with the modules loaded meanwhile, how much of it is in RAM and whether what is in RAM is all zero. None when nothing
-/// came; the first look only takes note. A walk of the address space: about a millisecond.
+/// For error.log, every 10 s or so: a big block that came since the last look and isn't Rust's heap (a user's alpha.15,:
+/// 55 MB, all zero, all in RAM, came between two memory lines 10 minutes apart, with nothing to say whose), with the
+/// modules loaded meanwhile, how much of it is in RAM and whether what is in RAM is all zero. None when nothing came; the
+/// first look only takes note. A walk of the address space: about a millisecond.
 pub fn news() -> Option<String> {
     let peak = crate::heap::take_look_peak();
     let own = own_allocations();

@@ -273,8 +273,8 @@ pub struct ShellForm {
     closed: Cell<bool>,
 }
 
-/// The window's first shows and hides, written down (the trial build's window stayed hidden on the owner's PC,
-/// 2026-11-12: which step hid it). The first few only.
+/// The window's first shows and hides, written down (the trial build's window stayed hidden on a real PC,:
+/// which step hid it). The first few only.
 static SHOW_NOTES: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 fn note_show(what: &str) {
@@ -340,7 +340,7 @@ pub fn attach(h: isize) {
     }
     // The window's look, its place, its show and its Shown on a turn of their own, once the interface's start is over: put back
     // on a screen with another scale, Windows tells the interface of the new scale there and then, and the interface,
-    // still busy starting, crashed (every start with the window saved on the owner's second screen, 2026-11-15:
+    // still busy starting, crashed (every start with the window saved on a real second screen:
     // "RefCell already borrowed" at async_context.rs:178). Nothing is seen before: the window is still hidden.
     win_form::invoke(|| {
         let Some(shell) = SHELL.with(|s| s.borrow().clone()) else { return };
@@ -658,11 +658,10 @@ impl ShellForm {
         // (a minimised or maximised window is activated as it shows, so the keyboard goes back) and stays on top.
         if !self.show_quietly.get() {
             // Meant to open in front: a run started by Velopack's Update.exe (after an update) isn't the one the person
-            // started, and Windows leaves its window behind the others, so it is brought forward (the owner,
-            // 2026-11-15: "nó ko tự pop up lên nó ở đằng sau ấy lúc mới cập nhật xong"). Said in the log either way.
-            // (On a turn of its own: this runs inside the interface's start, and bringing the window forward makes
-            // Windows tell the interface at once that it is active, while it is still busy; 1.0.25-alpha.12 crashed so
-            // at every start on the owner's PC, 2026-11-15.)
+            // started, and Windows leaves its window behind the others, so it is brought forward. Said in the log
+            // either way. (On a turn of its own: this runs inside the interface's start, and bringing the window
+            // forward makes Windows tell the interface at once that it is active, while it is still busy;
+            // 1.0.25-alpha.12 crashed so at every start on a real PC.)
             let h = self.handle;
             win_form::invoke(move || {
                 if win_form::foreground_window() != h && win_form::is_window(h) {
@@ -952,9 +951,8 @@ impl ShellForm {
         });
     }
 
-    /// Shows the window and puts it in front, saying from where. Not a BringToFront overload: passed as an Action,
-    /// that name bound to Control.BringToFront, which only restacks, so Open in the tray and the mini window did nothing
-    /// (owner, 2026-11-08).
+    /// Shows the window and puts it in front, saying from where. Not a BringToFront overload: passed as an Action, that
+    /// name bound to Control.BringToFront, which only restacks, so Open in the tray and the mini window did nothing.
     pub fn show_in_front(self: &Rc<Self>, why: &str) {
         // Each time Bloxkeep puts itself over what the person is doing, and from where (a player found it "stuck on top").
         log::note(&format!("Bloxkeep's window brought to the front ({why})."));
@@ -1083,7 +1081,7 @@ impl ShellForm {
             // The interface draws its own top bar and leaves Windows' frame on the other sides: only the top edge is the
             // client's. Maximised, Windows puts the frame beyond the screen's edge: the client starts that far down.
             // (Asked of Windows: the state still says Normal while the window is being maximised, so the interface's
-            // top 11 px sat above the screen; seen on the owner's maximised window, 2026-11-11.)
+            // top 11 px sat above the screen; seen on a user's maximised window.)
             WM_NCCALCSIZE if wparam != 0 && CUSTOM_FRAME.load(Ordering::SeqCst) => {
                 // SAFETY: lParam is NCCALCSIZE_PARAMS for this message; rgrc[0].top is its second i32.
                 unsafe {
@@ -1333,7 +1331,7 @@ impl ShellForm {
 
     /// The window opening: it fades in while rising the last few pixels into its place (unless maximised), a quarter
     /// of a second, slowing at the end. Bloxkeep's own, as Windows' animation effects may be off (they are on many PCs,
-    /// the owner's too), which made the window just appear, white for a frame first. Meanwhile the window holds only its
+    /// a user's too), which made the window just appear, white for a frame first. Meanwhile the window holds only its
     /// start logo (show_start_cover).
     fn fade_in(self: &Rc<Self>, ms: f64, rise: bool) {
         if self.opacity.get() >= 1.0 || self.fading.get() || self.closed.get() {
@@ -1396,8 +1394,8 @@ impl ShellForm {
         self.minimum_size.set(fit(Size::new(self.ldu(980), self.ldu(620)), area.size()));
         let size = fit(preferred, area.size());
         win_form::set_bounds(self.handle, Rect::new(area.left() + (area.width - size.width) / 2, area.top() + (area.height - size.height) / 2, size.width, size.height));
-        // A first start opens maximised on every screen (the owner, 2026-11-19: "tôi muốn nó mở full màn hình luôn"); the
-        // fitted size above is where Restore takes it. Later starts open as the person left it (restore_place).
+        // A first start opens maximised on every screen; the fitted size above is where Restore takes it. Later starts
+        // open as the person left it (restore_place).
         self.set_window_state(WindowState::Maximized);
     }
 
@@ -1483,8 +1481,8 @@ impl ShellForm {
         }
         // The main window is gone, so Bloxkeep is ending. If anything keeps the process alive past EXIT_GUARD (a hidden
         // window, a thread that never returns), it would still hold the single-instance mutex, and every start after
-        // would only ask this dead one to come forward. Nothing would show. 2026-11-19, the owner: "bloxkeep mở không
-        // lên nữa"; the hidden GPUI tool windows had kept it alive. So it is ended here, whatever the cause.
+        // would only ask this dead one to come forward. Nothing would show. Hidden GPUI tool windows had kept it
+        // alive. So it is ended here, whatever the cause.
         let _ = crate::threads::own("exit-guard", || {
             std::thread::sleep(EXIT_GUARD);
             log::note(&format!(

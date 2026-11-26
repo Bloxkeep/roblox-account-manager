@@ -1,7 +1,7 @@
-//! Each launcher's own icon for Settings › what opens Roblox (owner 2026-11-15: the real icons, not letters and
-//! stand-in symbols). Bloxstrap, Fishstrap and Voidstrap's are their programs' icons from their own repositories (MIT),
-//! Roblox's and Roblox VNG's are their clients' icons; a launcher Bloxkeep doesn't know (another Bloxstrap-style one,
-//! one picked by hand) shows the icon of its own .exe, read from it once.
+//! Each launcher's own icon for Settings › what opens Roblox (the real icons, not letters and stand-in symbols).
+//! Bloxstrap, Fishstrap and Voidstrap's are their programs' icons from their own repositories (MIT), Roblox's and
+//! Roblox VNG's are their clients' icons; a launcher Bloxkeep doesn't know (another Bloxstrap-style one, one picked by
+//! hand) shows the icon of its own .exe, read from it once.
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
 use gpui_kit::RenderImage;

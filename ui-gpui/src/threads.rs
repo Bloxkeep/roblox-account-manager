@@ -3,7 +3,7 @@
 //
 // Why: NVIDIA's graphics driver (nvwgf2umx.dll) keeps about 184 bytes for every thread the process ever starts and never
 // gives them back, however briefly the thread lived (NVIDIA forum 381379; measured here: 12,696 threads, +2.6 MB). A
-// thread made per frame, per poll or per web call grew the owner's Bloxkeep past 1 GB (2026-11-19). So:
+// thread made per frame, per poll or per web call grew a user's Bloxkeep past 1 GB. So:
 //
 //   * short work (a web call, a file, a picture's band) goes to the shared pool: `run`, `call`, `scope`. Its threads are
 //     made as they are first needed, at most `MOST`, and never end: past them work waits its turn. Over a whole run

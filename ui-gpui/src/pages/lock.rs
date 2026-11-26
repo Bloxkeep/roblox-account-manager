@@ -34,13 +34,12 @@ pub struct Data {
     opened: std::cell::Cell<bool>,
 }
 
-// ───────────────────────── the opening ─────────────────────────
-// Opening Bloxkeep, once a run, on the first password screen: as the web page did it (app.js lockIntro, app.css
-// .lock-intro; the owner, 2026-11-08: "nảy ở giữa xong bung ra", and 2026-11-15: GPUI's "không giống bản C#", which
-// only popped the logo out on the card). The logo stands alone in the middle of the window and bounces there for a
-// second: a squash, a hop that grows it half again, a landing, a smaller hop. Then the card opens out around it from a
-// logo-sized tile while the logo flies up to its place on the card, shrinking back; the dots come up, and the lines
-// step in under the logo one after another. The same times and curves as the page's.
+// ───────────────────────── the opening ───────────────────────── Opening Bloxkeep, once a run, on the first password
+// screen: as the web page did it (app.js lockIntro, app.css .lock-intro;:, and: GPUI's, which only popped the logo out
+// on the card). The logo stands alone in the middle of the window and bounces there for a second: a squash, a hop that
+// grows it half again, a landing, a smaller hop. Then the card opens out around it from a logo-sized tile while the
+// logo flies up to its place on the card, shrinking back; the dots come up, and the lines step in under the logo one
+// after another. The same times and curves as the page's.
 
 /// The bounce, then the rest.
 const BOUNCE_MS: f32 = 1000.;
@@ -317,7 +316,7 @@ const OWN_WORDS: &[&str] = &[
 /// A master password's strength: 0 to 4 (zxcvbn's score: how many guesses it would take, from common passwords,
 /// dictionary words, keyboard runs, dates and repeats, not from which kinds of characters it has) and its word. Only a
 /// guide: any 6+ characters do. The old count of character kinds called "Password1!" strong and a long phrase of plain
-/// words weak (the owner, 2026-11-19: "detect mật khẩu mạnh hay yếu chính xác hơn").
+/// words weak.
 pub fn strength(v: &str) -> (usize, &'static str) {
     if v.is_empty() {
         return (0, "weak");
@@ -344,7 +343,7 @@ fn auto_text(root: &Root, minutes: i64) -> String {
 /// Vaults.tsx's FNV-1a over its id).
 ///
 /// The picture is drawn from a copy at the box's pixels (images::pic_sq), as other pictures are: drawn from its file
-/// (GPUI's `img(path)`), it was decoded whole and its pixels kept for the rest of the run, the owner's 2560×1494 vault
+/// (GPUI's `img(path)`), it was decoded whole and its pixels kept for the rest of the run, a user's 2560×1494 vault
 /// picture 14.6 MB in memory and as much again on the graphics card for a 30 px face (error.log, 2026-11-20).
 pub fn face(id: &str, name: &str, picture: Option<&str>, size: f32, radius: f32, letter: f32, cx: &mut App) -> Div {
     const COLORS: [u32; 8] = [0x2563eb, 0x15803d, 0xb45309, 0xdc2626, 0x7c3aed, 0x0e7490, 0xbe185d, 0x0f766e];
@@ -511,14 +510,14 @@ fn card() -> Div {
 
 /// The card's ground: the panel's fill, and on a theme that frosts its picture the frosted picture under it with what
 /// the card's words need of the theme's ground (scene::frost_lazy). The fill alone, thin on a custom theme at a low
-/// fade, let the sharp picture through behind the words (the owner, 2026-11-18, over a light wallpaper).
+/// fade, let the sharp picture through behind the words (over a light wallpaper).
 fn card_ground(card: Div) -> Div {
     if !crate::theme::frosted() {
         return card.bg(c(PANEL));
     }
     // (Its place is the caller's: the card as it opens is laid by hand, absolute, and a `relative` here put it in the
     // card's own flow instead, where it pushed the card's lines out and grew with the card it measures: the opening
-    // showed a tall empty pane for its few seconds, alpha.22, the owner's screenshot 2026-11-18.)
+    // showed a tall empty pane for its few seconds, alpha.22, a screenshot.)
     card.child(crate::scene::frost_lazy(Corners::all(px(23.)), |_| c(PANEL)))
 }
 
@@ -715,7 +714,7 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
     };
     let typed = root.lock_pw.read(cx).value().to_string();
     // (Only while a new password is made: unlocking, the estimator ran on every redraw as the password was typed and
-    // kept its 3 MB of word lists for good, the owner's error.log, 2026-11-20.)
+    // kept its 3 MB of word lists for good, a real error.log.)
     let (score, level) = if create { strength(&typed) } else { (0, "weak") };
     // Shots never show the PC's own Caps Lock.
     let caps = window.capslock().on && !(cfg!(feature = "shot") && std::env::var("BLOXKEEP_KEPT").is_ok());

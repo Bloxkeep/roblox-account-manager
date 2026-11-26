@@ -151,7 +151,7 @@ pub struct AppSettings {
     /// one was), "show" stays up, "minimise" minimised once (Roblox draws less then).
     pub on_join: String,
     /// A window whose player leaves its game (Leave in Roblox's menu) is closed, rather than staying open on Roblox's
-    /// home screen: one Roblox per game played (the owner, 2026-11-20). Off unless turned on.
+    /// home screen: one Roblox per game played. Off unless turned on.
     pub close_after_leave: bool,
     pub rename_windows: bool,
     /// The account's picture as its Roblox window's icon; None (saved before it had its own switch): as `rename_windows`.
@@ -196,6 +196,12 @@ pub struct AppSettings {
     /// The most RAM a minimized or hidden Roblox window keeps, in MB; the rest waits in virtual memory (0 = no limit,
     /// the default). See AppController.LimitRestingRam.
     pub ram_limit_mb: i32,
+    /// The same limit on open windows too (not the one in front, not a main account's), though a window in view that
+    /// is limited may stutter. On by default. Covers the CPU limit too.
+    pub ram_limit_open: bool,
+    /// The most of the PC's whole CPU a minimized or hidden Roblox window may use, in % (as Task Manager's CPU column
+    /// shows it; 0 = no limit, the default). Held by a job object's hard cap (cpu_cap.rs); see App::limit_resting_cpu.
+    pub cpu_limit_percent: i32,
     /// A Roblox window whose own memory (commit, which a RAM limit doesn't lower) stays above this many MB is
     /// closed and opened again into its server (0 = never, the default). See AppController.RestartDueClients.
     pub restart_above_mb: i32,
@@ -270,6 +276,8 @@ impl Default for AppSettings {
             roblox_update_when: "idle".into(),
             fast_flags: false,
             ram_limit_mb: 0,
+            ram_limit_open: true,
+            cpu_limit_percent: 0,
             restart_above_mb: 0,
             split_cores: false,
             anti_afk: false,

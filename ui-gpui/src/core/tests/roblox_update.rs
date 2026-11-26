@@ -1,5 +1,5 @@
 // Tests/Bloxkeep.Tests/RobloxUpdateSuite.cs: the automatic Roblox update with windows open (app/roblox_updates.rs). On
-// 2026-11-11 it closed the owner's window a second after unlocking and neither updated nor opened it again: the wait for
+// it closed a user's window a second after unlocking and neither updated nor opened it again: the wait for
 // the windows to close gave up in the very tick it began, and the window, whose log hadn't been read yet, wasn't one it
 // could open again.
 use std::time::Duration;

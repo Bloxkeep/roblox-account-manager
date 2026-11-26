@@ -14,8 +14,8 @@ use std::{
 use regex::Regex;
 use serde::Serialize;
 
-/// error.log's size before it moves to error.log.1: 1 MB each, about a week of the owner's log (256 KB held about a day
-/// and a half, 2026-11-17). Only appended to and its size looked at while the app runs; a bug report sends the end
+/// error.log's size before it moves to error.log.1: 1 MB each, about a week of a real log (256 KB held about a day and
+/// a half, 2026-11-17). Only appended to and its size looked at while the app runs; a bug report sends the end
 /// (FEEDBACK_LOG_MAX), so a bigger file costs nothing there.
 pub const MAX_SIZE: u64 = 1024 * 1024;
 static SYNC: Mutex<()> = Mutex::new(());
@@ -92,8 +92,7 @@ fn put(text: &str) {
         std::fs::create_dir_all(&dir)?;
         let path = dir.join("error.log");
         // At the limit the log moves down one: error.log.1 becomes error.log.2 (the one before that goes) and the log
-        // becomes error.log.1, so a report sent days after the trouble still has its lines (owner, 2026-11-17: "lỡ người ta
-        // bị đầu tuần mà cuối tuần mới report").
+        // becomes error.log.1, so a report sent days after the trouble still has its lines.
         if let Ok(meta) = std::fs::metadata(&path) {
             // Not a reason to stop logging: a file held open (read, scanned) makes a rename fail, and the line is still
             // written; if the log can't be moved aside it starts over, so it can't grow without end either.
@@ -186,6 +185,8 @@ pub fn catch_crashes() {
             "Bloxkeep crashed: {what} (0x{code:08X}) on thread \"{thread}\" at 0x{at:X} (Bloxkeep.exe +0x{:X}).",
             at.wrapping_sub(base)
         ));
+        // A CPU limit outlives Bloxkeep and no later one can reach it: switched off now, while the jobs are in reach.
+        super::cpu_cap::lift_all_at_crash();
         0 // EXCEPTION_CONTINUE_SEARCH: Windows ends the process as it would have, and Windows Error Reporting still sees it
     }
     // SAFETY: a plain call; the filter lives as long as the process.

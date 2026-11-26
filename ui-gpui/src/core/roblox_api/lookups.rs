@@ -677,6 +677,15 @@ pub fn get_presence(cookie: Option<&str>, user_ids: &[i64], realm: &str, ct: &Ca
                     // A failed page would read as "everyone offline / unknown"; fail the whole check so the last answer stays.
                     // 401 with a cookie: that sign-in is dead (flagged, so the caller can mark it and ask with another).
                     if !res.is_success() {
+                        // The account asking holds a notice from Roblox (403 "User is moderated"): every call with its
+                        // sign-in is refused until it is accepted. Flagged, so the caller asks with another account.
+                        if cookie.is_some_and(|c| !c.is_empty()) && super::is_moderated(res.status, &res.text()) {
+                            return Err(RobloxApiException {
+                                moderated: true,
+                                ..RobloxApiException::new(l::t("Roblox has a notice on this account to accept first. Open its roblox.com and accept it."))
+                            }
+                            .into());
+                        }
                         return Err(RobloxApiException {
                             cookie_invalid: res.status == 401 && cookie.is_some_and(|c| !c.is_empty()),
                             ..RobloxApiException::new(l::f("Roblox refused the request (HTTP {0}). Try again in a moment.", &[&res.status]))

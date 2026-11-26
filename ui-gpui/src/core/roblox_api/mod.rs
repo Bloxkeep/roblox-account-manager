@@ -950,10 +950,10 @@ pub struct ServerJoin {
 }
 
 pub fn server_address(cookie: &str, place_id: i64, job_id: &str, ct: &Cancel) -> Res<Result<ServerJoin, String>> {
-    // Asked as roblox.com asks, every server answers "join status 12 Unable to join Game 311" (the owner's 60 of 60,
-    // error.log 2026-11-19; "chưa bao giờ chọn được server luôn"). Asked as Roblox's own client asks, the same sign-in
-    // got the address (status 2), "full" (22), or the real reason (12 "This game is unavailable in your region to
-    // comply with regulations.", Blox Fruits and Jailbreak from Vietnam): measured that evening on 7 games.
+    // Asked as roblox.com asks, every server answers "join status 12 Unable to join Game 311" (a user's 60 of 60,
+    // error.log). Asked as Roblox's own client asks, the same sign-in got the address (status 2), "full" (22), or the
+    // real reason (12 "This game is unavailable in your region to comply with regulations.", Blox Fruits and Jailbreak
+    // from Vietnam): measured that evening on 7 games.
     server_address_as(cookie, place_id, job_id, ct, true)
 }
 

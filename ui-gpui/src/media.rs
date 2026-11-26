@@ -372,8 +372,8 @@ mod win {
     }
 
     /// Where the song is and how long it is, ms. Spotify says where it was at some moment (not every moment): while
-    /// it plays, the time since that moment is counted on. (Measured on the owner's PC, 2026-11-18: a place 0.007 s
-    /// in, said 1.4 s before, a length of 2:25.6.)
+    /// it plays, the time since that moment is counted on. (Measured on a real PC: a place 0.007 s in, said 1.4 s
+    /// before, a length of 2:25.6.)
     fn position(s: &Session, playing: bool) -> Option<(u64, u64)> {
         let read = || -> windows::core::Result<(i64, i64, i64)> {
             let t = s.GetTimelineProperties()?;

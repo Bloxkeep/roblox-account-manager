@@ -1,6 +1,6 @@
 // AppController.Gpui.cs: what only the GPUI interface (1.1, Rust) may ask: it calls some of Roblox's services itself now
-// (the core moves to Rust bit by bit, the owner's call on 2026-11-09), and the ones that answer only a signed-in account
-// (the charts' games, an account's friends) need an account's sign-in.
+// (the core moves to Rust bit by bit), and the ones that answer only a signed-in account (the charts' games, an
+// account's friends) need an account's sign-in.
 //
 // PORT: in the C# this came over the shell's own pipe to bloxkeep-ui, which kept it in memory only, and the web page's
 // messages never reached it (ShellForm handed only the pipe's messages to HandleGpuiMessageAsync, which answered

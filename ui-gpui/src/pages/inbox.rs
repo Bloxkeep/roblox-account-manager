@@ -425,7 +425,7 @@ fn load(r: &mut Root, tab: usize, cx: &mut Context<Root>) {
             });
         }
         // Shown: seen, at Roblox too (its bell's count back to 0, as roblox.com does when its list opens); the bell
-        // kept counting them however many were read (the owner, 2026-11-19: "chuông thông báo vẫn 20").
+        // kept counting them however many were read.
         2 => {
             let rx = roblox::run(move || {
                 let got = roblox::notices(&cookie)?;
@@ -567,8 +567,8 @@ fn again(r: &mut Root, cx: &mut Context<Root>) {
     }
 }
 
-/// A friend's chat, from their card on Friends: the Inbox's Chat with theirs open. (The owner, 2026-11-13: "sao không
-/// có nút chat với bạn bè": chat was only under Inbox, with no way to it from a friend.)
+/// A friend's chat, from their card on Friends: the Inbox's Chat with theirs open. (Chat was only under Inbox,
+/// with no way to it from a friend.)
 pub fn chat_with(r: &mut Root, user: i64, cx: &mut Context<Root>) {
     r.games.view = crate::pages::games::View::Inbox;
     r.inbox.tab = 0;

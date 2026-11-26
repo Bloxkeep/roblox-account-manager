@@ -1,22 +1,19 @@
-// Bloxkeep 1.1's look (layout C, 2026-11-09; surfaces and type reworked 2026-11-11 after the owner found the neutral
-// greys flat and small next to the old page): blue-slate surfaces in clear layers (the ground darkest, a panel a step
-// up, a card a step above that, each step one you can see), the old page's type scale, the face yellow on the main
-// button of a place and on whatever is chosen.
-// Colours reworked 2026-11-13 (owner, on the real app: "màu không sang"): the surfaces keep their clear steps but lose
-// their blue (charcoal, not slate) and their hairlines go fainter; the words are ivory, not blue-white; the face is a
-// soft gold, not the logo's full yellow (that stays the logo's own), kept for a place's one main action and a switch
-// that is on: what is merely chosen (the rail's place, a filter, a segment) is a light pill, not a yellow one; and the
-// state colours are a shade quieter.
-// The same evening (owner, on that build: "trông app nhợt nhạt"): the soft gold, ivory words and quiet states together
-// washed the page out. Kept: charcoal with no blue, the face only on a place's one main action, the chosen thing a
-// neutral pill. Back to full strength: the ground deeper and the steps wider, the words near white, the face a full
-// gold, the state colours vivid.
+// Bloxkeep 1.1's look (layout C,; surfaces and type reworked after a user found the neutral greys flat and small next
+// to the old page): blue-slate surfaces in clear layers (the ground darkest, a panel a step up, a card a step above
+// that, each step one you can see), the old page's type scale, the face yellow on the main button of a place and on
+// whatever is chosen. Colours reworked: the surfaces keep their
+// clear steps but lose their blue (charcoal, not slate) and their hairlines go fainter; the words are ivory, not
+// blue-white; the face is a soft gold, not the logo's full yellow (that stays the logo's own), kept for a place's one
+// main action and a switch that is on: what is merely chosen (the rail's place, a filter, a segment) is a light pill,
+// not a yellow one; and the state colours are a shade quieter. The same evening (owner, on that build: "trông app nhợt
+// nhạt"): the soft gold, ivory words and quiet states together washed the page out. Kept: charcoal with no blue, the
+// face only on a place's one main action, the chosen thing a neutral pill. Back to full strength: the ground deeper
+// and the steps wider, the words near white, the face a full gold, the state colours vivid.
 use gpui_kit::{Hsla, Rgba, rgb};
 
 // Dark's grounds, a step lighter each: the window, a panel on it, a block on the panel, a block on that. They were
 // near black (#08080a, #121317, #1b1c21, #27282f) and the page read as one dark mass with no blocks to tell apart
-// (the owner, 2026-11-15: "tối mù, bí bách", beside a charcoal page whose cards and buttons stand out). Black stays
-// a theme of its own for those who want it.
+// (beside a charcoal page whose cards and buttons stand out). Black stays a theme of its own for those who want it.
 pub const GROUND: u32 = 0x111215;
 pub const PANEL: u32 = 0x1a1b20;
 pub const RAISED: u32 = 0x25262c;
@@ -80,14 +77,14 @@ pub const GAP: f32 = 12.;
 pub const SIDE: f32 = 300.;
 pub const PAD: f32 = 16.;
 /// A page's left and right margin inside its panel, the same on every page and every Roblox tab part (they were 20
-/// on some, 24 on others: the owner, 2026-11-20, "như căn lề trong Word, mỗi trang một khác").
+/// on some, 24 on others).
 pub const PAGE_X: f32 = 24.;
 /// Below this width the accounts column folds away; a strip on top of the place then says who dropped.
 pub const NARROW: f32 = 1080.;
 
 /// Type sizes, px: the old page's scale (app.css --fs-2..5: 12 meta, 13 body, 14 a row's main words, 15 sections
 /// and big buttons), then the figures and titles. The first scale here (11 / 12.5 / 14 / 22) read small and thin
-/// next to the old page at the owner's window size.
+/// next to the old page at a user's window size.
 pub const T_XS: f32 = 11.;
 pub const T_S: f32 = 12.;
 pub const T_M: f32 = 13.;
@@ -265,8 +262,8 @@ pub fn glass_blocks() -> bool {
 pub const GLASS_FIRST: [&str; 2] = ["sunset", "aurora"];
 
 /// Glass on the blocks only is asked for (the switch, whatever the picture lets it do). Until the person sets the
-/// switch it is on with Sunset, the default theme (the owner, 2026-11-18: "bật luôn kính trên khối mặc định với
-/// sunset"), and Aurora (2026-11-19: "aurora theme cũng đẹp nha, nên đưa nó vào dạng đặc biệt"), off with every other.
+/// switch it is on with Sunset, the default theme, and Aurora (2026-11-19: "aurora theme cũng đẹp nha, nên đưa nó vào
+/// dạng đặc biệt"), off with every other.
 pub fn glass_blocks_asked() -> bool {
     let asked = crate::prefs::get("glassBlocks").and_then(|v| v.as_bool()).unwrap_or_else(|| SHOWN.with(|s| GLASS_FIRST.iter().any(|t| s.borrow().starts_with(&format!("{t}|")))));
     #[cfg(feature = "shot")]
@@ -275,7 +272,7 @@ pub fn glass_blocks_asked() -> bool {
 }
 
 /// `carries_words`: the words outside the blocks read on the picture itself (scene::carries_words). Where they don't
-/// (white words on a sunlit wallpaper; the owner's screenshot, 2026-11-18: "mù mắt"), the panels keep their glass.
+/// (white words on a sunlit wallpaper; a screenshot), the panels keep their glass.
 pub fn set_glass_blocks(carries_words: bool) {
     BLOCKS.with(|b| b.set(glass_blocks_asked() && frosted() && carries_words));
 }
@@ -562,8 +559,8 @@ pub fn custom_palette(ct: &serde_json::Value) -> Palette {
         }
     }
     // (No floor for the panels here, following Wallpaper Engine or not: the glass takes what its words need from the
-    // picture itself as it is drawn, scene::reading_veil. A fixed 65 %, then 50 %, stood here on 2026-11-18: too thick
-    // on a dark wallpaper, the owner the same day.)
+    // picture itself as it is drawn, scene::reading_veil. A fixed 65 %, then 50 %, stood here: too thick
+    // on a dark wallpaper.)
     p
 }
 
@@ -638,8 +635,7 @@ pub fn contrast(a: Hsla, b: Hsla) -> f32 {
 }
 
 /// What is written or drawn on a chosen pill (a segment's, a chip's), whose ground is Bloxkeep's yellow: the dark ink
-/// of the yellow buttons. (The chosen pill was the light one, white on charcoal; the owner, 2026-11-15: "đổi hết mấy
-/// nút kiểu này thành màu bloxkeep đi đừng để màu trắng nữa".)
+/// of the yellow buttons. (The chosen pill was the light one, white on charcoal.)
 pub fn on_text() -> Hsla {
     c(INK)
 }

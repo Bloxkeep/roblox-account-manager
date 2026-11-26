@@ -26,8 +26,8 @@ pub const MAX_TOP_GAMES: usize = 8;
 pub const MAX_TIMELINE_ACCOUNTS: usize = 30;
 /// A client still without a log after this long is counted from its launch, as playing what it was opened with.
 pub const NO_LOG_GRACE: Duration = Duration::from_secs(45);
-/// Open stays are written this often, so a crash of Bloxkeep (or of the PC) loses minutes, not hours. Each
-/// write is the whole vault (about 400 KB): 15 minutes, not 5, cuts those writes to a third (owner, 2026-11-03).
+/// Open stays are written this often, so a crash of Bloxkeep (or of the PC) loses minutes, not hours. Each write
+/// is the whole vault (about 400 KB): 15 minutes, not 5, cuts those writes to a third.
 pub const PLAY_SAVE_INTERVAL: Duration = Duration::from_secs(15 * 60);
 /// Process checks come every few seconds; a gap this long means the PC was asleep in between.
 pub const SLEEP_GAP: Duration = Duration::from_secs(30);

@@ -1,7 +1,7 @@
 // The profile's decorations (own profile, kept in Bloxkeep only): a theme playing over the banner (snow and a sleigh at
 // Christmas, bats and fog at Halloween, fireworks and lanterns at Tết…) and a ring round the picture, picked in a small
-// panel from the banner's buttons, or following the season by itself. The owner's approved mock-up (2026-11-19,
-// "trang-tri.html"), drawn here with GPUI's own pieces: round boxes, lines, soft shadows for the glows, and the
+// panel from the banner's buttons, or following the season by itself. From a mock-up
+// ("trang-tri.html"), drawn here with GPUI's own pieces: round boxes, lines, soft shadows for the glows, and the
 // pictures (Fluent Emoji 3D, MIT; the sleigh's 12 frames, Lottie Simple License; assets/deco/NOTICE.txt).
 //
 // GPUI turns no picture, so each one that spins is made once in 24 turns (one picture of 24 frames, frame_index);

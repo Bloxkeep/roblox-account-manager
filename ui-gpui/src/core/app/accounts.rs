@@ -1043,12 +1043,11 @@ impl App {
             if self.memory.low_memory_priority.borrow_mut().remove(&pid) {
                 let _ = roblox_processes::set_memory_priority(pid, false);
             }
-            if self.memory.ram_limited.borrow_mut().remove(&pid).is_some() {
-                let app = self.clone();
-                rt::spawn(async move {
-                    let _ = app.limit_ram_in_turn(pid, None).await;
-                });
+            // Through the one checked path (memory.rs ask_ram_limit): lifted only once Windows says yes.
+            if self.memory.ram_asks.borrow().get(&pid).is_some_and(|a| a.limited_to().is_some()) {
+                self.ask_ram_limit(pid, None, "a main account's", 0);
             }
+            self.lift_cpu_limit_now(pid, "a main account's");
         }
         self.step("SplitCores(_corePids)", || {
             let pids = self.cores.core_pids.borrow().clone();
@@ -1146,11 +1145,9 @@ impl App {
         })?;
         for id in &set {
             self.controller.running.borrow_mut().shift_remove(id);
-            self.schedule.stop_closing.borrow_mut().remove(id);
             self.controller.rejoins_in_a_row.borrow_mut().remove(id);
-            self.presets.restarts.borrow_mut().remove(id);
+            self.close_desk.forget_account(*id);
             self.controller.offline_strikes.borrow_mut().remove(id);
-            self.controller.user_closed.borrow_mut().remove(id);
             self.end_play(*id, None, Stamp::utc_now()); // its stay ends now, not at the next lock
             self.forget_scheduled_open(*id);
         }

@@ -145,12 +145,19 @@ impl App {
         if self.memory.low_memory_priority.borrow_mut().remove(&front) {
             roblox_processes::set_memory_priority(front, false);
         }
-        // Its RAM limit too (not for anti-AFK's moment in front: limited again right after, for nothing).
-        if !self.windows_in_turn() && self.memory.ram_limited.borrow_mut().remove(&front).is_some() {
-            // C#: `_ = LimitRamInTurn(front, null)`: asked in turn, its answer not awaited.
-            drop(self.limit_ram_in_turn(front, None));
-            log::note(&format!("RAM limit: lifted for Roblox window {front} (came to the front)."));
+        // Its RAM limit too, asked at once and remembered as lifted only when Windows says yes (memory.rs
+        // ask_ram_limit). Not for a window lent for a moment (anti-AFK's moment in front): limited again right after, for
+        // nothing. A lift already on its way isn't asked twice.
+        let limited = front != 0 && self.memory.ram_asks.borrow().get(&front).is_some_and(|a| a.limited_to().is_some() && a.asked != Some(None));
+        let cpu_limited = front != 0 && self.memory.cpu_asks.borrow().get(&front).is_some_and(|a| a.limited_to().is_some() && a.asked != Some(None));
+        if !(limited || cpu_limited) || crate::core::window_loan::is_lent(roblox_processes::main_window(front)) {
+            return;
         }
+        if limited {
+            self.ask_ram_limit(front, None, "came to the front", 0);
+        }
+        // Its CPU limit the same way: a window held at a few % of the CPU can't be played.
+        self.lift_cpu_limit_now(front, "came to the front");
     }
 
     pub fn split_cores<'a>(&self, pids: impl IntoIterator<Item = &'a i32>) {

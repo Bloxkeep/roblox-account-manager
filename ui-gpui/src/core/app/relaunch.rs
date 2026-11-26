@@ -153,9 +153,9 @@ impl App {
         }
     }
 
-    /// An update found before the vault is opened installs there and then (the owner's choice, 2026-10-25, as other apps
-    /// update when opened); the lock screen offers its place while it downloads. Found after the unlock, it waits for a
-    /// quiet moment instead of cutting in.
+    /// An update found before the vault is opened installs there and then (as other apps update when opened); the lock
+    /// screen offers its place while it downloads. Found after the unlock, it waits for a quiet moment instead of
+    /// cutting in.
     pub fn update_offers_at_lock(&self) -> bool {
         let status = self.updates.updater.borrow().status();
         vault_now(self).is_none()
@@ -247,7 +247,7 @@ impl App {
 
     fn busy_with_roblox(&self, now: Stamp) -> bool {
         self.opening_roblox()
-            || !self.presets.restarts.borrow().is_empty()
+            || self.close_desk.reopening()
             || self.windows_in_turn()
             || self.macros_playing()
             || now < self.controller.sweep_background_until.get()
@@ -265,7 +265,7 @@ impl App {
         if self.busy_with_roblox(now) {
             return if self.opening_roblox() {
                 "Roblox opening or rejoining"
-            } else if !self.presets.restarts.borrow().is_empty() {
+            } else if self.close_desk.reopening() {
                 "a restart under way"
             } else if self.windows_in_turn() || self.macros_playing() {
                 "a macro or window turn"
@@ -320,7 +320,7 @@ impl App {
             || !self.launching.handed_over.borrow().is_empty()
             || self.controller.rejoin_queue.borrow().iter().any(|r| r.due.secs_since(now) < secs(REJOIN_SOON))
             || self.controller.rejoining.get()
-            || !self.rejoin.closing_for_rejoin.borrow().is_empty()
+            || self.close_desk.any_own()
     }
 
     pub fn schedule_due_soon(&self) -> bool {

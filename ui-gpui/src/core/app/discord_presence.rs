@@ -64,7 +64,7 @@ impl App {
         let windows = self.roblox_count();
         let runs: Vec<(i32, Rc<PendingLaunch>)> = self.controller.running.borrow().values().cloned().collect();
         // Each game with when the first of its windows got into it: Discord's clock under a game's name reads as time in
-        // that game (owner, 2026-11-15: 17 h shown, the time Bloxkeep had been open).
+        // that game (17 h shown, the time Bloxkeep had been open).
         let mut games: Vec<(crate::core::roblox_api::GameInfo, Option<Stamp>)> = Vec::new();
         for run in &runs {
             if let Some(game) = self.playing_place((run.0, &run.1)).and_then(|id| self.known_game(id)) {

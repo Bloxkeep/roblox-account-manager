@@ -89,6 +89,22 @@ pub async fn run(c: &mut Checks, _dir: &str) {
 
     let r = decide(secs(90), false, OTHER, false, None);
     c.check("away: windows idle 12+ min nudged, the 5-min one not", r == [B, C], list(&r));
+    // A window Bloxkeep is closing (closed as it came up, here) was still nudged, brought to the front on its way out.
+    app.close_desk.closing.borrow_mut().insert(
+        C,
+        crate::core::close_plan::Closing {
+            pid: C,
+            account: None,
+            cause: crate::core::close_plan::Cause::User,
+            then: crate::core::close_plan::Then::StayClosed,
+            asked: Stamp::utc_now(),
+            forced: false,
+            sent: true,
+        },
+    );
+    let r = decide(secs(90), false, OTHER, false, None);
+    c.check("a window being closed isn't nudged, nor held (fails on the old code)", r == [B] && held(C) == "-", list(&r));
+    app.close_desk.closing.borrow_mut().clear();
     let r = decide(secs(20), false, OTHER, false, None);
     c.check("in use, 20 s since input: every due window goes (12 min by default), not only the one about to be kicked", r == [B, C], list(&r));
     c.check(

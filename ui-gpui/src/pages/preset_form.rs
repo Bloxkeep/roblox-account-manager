@@ -776,7 +776,17 @@ fn setting(label: String, stacked: bool, first: bool, body: impl IntoElement) ->
         .when(!stacked, |d| d.items_start().gap(px(16.)))
         .min_h(px(40.))
         .when(!first, |d| d.pt(px(12.)).border_t_1().border_color(ca(WHITE, 0.05)))
-        .child(div().when(!stacked, |d| d.w(px(140.)).min_h(px(36.)).flex().items_center()).flex_none().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT_2)).child(label))
+        // (The name wraps inside its column: as the flex box's own text it was laid out at its whole length and a long
+        // one, "When a window joins a game", ran under the choices beside it.)
+        .child(
+            div()
+                .when(!stacked, |d| d.w(px(140.)).min_h(px(36.)).flex().items_center())
+                .flex_none()
+                .text_size(px(T_M))
+                .font_weight(FontWeight::MEDIUM)
+                .text_color(c(TEXT_2))
+                .child(div().w_full().min_w_0().line_height(px(18.)).child(label)),
+        )
         .child(div().flex_1().min_w_0().child(body))
 }
 
@@ -1030,7 +1040,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                             }))),
                 )
                 .when_some(at, |d, k| {
-                    // (No place numbers: owner 2026-11-14, no numbers on accounts.)
+                    // (No place numbers, no numbers on accounts.)
                     d
                         // An arrow that can't move it (the first one's up, the last one's down) leaves its place empty:
                         // greyed, the thin dim chevron read as another icon weight (review 4.5).

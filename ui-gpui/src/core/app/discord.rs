@@ -26,7 +26,7 @@ use crate::core::models::{DiscordSettings, LaunchPreset, stamp_min};
 use crate::core::roblox_processes::PlayerProcess;
 use crate::core::{l, log, prefs, rt};
 
-/// Alerts that come together go as one message. 3 s, not 10: the owner found a ban's alert slow (2026-10-21).
+/// Alerts that come together go as one message. 3 s, not 10: a user found a ban's alert slow (2026-10-21).
 pub const DISCORD_BATCH: Duration = Duration::from_secs(3);
 /// A summary for a scheduled preset's stop waits for its clients to close, so their stays are counted whole.
 pub const DISCORD_AFTER_STOP: Duration = Duration::from_secs(30);
@@ -559,7 +559,7 @@ impl App {
         if self.discord.events.borrow().is_empty() {
             self.discord.batch_due.set(now.plus_secs(DISCORD_BATCH.as_secs_f64()));
         }
-        // A game's ban goes at once (the owner wants it told right away), with whatever is waiting already.
+        // A game's ban goes at once (a user wants it told right away), with whatever is waiting already.
         if type_ == "gameBan" {
             self.discord.batch_due.set(now);
         }

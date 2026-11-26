@@ -1,8 +1,8 @@
-// Roblox's own services, called from here (the core moves to Rust bit by bit, the owner's call on 2026-11-09): the
-// charts (explore-api: the rows on roblox.com/charts and their games), the game search (search-api: the site's search
-// box) and the games' icons (thumbnails). The charts' games come only to a signed-in account: the app hands one
-// account's sign-in over its pipe (robloxSignIn), kept in memory only and sent to roblox.com alone (a Roblox VNG
-// account's to VNG's hosts alone: routed).
+// Roblox's own services, called from here (the core moves to Rust bit by bit): the charts (explore-api: the rows on
+// roblox.com/charts and their games), the game search (search-api: the site's search box) and the games' icons
+// (thumbnails). The charts' games come only to a signed-in account: the app hands one account's sign-in over its pipe
+// (robloxSignIn), kept in memory only and sent to roblox.com alone (a Roblox VNG account's to VNG's hosts alone:
+// routed).
 //
 // An account's friends (friends, presence, users, thumbnails) are asked with that account's own sign-in: Roblox
 // refuses the list to a request that isn't signed in (403, checked 2026-11-10), and names a friend's server only to an
@@ -78,8 +78,8 @@ fn each<T: Send, R: Send>(things: Vec<T>, ask: impl Fn(T) -> R + Sync) -> Vec<R>
 
 /// The Cookie header of a signed-in ask: the account's sign-in, and a browser tracker id as roblox.com's own pages
 /// carry (the RBXEventTrackerV2 cookie's "browserid"). Roblox's settings calls refuse an ask without one: 400 "Request
-/// Context BrowserTrackerID is missing or invalid" (the owner's error.log, 2026-11-15). One id for the whole run, as
-/// one browser has one for all the accounts signed in to it.
+/// Context BrowserTrackerID is missing or invalid". One id for the whole run, as one browser has one for all the
+/// accounts signed in to it.
 pub(crate) fn signed(cookie: &str) -> String {
     static TRACKER: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
     let id = TRACKER.get_or_init(|| {
@@ -268,7 +268,7 @@ pub fn sort_games(cookie: Option<&str>, sort: &Sort) -> Result<Vec<Game>, String
         url += &format!("&treatmentType={}", enc(t));
     }
     // Roblox gives a chart a page at a time (nextPageToken, as its own Charts page loads more on scroll): up to four
-    // pages, about a hundred games, so the chart runs on down the page (owner 2026-11-17: "hiện nhiều hơn").
+    // pages, about a hundred games, so the chart runs on down the page.
     let mut games: Vec<Game> = Vec::new();
     let mut token: Option<String> = None;
     for _ in 0..4 {
@@ -384,8 +384,8 @@ pub fn icons(universes: &[i64]) -> HashMap<i64, String> {
 }
 
 /// A game's pictures that Roblox shows: those its moderation passed ("Completed"). One it blocked comes as Roblox's
-/// grey "unapproved" stand-in on a white ground (`…/UnapprovedImage/…`): Ryujin's first and last of six, the owner's
-/// game page, 2026-11-19 ("ảnh game này lỗi à"). Pending and failed ones are left out with them.
+/// grey "unapproved" stand-in on a white ground (`…/UnapprovedImage/…`): Ryujin's first and last of six.
+/// Pending and failed ones are left out with them.
 fn shown_thumbnails(v: &Value) -> impl Iterator<Item = &Value> {
     v.get("thumbnails").and_then(Value::as_array).into_iter().flatten().filter(|t| {
         t.get("state").and_then(Value::as_str) == Some("Completed") && t.get("imageUrl").and_then(Value::as_str).is_some_and(|u| !u.is_empty() && !u.contains("/UnapprovedImage/"))
@@ -549,8 +549,7 @@ fn fetch_as(what: &str, url: &str, most: u64) -> Option<Vec<u8>> {
 /// The banner of the game at `place` as it was uploaded, its file on this PC (`dir`/{asset}.img), fetched the first
 /// time. Roblox's picture servers give a game's wide picture at 768×432 at most ("The requested size is invalid" to
 /// any more, asked 2026-11-18); asset delivery gives the picture itself without a sign-in, 1024×576 (three games
-/// asked that day): a third more dots each way, for Home's hero, where the 768 one was blown up and soft (the owner:
-/// "banner phải nét, ko mờ").
+/// asked that day): a third more dots each way, for Home's hero, where the 768 one was blown up and soft.
 pub fn place_banner(place: i64, dir: &std::path::Path) -> Option<std::path::PathBuf> {
     let universe = int(&get(&format!("https://apis.roblox.com/universes/v1/places/{place}/universe"), None).ok()?, "universeId");
     if universe <= 0 {
@@ -622,10 +621,10 @@ fn keep(dir: &std::path::Path, file: &std::path::Path, bytes: &[u8]) -> Option<(
     file.is_file().then_some(())
 }
 
-/// An HLS clip's parts, fetched as roblox.com's own game page does (seen 2026-11-13): asking asset delivery for the
-/// "hls" representation gives a signed link on sc*.rbxcdn.com, and every playlist and part under it takes that same
-/// signature. The plain `/v2/assetId` link (hls-segments.rbxcdn.com, unsigned) answers 403 to everyone. Each part is a
-/// whole WebM of about 6 s; the rendition kept is the tallest Roblox lists (1280×720 today; the owner, 2026-11-18: the highest there is).
+/// An HLS clip's parts, fetched as roblox.com's own game page does (seen 2026-11-13): asking asset delivery for the "hls" representation
+/// gives a signed link on sc*.rbxcdn.com, and every playlist and part under it takes that same signature. The plain `/v2/assetId` link
+/// (hls-segments.rbxcdn.com, unsigned) answers 403 to everyone. Each part is a whole WebM of about 6 s; the rendition kept is the tallest
+/// Roblox lists (1280×720 today: the highest there is).
 fn hls_clip(asset: i64, dir: &std::path::Path, list: &std::path::Path) -> Option<std::path::PathBuf> {
     // [{"format":"hls","majorVersion":"1","fidelity":"main"}], as the page sends it.
     const HLS: &str = "W3siZm9ybWF0IjoiaGxzIiwibWFqb3JWZXJzaW9uIjoiMSIsImZpZGVsaXR5IjoibWFpbiJ9XQ%3D%3D";
@@ -728,7 +727,7 @@ fn cdn(hash: &str) -> Option<Vec<u8>> {
     // (A file named by its hash is the same file for ever: kept in the cache folder, the next look at the avatar reads
     // it here instead of from Roblox. Only a plain hash names a file.)
     // (Roblox's names may carry dashes and underscores ("30DAY-…"): with letters and digits only, nothing was ever kept,
-    // the owner's cache had no avatar-3d folder, 2026-11-17.)
+    // a user's cache had no avatar-3d folder.)
     let kept = KEEP
         .get()
         .cloned()
@@ -766,8 +765,8 @@ fn cdn_fetch(hash: &str) -> Option<Vec<u8>> {
 /// answer's shape is the DevForum's, not one seen here with a real sign-in: { state, imageUrl } and, at that address,
 /// { camera: { position }, aabb: { min, max }, obj, mtl, textures }. A model Roblox is still making (after a change)
 /// is waited for: with `after` (the address of the model before a change) up to 45 s for another than that one, as
-/// Roblox answers Pending while it makes the new one and, for a moment, still the one before (one took 10.7 s on the
-/// owner's PC, 2026-11-17); without it 12 s.
+/// Roblox answers Pending while it makes the new one and, for a moment, still the one before (one took 10.7 s on a
+/// real PC); without it 12 s.
 pub fn solid(cookie: &str, user: i64, after: Option<&str>) -> Result<Solid, String> {
     // BLOXKEEP_SHOT_MODEL=dir: a hidden shot's model, from model.obj, model.mtl and the pictures beside them (every
     // other file there, by its name: Roblox's own have no ending).
@@ -821,8 +820,8 @@ pub fn solid(cookie: &str, user: i64, after: Option<&str>) -> Result<Solid, Stri
         [at("x"), at("y"), at("z")]
     };
     let (obj, mtl) = both(|| cdn(&text(&d, "obj")), || cdn(&text(&d, "mtl")));
-    // The newest model's file names, beside the kept files: a look that went wrong (R15 drawn apart from R6, owner
-    // 2026-11-17) can be read back from the very files Roblox gave.
+    // The newest model's file names, beside the kept files: a look that went wrong (R15 drawn apart from R6) can
+    // be read back from the very files Roblox gave.
     if let Some(dir) = KEEP.get().cloned().flatten() {
         let _ = std::fs::write(dir.join("avatar-3d").join("last.json"), d.to_string());
     }
@@ -984,9 +983,9 @@ fn post(url: &str, body: &Value, cookie: Option<&str>) -> Result<Value, String> 
 }
 
 /// What the account has done with a game: favourited it, and voted it up (true) or down (None: neither). As Roblox's
-/// game page asks (games.roblox.com, both answer only a sign-in: 401 without, checked 2026-11-18).
-/// The third: whether Roblox takes a vote from the account at all (`canVote`; false with reasonForNotVoteable set when
-/// it hasn't played the game: a vote then answers 403 "Play game required", the owner's log 2026-11-19).
+/// game page asks (games.roblox.com, both answer only a sign-in: 401 without, checked 2026-11-18). The third: whether
+/// Roblox takes a vote from the account at all (`canVote`; false with reasonForNotVoteable set when it hasn't played
+/// the game: a vote then answers 403 "Play game required", a real log).
 pub fn game_mine(cookie: &str, universe: i64) -> Result<(Option<bool>, Option<bool>, Option<bool>), String> {
     let base = format!("https://games.roblox.com/v1/games/{universe}");
     let (fav, vote) = both(|| get(&format!("{base}/favorites"), Some(cookie)), || get(&format!("{base}/votes/user"), Some(cookie)));
@@ -1480,7 +1479,7 @@ pub fn people(query: &str) -> Result<Vec<Friend>, String> {
 /// The faces and the game icons, and a name for one Roblox named none.
 fn dress(mut list: Vec<Friend>) -> Vec<Friend> {
     // Names: Roblox's requests, followers and followings lists now give only ids ("name" and "displayName" empty: the
-    // owner's Requests showed numbers and a bare "@", 2026-11-15), so they are asked of users.roblox.com, a hundred an
+    // a user's Requests showed numbers and a bare "@"), so they are asked of users.roblox.com, a hundred an
     // ask, as the friends list already did.
     let nameless: Vec<i64> = list.iter().filter(|f| f.name.is_empty()).map(|f| f.id).collect();
     if !nameless.is_empty() {
@@ -1727,7 +1726,7 @@ pub fn inventory(cookie: &str, user: i64, kinds: &str, cursor: &str) -> Result<(
 }
 
 /// The inventory's shelves past the avatar's, as Roblox's own inventory page lists them (its categories, RoSeal's copy
-/// of them, 2026-11-15: the owner found "a heap of shelves" missing): classic faces and heads, then what creators keep.
+/// of them: a user found "a heap of shelves" missing): classic faces and heads, then what creators keep.
 pub const LIBRARY: [(&str, &str); 7] = [
     ("inv.faces", "Face,Head"),
     ("inv.audio", "Audio"),
@@ -2100,7 +2099,7 @@ fn friends_file_lock(user: i64) -> std::sync::Arc<std::sync::Mutex<()>> {
 }
 
 /// What makes two looks the same one: its sizes and colours, and what is worn with its fitting. Not R6 or R15: the
-/// same clothes on the other body are the same look (each switch was kept as another, the owner's "lịch sử lặp"); the
+/// same clothes on the other body are the same look (each switch was kept as another); the
 /// look keeps the body it was last worn with.
 fn look_mark(model: &Value) -> String {
     let mut worn: Vec<String> = model.get("assets").and_then(Value::as_array).into_iter().flatten().map(|a| format!("{}{}", int(a, "id"), a.get("meta").filter(|m| !m.is_null()).map(Value::to_string).unwrap_or_default())).collect();
@@ -3087,11 +3086,10 @@ pub struct Profile {
     /// The things they show off on their page (Roblox's Collections: up to six, chosen by them).
     pub collection: Vec<Ware>,
     /// The pictures across the top of their page, sharp (768×432): the games they like, then more of the first one's
-    /// own pictures when they like few. One 480×270 cover stretched across the page came out blurred (owner,
-    /// 2026-11-17: "banner mờ câm").
+    /// own pictures when they like few. One 480×270 cover stretched across the page came out blurred.
     pub banner: Vec<String>,
     /// Each banner picture's id as uploaded (0: none), for the page to swap in the picture at 1024×576
-    /// (`uploaded_picture`) once it is fetched (owner, 2026-11-19: "khi set banner thì cố gắng làm cho nó nét nhất").
+    /// (`uploaded_picture`) once it is fetched.
     pub banner_assets: Vec<i64>,
 }
 
@@ -4214,8 +4212,8 @@ pub struct Notice {
 }
 
 /// The signed-in account's latest notifications: two pages of 20, as roblox.com asks for them (its notification stream's
-/// PAGE_SIZE is 20; maxRows=30 was answered 400 and the tab showed nothing, owner 2026-11-15). A short page isn't the end
-/// (Roblox filters within the window), an empty one is; a second page that fails keeps the first.
+/// PAGE_SIZE is 20; maxRows=30 was answered 400 and the tab showed nothing). A short page isn't the end (Roblox filters
+/// within the window), an empty one is; a second page that fails keeps the first.
 pub fn notices(cookie: &str) -> Result<Vec<Notice>, String> {
     const PAGE: usize = 20;
     let mut all: Vec<Value> = Vec::new();
@@ -4422,7 +4420,7 @@ pub fn deals(cookie: &str, user: i64) -> Result<Vec<Deal>, String> {
 }
 
 /// Runs a call on the shared pool (crate::threads); its answer comes through the channel. A failed answer is written to error.log
-/// with the page that asked (owner, 2026-11-15: every failure a person can meet is in error.log), ids as "#".
+/// with the page that asked (every failure a person can meet is in error.log), ids as "#".
 pub fn run<T: Answer + Send + 'static, F: FnOnce() -> T + Send + 'static>(f: F) -> oneshot::Receiver<T> {
     let (tx, rx) = oneshot::channel();
     crate::threads::run(move || {
@@ -4503,7 +4501,7 @@ pub struct Choice {
 /// doesn't have it for the account. Roblox's words differ between the two: joining says "All" where online status
 /// says "AllUsers" (RoSeal's and RoValra's code, 2026-11-15; Bloxkeep sent "AllUsers" for joining, which did nothing).
 /// Read from settings-and-options, which has both with their choices: the plain user-settings answer left online
-/// status out for the owner's account ("online status missing", their error.log, 2026-11-15).
+/// status out for a user's account ("online status missing", their error.log).
 pub fn visibility(cookie: &str) -> Result<(Option<Choice>, Option<Choice>), String> {
     // (A hidden shot of the account's Settings: an answer of its own.)
     #[cfg(feature = "shot")]

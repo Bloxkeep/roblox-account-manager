@@ -86,7 +86,8 @@ pub struct RejoinRequest {
     pub preset_id: Option<Guid>,
     pub restart: bool,
     /// Tries that opened no window: Roblox wouldn't start (its updater swapping the build folder) or quit before
-    /// its window came. Tried again up to `MAX_OPEN_RETRIES` times, like a drop in game.
+    /// its window came. One that wouldn't start is tried again up to `MAX_OPEN_RETRIES` times; one that quit, for as
+    /// long as auto-rejoin is on (`retry_open`), said once after `MAX_OPEN_RETRIES`.
     pub open_retries: i32,
 }
 
@@ -148,9 +149,9 @@ pub const GET_IN_TIMEOUT: Duration = Duration::from_secs(60);
 /// A teleport that hasn't reached its next server this long after it started is no longer taken as one under way:
 /// Roblox's status for the account is asked again (rejoin.rs's stuck_in_game). A teleport takes seconds; one that ends
 /// in Roblox's "Disconnected" box (Error Code 256, "Lost connection due to an unknown error") logs no arrival and often
-/// no disconnect either, and the window read as teleporting for good: nothing looked at it again.
-/// A real teleport reaches its next server in about a second (the owner's 0.748 logs, 2026-11-19: doTeleport to the
-/// new serverId in 0.5 s and 2 s), so 45 s leaves a slow one plenty.
+/// no disconnect either, and the window read as teleporting for good: nothing looked at it again. A real teleport
+/// reaches its next server in about a second (a user's 0.748 logs: doTeleport to the new serverId in 0.5 s and 2 s),
+/// so 45 s leaves a slow one plenty.
 pub const TELEPORT_GIVE_UP: Duration = Duration::from_secs(45);
 /// …and past this long it is a failed one whatever Roblox's status says (an account whose status is hidden): rejoined.
 pub const TELEPORT_DEAD: Duration = Duration::from_secs(3 * 60);
@@ -173,6 +174,9 @@ pub struct ControllerState {
     pub running: RefCell<IndexMap<Guid, (i32, Rc<PendingLaunch>)>>,
     pub pending: RefCell<Vec<Rc<PendingLaunch>>>,
     pub pending_seen_alive: RefCell<HashMap<LaunchRef, Stamp>>,
+    /// The client last seen starting for a launch (a Roblox begun since it, no window yet): should it quit before its
+    /// window, what it left behind (a crash report, Windows' error record) is looked up by this id.
+    pub pending_seen_pid: RefCell<HashMap<LaunchRef, i32>>,
     /// Launches the person closed while still opening: their client is closed as soon as it is claimed.
     pub close_when_claimed: RefCell<HashSet<LaunchRef>>,
     /// Clients that left a game by ending (X button, crash): the windowless tray copy Roblox then starts as
@@ -191,7 +195,6 @@ pub struct ControllerState {
     pub roblox_flags_pending: Cell<bool>,
     pub roblox_settings_written_at: Cell<Stamp>,
     pub nudging: Cell<bool>,
-    pub user_closed: RefCell<HashSet<Guid>>,
     pub rejoin_queue: RefCell<Vec<RejoinRequest>>,
     /// Rejoins of each account since its client last stayed in a game a while (see KeepsDropping).
     pub rejoins_in_a_row: RefCell<HashMap<Guid, i32>>,
@@ -205,6 +208,9 @@ pub struct ControllerState {
     /// While a multi-account launch waits between two: the accounts still to open (rejoins of the others go
     /// meanwhile, see RunDueRejoin). None while it opens one or when none is going.
     pub launch_waiting: RefCell<Option<HashSet<Guid>>>,
+    /// A launch whose windows are tiled as each joins its game: its start and the accounts it opens, each holding its
+    /// tile from the first (see `tile_when_open`).
+    pub tile_plan: RefCell<Option<(Stamp, Vec<Guid>)>>,
     pub boot_status_done: Cell<bool>,
     pub boot_avatars_done: Cell<bool>,
     pub boot: RefCell<Option<BootProgress>>,
@@ -261,6 +267,7 @@ impl Default for ControllerState {
             running: RefCell::new(IndexMap::new()),
             pending: RefCell::new(Vec::new()),
             pending_seen_alive: RefCell::new(HashMap::new()),
+            pending_seen_pid: RefCell::new(HashMap::new()),
             close_when_claimed: RefCell::new(HashSet::new()),
             tray_sweep: RefCell::new(HashMap::new()),
             avatar_urls: RefCell::new(HashMap::new()),
@@ -273,7 +280,6 @@ impl Default for ControllerState {
             roblox_flags_pending: Cell::new(crate::core::roblox_flags::pending()),
             roblox_settings_written_at: Cell::new(min),
             nudging: Cell::new(false),
-            user_closed: RefCell::new(HashSet::new()),
             rejoin_queue: RefCell::new(Vec::new()),
             rejoins_in_a_row: RefCell::new(HashMap::new()),
             offline_strikes: RefCell::new(HashMap::new()),
@@ -282,6 +288,7 @@ impl Default for ControllerState {
             launch_cts: RefCell::new(None),
             rejoin_cts: RefCell::new(None),
             launch_waiting: RefCell::new(None),
+            tile_plan: RefCell::new(None),
             boot_status_done: Cell::new(false),
             boot_avatars_done: Cell::new(false),
             boot: RefCell::new(None),
@@ -628,11 +635,10 @@ impl App {
 
     /// When a join not in a server yet is asked about (CheckJoinAsync). A join waiting for room logs nothing, like a
     /// refused one: on 2026-10-16 four accounts waited 17-38 s silently, then got in. Asking Roblox in that wait might
-    /// upset it, so wait past the longest seen; an account the game is known to have banned is asked at once (the
-    /// owner's wish, 2026-10-21).
+    /// upset it, so wait past the longest seen; an account the game is known to have banned is asked at once.
     pub fn join_check_after(&self, account: &Account, target: &GameTarget) -> Duration {
         // A chosen server is asked about as a party's is (SERVER_CHECK): one that had ended sat on Roblox's "This experience
-        // has ended" for a minute before another was tried (the owner's, 2026-11-14).
+        // has ended" for a minute before another was tried.
         if self.game_ban_of(account, Some(target.place_id)).is_some() {
             Duration::from_secs(5)
         } else if target.job_id.as_deref().is_some_and(|j| !j.is_empty()) {
@@ -748,7 +754,7 @@ impl App {
                     log::note(&format!("Command \"{asked}\" failed:"));
                 } else if !self.withheld(&asked) {
                     // What the person was told goes in error.log too, so a report never needs a screenshot to say why
-                    // (owner, 2026-11-15: error.log must cover every case). Names and ids scrubbed.
+                    // (error.log must cover every case). Names and ids scrubbed.
                     let why = if vault::is_invalid_password(&fail) { "wrong password".to_string() } else { self.scrub(&error_text(&fail)) };
                     log::note_file(&format!("Command \"{asked}\" refused: {why}"));
                 }

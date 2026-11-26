@@ -120,10 +120,10 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     let launch = Rc::new(PendingLaunch::new(id, HashSet::new(), Stamp::utc_now().plus_secs(-60.0), Some(GameTarget::new(PLACE, None, None, None)), false, None));
     app.controller.running.borrow_mut().insert(id, (PID, launch));
     let closed: Rc<RefCell<Vec<i32>>> = Rc::new(RefCell::new(Vec::new()));
-    let real_close = app.bot_check.close_for_reopen.borrow().clone();
+    let real_close = app.close_desk.close_hook.borrow().clone();
     {
         let closed = closed.clone();
-        *app.bot_check.close_for_reopen.borrow_mut() = Some(Rc::new(move |pid, _| closed.borrow_mut().push(pid)));
+        *app.close_desk.close_hook.borrow_mut() = Some(Rc::new(move |pid, _| closed.borrow_mut().push(pid)));
     }
     let closed_now = || closed.borrow().clone();
 
@@ -179,7 +179,7 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     c.check("…the join asked again carrying the check", retry.as_deref() == Some("check-1"), &retry);
     c.check(
         "…let in: the held window closed and opened again into its game",
-        closed_now() == [PID] && app.presets.restarts.borrow().contains_key(&id),
+        closed_now() == [PID] && app.close_desk.reopen_of(id).is_some(),
         format!("{:?}", closed_now()),
     );
 
@@ -187,7 +187,7 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     // itself is asked again carrying the answer.
     roblox.continue_refuses.store(true, Ordering::SeqCst);
     closed.borrow_mut().clear();
-    app.presets.restarts.borrow_mut().clear();
+    app.close_desk.clear();
     *roblox.retry_header.lock().unwrap() = None;
     held(true);
     let via_join = solve().await;
@@ -227,8 +227,8 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     );
 
     app.controller.running.borrow_mut().clear();
-    app.presets.restarts.borrow_mut().clear();
-    *app.bot_check.close_for_reopen.borrow_mut() = real_close;
+    app.close_desk.clear();
+    *app.close_desk.close_hook.borrow_mut() = real_close;
     no_network();
 
     // (Rust only, 2026-11-12.) The captcha window passes HUMAN's requests on to HUMAN: only HUMAN's own cookies go

@@ -1516,7 +1516,7 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 }
 .btn:hover:not(:disabled) { background: var(--surface-3); border-color: var(--line-3); }
 .btn:disabled { opacity: .45; }
-/* Off but still focusable and still able to say why in its title (DESIGN.md: a disabled control says why). */
+/* Off but still focusable and still able to say why in its title (a disabled control says why). */
 .btn[aria-disabled="true"] { opacity: .45; pointer-events: none; }
 .btn.primary { border: 0; background: var(--inv); color: var(--inv-ink); }
 .btn.primary:hover:not(:disabled) { background: var(--inv-hover); }
@@ -2680,7 +2680,7 @@ input[type=range]:focus-visible { outline: 1px solid var(--focus); outline-offse
 .dcv-foot { margin-top: 8px; }
 /* Theme picker: a line of small swatches per group, each drawn in its own theme's colours. */
 .tg-tabs { display: flex; flex-wrap: wrap; gap: var(--sp-2); padding: 2px 0 12px; }
-/* Opening a card (Discord's Preview): as far from its top as a row's text is; 4 px sat on the edge (owner, 2026-11-02). */
+/* Opening a card (Discord's Preview): as far from its top as a row's text is; 4 px sat on the edge. */
 .set-card > .tg-tabs:first-child { padding-top: 16px; }
 .themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: var(--sp-5); padding: 2px 2px 16px; }
 .swatch { position: relative; min-width: 0; padding: 66px 0 0; border: 0; border-radius: var(--r-md); background: none; color: var(--text); text-align: left; outline: 1px solid transparent; outline-offset: 2px; transition: outline-color var(--dur-2); }
@@ -3203,7 +3203,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .game-thumb { width: 52px; height: 52px; border-radius: var(--r-md); }
 }
 /* Only when even the icon sidebar leaves the game box short: the game step gets the picture's room for the game's name
-   (the game box opens the list too). Down to 1000px it stays: the owner found the mid-size window bare (2026-11-08). */
+   (the game box opens the list too). Down to 1000px it stays: a user found the mid-size window bare. */
 @media (max-width: 1000px) {
   .dock { grid-template-columns: minmax(0, 1fr) auto auto; }
   .game-thumb { display: none; }
@@ -3318,7 +3318,7 @@ body:has(.lock) #toasts { bottom: 24px; }
 .switch input:active:not(:disabled) + span::after { width: 22px; transition-duration: .12s, .12s, var(--dur-3); transition-timing-function: ease-out; }
 .switch input:checked:active:not(:disabled) + span::after { transform: translateX(12px); }
 
-/* Motion doesn't follow Windows' "Animation effects": many PCs have it off (the owner's too), and the app would sit
+/* Motion doesn't follow Windows' "Animation effects": many PCs have it off (a user's too), and the app would sit
    still on them. */
 
 [data-theme="valentine"] {
@@ -6366,7 +6366,7 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 /* The mini window (ui/src/mini/MiniView.tsx, page mini.html, window MiniWindow.cs): a macro panel's card and title row,
    as tall as the window (the person sizes it by its bottom edge); the running accounts scroll between title and foot. */
 /* As wide as its window (300 px, MiniWindow.cs), not the macro panel's 360: wider, the page ran 60 px past the window and
-   was scrolled sideways, cutting off its left (the owner's screenshot, 2026-11-05). */
+   was scrolled sideways, cutting off its left (a user's screenshot). */
 .pn.mini { position: relative; width: 100%; height: 100vh; max-height: none; }
 .pn.mini:focus { outline: none; }
 html:not(.in-window) .pn.mini { height: calc(100vh - 32px); max-height: none; }

@@ -1,5 +1,5 @@
-// A game tile plays the game's gameplay clip while the mouse rests on its picture, as a video site's thumbnails do
-// (the owner, 2026-11-13). Only some games have one (Roblox's "GamePreviewVideo"); the others keep their picture.
+// A game tile plays the game's gameplay clip while the mouse rests on its picture, as a video site's thumbnails
+// do. Only some games have one (Roblox's "GamePreviewVideo"); the others keep their picture.
 //
 // The mouse must stay a moment before anything is asked, so passing over a row of tiles fetches nothing. The clip is
 // fetched once (~10 MB) and kept on this PC (cache\videos); it plays with its sound (video.rs; a button on the clip
@@ -19,8 +19,8 @@ use crate::{images, roblox, shell::Root, video::{Failed, Video}};
 const REST: Duration = Duration::from_millis(450);
 /// How long the mouse must be seen on a picture before its clip (one kept here) covers it. A "mouse came" with the
 /// mouse elsewhere flashed the clip for a frame over the hero and the first tile while the mouse went about the back
-/// button (the owner's video of 2026-11-19 05:47, ten times in 20 s): now the picture's own frame must see the mouse in
-/// it, and that long, before the clip shows.
+/// button (a video, ten times in 20 s): now the picture's own frame must see the mouse in it, and that long, before the
+/// clip shows.
 const SETTLE: Duration = Duration::from_millis(120);
 /// The clips kept ready to play (each its last frame; its decoder only while it is drawn): the ones played last; an older one is made again
 /// from its file on this PC when wanted.

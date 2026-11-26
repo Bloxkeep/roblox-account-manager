@@ -3,9 +3,9 @@
 //! client's ClientSettings\ClientAppSettings.json just before it opens, and the file put back as it was once it has
 //! started (Roblox reads it in its first second: "LoadClientSettingsFromLocal" in its log). Only flags on Roblox's
 //! allowlist (devforum 3966569, 2025-09-29), each still in the client of 2026-10-29; Roblox ignores any other, and
-//! takes no action against setting them. On the owner's PC they turned the sky grey and the light flat, and saved a
-//! little RAM (about 70 MB of 3.3 GB, Steal An Egg): every bit helps a PC full of idling accounts. A file of the
-//! person's own keeps its other flags. A Bloxstrap-style launcher writes its own file as it opens Roblox: theirs wins.
+//! takes no action against setting them. On a real PC they turned the sky grey and the light flat, and saved a little
+//! RAM (about 70 MB of 3.3 GB, Steal An Egg): every bit helps a PC full of idling accounts. A file of the person's own
+//! keeps its other flags. A Bloxstrap-style launcher writes its own file as it opens Roblox: theirs wins.
 use std::fmt;
 use std::path::{Path, PathBuf};
 

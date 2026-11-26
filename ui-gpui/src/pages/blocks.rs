@@ -755,10 +755,9 @@ fn idle_button(b: &Value) -> bool {
     }
 }
 
-/// A card's blocks without what is only the bot talking about itself (the owner, 2026-11-15: the News tab "trông lộn
-/// xộn": every alert ended with the bot's own line and an "Add me to your server" button): buttons of no use here, a
-/// footer that only names the sender (the card's head has the sender and the time), and a rule left at the end or
-/// doubled by what went.
+/// A card's blocks without what is only the bot talking about itself (the News tab: every alert ended with the bot's
+/// own line and an "Add me to your server" button): buttons of no use here, a footer that only names the sender (the
+/// card's head has the sender and the time), and a rule left at the end or doubled by what went.
 fn tidied(list: &[Value], author: &str) -> Vec<Value> {
     let name = author.trim().to_lowercase();
     let mut out: Vec<Value> = Vec::new();

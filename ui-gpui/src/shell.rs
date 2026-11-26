@@ -127,8 +127,8 @@ pub struct Root {
     /// Which way the place shown came in: 1. from below, -1. from above (kit::step_in).
     pub step_from: f32,
     /// Counts the times the app was opened from the lock screen (a password made or typed): the app's parts come in
-    /// anew each time (kit::app_in), as the web page's intro did. With none, the app was there at once, in one frame
-    /// (the owner, 2026-11-19: "lúc đăng ký xong ko có motion hiển thị trang chủ, kiểu nó đập thẳng vào mặt").
+    /// anew each time (kit::app_in), as the web page's intro did. With none, the app was there at once, in one
+    /// frame.
     pub intro: u32,
     /// Counts the page changes (go, Back, Forward): what was asked "for this page" (Ctrl+L's bar) is stale after one.
     pub nav: u64,
@@ -973,10 +973,10 @@ impl Root {
         }
         // The connection, as Discord's and Facebook's notice says it: the internet (every 4 s, net::online_now) and
         // Roblox itself (every 15 s, and at once when a call to it got no answer): with a VPN turned off, the internet
-        // works and Roblox is blocked, which said nothing before (the owner, 2026-11-19). Lost after two failed looks
-        // in a row, so one slow answer (waking from sleep, a VPN switching) says nothing; back at the first good one,
-        // and what failed to load meanwhile is read again. (A shot shows the notice with BLOXKEEP_SHOT_OFFLINE=1 or
-        // =roblox, without looking.)
+        // works and Roblox is blocked, which said nothing before. Lost after two failed looks in a row, so one slow
+        // answer (waking from sleep, a VPN switching) says nothing; back at the first good one, and what failed to
+        // load meanwhile is read again. (A shot shows the notice with BLOXKEEP_SHOT_OFFLINE=1 or =roblox, without
+        // looking.)
         root.tasks.push(cx.spawn(async move |this, cx| {
             #[cfg(feature = "shot")]
             if let Ok(v) = std::env::var("BLOXKEEP_SHOT_OFFLINE") {
@@ -1107,12 +1107,16 @@ impl Root {
         // stage, the Accounts page's cards, the column slid in over a narrow Home), the accounts' column beside Home,
         // and the windows card when it is open over them. The whole app was drawn again each second before: 3.5 ms of
         // layout on Home at 1280×900, 2.5 ms for these parts.
+        // Woken just past each whole second, as the music card is (capsule.rs): a plain 1 s sleep drifts against the clock,
+        // so a time now and then skipped a second or showed one twice. The Accounts page's rows count too: only Home's
+        // were drawn again, so a row's time stood still until something else drew the page.
         root.tasks.push(cx.spawn(async move |this, cx| {
             loop {
-                cx.background_executor().timer(Duration::from_secs(1)).await;
+                let ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.subsec_millis() as u64);
+                cx.background_executor().timer(Duration::from_millis(1000 - ms + 20)).await;
                 let alive = this.update(cx, |r, cx| {
                     // (…and a card's countdown, "rejoining in 8 s", wherever cards are.)
-                    if (r.page == Page::Home && r.accounts().iter().any(|a| a.get("state").and_then(Value::as_str) == Some("running")))
+                    if (matches!(r.page, Page::Home | Page::Accounts) && r.accounts().iter().any(|a| a.get("state").and_then(Value::as_str) == Some("running")))
                         || (matches!(r.page, Page::Home | Page::Accounts) && r.accounts().iter().any(pages::accounts::counting))
                     {
                         let Some(p) = r.parts.clone() else { return cx.notify() };
@@ -3125,10 +3129,10 @@ impl Root {
         });
     }
 
-    /// Closes every Roblox window now and says how many (the question, where one is asked, came before).
-    /// Multi-Roblox is on but Roblox got there first: why, and the button that fixes it, where it is turned on (Settings,
-    /// the lock screen's "Just use Multi-Roblox") rather than only behind Details, which few opened (the owner,
-    /// 2026-11-19: many didn't know every Roblox has to be closed first).
+    /// Closes every Roblox window now and says how many (the question, where one is asked, came before). Multi-Roblox is
+    /// on but Roblox got there first: why, and the button that fixes it, where it is turned on (Settings, the lock
+    /// screen's "Just use Multi-Roblox") rather than only behind Details, which few opened (many didn't know every Roblox
+    /// has to be closed first).
     pub fn multi_blocked_note(&self, cx: &mut Context<Self>) -> Div {
         let text = |key: &str| div().text_size(px(T_M)).line_height(px(19.)).text_color(c(TEXT_2)).child(pages::lock::plain(self.tr(key)));
         div()
@@ -3343,7 +3347,7 @@ impl Root {
         // (Not the view: switching it in the header's capsule changes the page under a capsule that stays and slides
         // its yellow along; stepping the whole page in faded the capsule out and in with it.)
         // (The tab by its account, not its place: a tab dragged to another place is the same page, and stepping the
-        // page in again at each move faded it in and out, the owner's OBS video, 2026-11-19.)
+        // page in again at each move faded it in and out, a user's OBS video.)
         let tab = self.tabs.list.get(self.tabs.at).and_then(|t| t.account.clone()).unwrap_or_else(|| format!("#{}", self.tabs.at));
         format!("games-{tab}-{open}-{}-{library}", self.profile.part())
     }
@@ -3367,9 +3371,9 @@ impl Root {
             .bg(c(RAIL_BG))
             .border_r_1()
             .border_color(c(LINE))
-            // The logo has its own colours, so it is a picture, not an icon (an icon takes one colour).
-            // (It pops out as the window opens and each time it is unlocked, as the C# app's page had it, logo-pop: the
-            // port stood it there at once; the owner asked what differed, 2026-11-18.)
+            // The logo has its own colours, so it is a picture, not an icon (an icon takes one colour). (It pops out as
+            // the window opens and each time it is unlocked, as the C# app's page had it, logo-pop: the port stood it
+            // there at once; a user asked what differed.)
             .child(div().h(px(TOP)).flex_none().flex().items_center().child(pop_out("rail-logo", 34., |side| crate::crisp::blocks(side).into_any_element())))
             .child(div().mt(px(14.)).flex().flex_col().gap(px(6.)).children(
                 {
@@ -3493,8 +3497,7 @@ impl Root {
                         )
                         .child(div().w(px(8.)))
                     })
-                    // Report a bug or send an idea, on every place (it was only in Settings: "ai mà biết", the owner,
-                    // 2026-11-15).
+                    // Report a bug or send an idea, on every place (it was only in Settings).
                     .when(!locked, |d| {
                         d.child(IconButton::new("feedback-top", "message").size(32.).tip(self.tr("fb.reportTip")).on_click(cx.listener(|r, _, window, cx| pages::extras::open_feedback(r, window, cx))))
                             .child(div().w(px(8.)))
@@ -3640,21 +3643,21 @@ impl Root {
         )
     }
 
-    /// The bar along the foot: three pills on the page (the owner's "Thon" mock-up, 2026-11-19, after the Stats menu
-    /// bar app and Apple's Dynamic Island): Roblox's windows and the PC's figures on the left, Spotify's song in the
-    /// middle while it plays, Roblox's version, the mini window and Multi-Roblox on the right. Each thing is a small
-    /// faint name in capitals and its value, on one line; no lights. The bar is measured every frame: when it is too
-    /// narrow, things leave in one fixed order (BAR_LEVELS) until all three fit, so two pills never overlap.
-    /// `with_side`: the accounts column stands over the bar's right end (Home), and the right pill is made as wide as
-    /// it (owner 2026-11-20: a pill 45 px short of the column over it looked like a slip).
+    /// The bar along the foot: three pills on the page (a user's "Thon" mock-up, after the Stats menu bar app and
+    /// Apple's Dynamic Island): Roblox's windows and the PC's figures on the left, Spotify's song in the middle while
+    /// it plays, Roblox's version, the mini window and Multi-Roblox on the right. Each thing is a small faint name in
+    /// capitals and its value, on one line; no lights. The bar is measured every frame: when it is too narrow, things
+    /// leave in one fixed order (BAR_LEVELS) until all three fit, so two pills never overlap. `with_side`: the
+    /// accounts column stands over the bar's right end (Home), and the right pill is made as wide as it (a pill 45 px
+    /// short of the column over it looked like a slip).
     fn status(&self, with_side: bool, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let st = self.state_in(cx);
         let m = self.metrics(cx);
         let windows = m.get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
         let ram = m.get("usedPct").and_then(Value::as_f64).unwrap_or(0.).round() as i64;
-        // The whole PC's CPU, as RAM beside it is the whole PC's (the owner, 2026-11-19: "không có CPU à" with no Roblox
-        // open: Roblox's own share was shown, so it went with the windows). GPU stays Roblox's own (Windows gives no
-        // whole-PC figure here), shown while a window is open.
+        // The whole PC's CPU, as RAM beside it is the whole PC's (with no Roblox open: Roblox's own share was shown, so
+        // it went with the windows). GPU stays Roblox's own (Windows gives no whole-PC figure here), shown while a
+        // window is open.
         let cpu = m.get("pcCpuPct").and_then(Value::as_f64).unwrap_or(0.).round() as i64;
         let gpu = m.get("gpuPct").and_then(Value::as_f64).filter(|_| windows > 0).map(|g| g.round() as i64);
         let multi = st.pointer("/multi/enabled").and_then(Value::as_bool).unwrap_or(false);
@@ -3686,18 +3689,18 @@ impl Root {
         // Each pill's width at each level, from its words' real widths (the font the bar draws them in).
         let tw = |s: &str, size: f32, w: FontWeight| bar_text_w(&*window, s, size, w);
         let value_w = |s: &str| tw(s, BAR_VALUE, FontWeight::SEMIBOLD);
-        // (The pill keeps room for each figure at its widest, "100%", in equal-width digits: a figure's change made the
-        // pill longer or shorter, the owner 2026-11-20. Each figure hugs its label, and what a smaller figure leaves is
-        // shared out evenly between the groups: kept in each figure, it made the gaps uneven, a wide one after "5%" and
-        // none after the window count, the owner 2026-11-21; all of it before the close button set that far off, 11-24.)
         // (A figure: its tag (the word on its own colour, as the FPS-monitoring HUD's RAM / GPU / CPU tags, Dribbble
         // 27365272), then the number, then a smaller, dimmer "%" just after it.)
         let chip_label_w = |s: &str| tw(&s.to_uppercase(), BAR_CHIP, FontWeight::BOLD) + 2. * BAR_CHIP_PAD;
-        // (Each number with its "%" keeps the room of two digits, hugging its tag; what a one-digit number leaves is
-        // after its "%", where the groups' gap is. As the room changed with each number, every group after it moved left
-        // and right; as the room of "100", a one-digit number sat far from its tag. Only a 100 widens the pill.)
+        // (Every number has two digits, a faint leading zero under 10 ("06%"), as a game's FPS counter: in tabular
+        // digits 06 and 88 take the same room, so number, "%" and everything after them stay put as figures change, and
+        // nothing leaves a hole. Room kept for a missing digit had to sit somewhere: before the number it opened a gap
+        // after the tag, after the "%" the "%" moved, shared between the groups their gaps went uneven. Only a 100
+        // widens its figure.)
         let widest = if cpu >= 100 || ram >= 100 || gpu.is_some_and(|g| g >= 100) { "100" } else { "88" };
-        let number_w = tw(widest, BAR_FIGURE, FontWeight::SEMIBOLD);
+        // Each digit on its own, as capsule::roll draws them (a box per character): one run of text is a few pixels
+        // narrower, and over three figures the shortfall pushed the close button against the pill's edge.
+        let number_w: f32 = widest.chars().map(|ch| tw(&ch.to_string(), BAR_FIGURE, FontWeight::SEMIBOLD)).sum();
         let pct_w = number_w + 1. + tw("%", BAR_UNIT, FontWeight::MEDIUM);
         let pair_w = |l: &str, v: f32| chip_label_w(l) + 6. + v;
         let row_gap = |items: &[f32], pad_l: f32, pad_r: f32, gap: f32| {
@@ -3714,7 +3717,7 @@ impl Root {
         let no_roblox_w = if no_roblox { 14. + 6. + tw(&self.tr("side.noRoblox"), BAR_VALUE, FontWeight::NORMAL) } else { 0. };
         let privacy_w = if privacy.is_some() { 14. + 6. + tw(&self.tr("gpv.chip"), BAR_VALUE, FontWeight::NORMAL) } else { 0. };
         // (The close button's round ground makes its own room: a narrower end when it is last. Words after it, a join's
-        // "Opening…", end at the usual room: they sat against the pill's edge, the owner 2026-11-20.)
+        // "Opening…", end at the usual room: they sat against the pill's edge.)
         let left_pad_r = if windows > 0 && progress_w == 0. && no_roblox_w == 0. && privacy_w == 0. { 6. } else { BAR_PAD };
         let left_w = |l: u8| {
             let (c, r, g) = (if l < 2 { cpu_w } else { 0. }, if l < 10 { ram_w } else { 0. }, if windows > 0 && l < 2 { gpu_w } else { 0. });
@@ -3748,9 +3751,9 @@ impl Root {
             let a = if l < 1 { app_w } else { 0. };
             row_gap(
                 // (No lines between the groups: each opens with its mark, and the room between groups is wider than
-                // inside one (owner 2026-11-19, from the macOS menu bar / iStat Menus: "3, biểu tượng"). The small
-                // switch is 36 wide with the room around its track, not the track's 30: measured at 30, the pill came
-                // 6 short and the last words sat against its edge.)
+                // inside one (from the macOS menu bar / iStat Menus). The small switch is 36 wide with the room
+                // around its track, not the track's 30: measured at 30, the pill came 6 short and the last words sat
+                // against its edge.)
                 &[chip_w(l), r, BAR_KEY, if l < 6 || multi_warn { multi_label_w } else { 0. } + 36., a],
                 if ready { 4. } else { BAR_PAD },
                 BAR_PAD,
@@ -3826,11 +3829,10 @@ impl Root {
                     div()
                         .flex()
                         .flex_none()
-                        .min_w(px(pct_w))
                         .items_baseline()
                         .gap(px(1.))
                         .text_color(tone)
-                        .child(div().flex_none().text_size(px(BAR_FIGURE)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(capsule::roll(id, pct.to_string(), 17., window)))
+                        .child(div().flex_none().text_size(px(BAR_FIGURE)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(capsule::roll(id, format!("{:02}", pct.clamp(0, 999)), 17., window)))
                         .child(div().flex_none().text_size(px(BAR_UNIT)).font_weight(FontWeight::MEDIUM).opacity(0.5).child("%")),
                 )
                 .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
@@ -3855,7 +3857,7 @@ impl Root {
                 .flex()
                 .items_center()
                 // (The spare room smaller figures leave is shared out between the groups, the close button among them:
-                // at the end alone it left the close button far from the figures, the owner 2026-11-24.)
+                // at the end alone it left the close button far from the figures.)
                 .justify_between()
                 .gap(px(BAR_GROUP_GAP))
                 .child(
@@ -3899,7 +3901,7 @@ impl Root {
                         .child(img(src).size(px(18.)).rounded(px(4.)).object_fit(ObjectFit::Cover))
                         .child(div().absolute().right(px(-4.)).bottom(px(-4.)).size(px(12.)).rounded_full().bg(c(PANEL)).flex().items_center().justify_center().child(icon(s.player.icon(), 8., c(s.player.colour()))))
                         .into_any_element(),
-                    // (The mark in its own colour, Spotify's green: the owner, 2026-11-19, "logo của spotify màu xanh".)
+                    // (The mark in its own colour, Spotify's green.)
                     None => icon(s.player.icon(), 15., c(s.player.colour())).into_any_element(),
                 })
                 .when(level < 8, |d| {
@@ -4138,8 +4140,7 @@ impl Root {
                     let text = key.0.0.clone();
                     // A warning or an error the page said by itself goes to error.log here, the one place every
                     // notice passes (the app's own are written where the app says them: `toast_core`). 43 places in
-                    // the pages set one; whether each also wrote a line was never checked one by one (the owner,
-                    // 2026-11-15: "lúc trước hỏi error log đã cover hết chưa thì cứ gật đầu").
+                    // the pages set one; whether each also wrote a line was never checked one by one.
                     #[cfg(feature = "core")]
                     if matches!(key.0.1.as_str(), "bad" | "warn" | "error") && self.toast_core.as_deref() != Some(text.as_str()) {
                         crate::core::log::note_file(&format!("Shown by the page ({}): {}", key.0.1, crate::core::app::feedback::scrub_text(&text, Vec::new())));
@@ -4251,7 +4252,7 @@ const BAR_CHIP_PAD: f32 = 4.;
 const BAR_CHIP_TEXT: u32 = 0x0b0d12;
 const BAR_KEY: f32 = 24.;
 /// How far the close-all button sits into the room before it: its round ground is wider than its mark, so at the
-/// groups' even gap its mark looked further off than the figures from each other (owner 2026-11-24).
+/// groups' even gap its mark looked further off than the figures from each other.
 const BAR_CLOSE_IN: f32 = 7.;
 const BAR_ARTIST_MAX: f32 = 140.;
 /// How long a song's pill is drawn after the song stopped, while it shrinks away.
@@ -4364,8 +4365,8 @@ fn bar_text_w(window: &Window, s: &str, size: f32, weight: FontWeight) -> f32 {
 /// One of the bar's pills, `now` wide on its way to `to`: its things laid out at `to` (so they don't move while it
 /// grows or shrinks; the pill's edge shows or hides them), on glass over the picture or the theme's block ground.
 /// Its edge is lit from above (a top rim brighter than the faint ring round it, brighter still under the mouse) and
-/// it sits on a soft shadow, `shade` when it has its own colour (the song's cover): the premium look the owner
-/// approved on 2026-11-19 (artifacts/mock/con-nhong.html, "Con nhộng sang hơn").
+/// it sits on a soft shadow, `shade` when it has its own colour (the song's cover), as the mock-up has it
+/// (artifacts/mock/con-nhong.html).
 fn bar_pill(id: &'static str, now: f32, to: f32, pad_l: f32, pad_r: f32, alpha: f32, shade: Option<Hsla>, inner: AnyElement) -> Stateful<Div> {
     let light = crate::theme::light();
     let ring = if light { c(LINE) } else { ca(WHITE, 0.06) };
@@ -4388,10 +4389,10 @@ fn bar_pill(id: &'static str, now: f32, to: f32, pad_l: f32, pad_r: f32, alpha: 
         ])
         .child(capsule::note_at(id))
         .child(div().absolute().inset_0().child(crate::kit::glass_pane(r)))
-        // (2026-11-24, "chưa đủ sang": made as the dark half of an iOS 26 Liquid Glass button, Dribbble 26133226: a deep,
+        // (Made as the dark half of an iOS 26 Liquid Glass button, Dribbble 26133226: a deep,
         // near-black body over the glass, and thick glass's edge: a bright line where the light comes in at the top, a
         // fainter one where it leaves at the bottom, a soft light just inside the rim.)
-        // (Stronger, the owner the same day: the rim lines brighter, a second softer light under the top one, and the
+        // (Stronger since: the rim lines brighter, a second softer light under the top one, and the
         // upper half of the body faintly lit, as the reference's glass is lighter where the light falls.)
         .when(!light, |d| d.child(div().absolute().inset_0().rounded(px(r)).bg(hsla(0., 0., 0., BAR_BODY))))
         .when(light, |d| d.child(div().absolute().inset_0().rounded(px(r)).bg(hsla(0., 0., 1., 0.35))))
@@ -4596,7 +4597,7 @@ fn account_row(a: &Value, dropped: bool, root: &Root, cx: &mut Context<Root>) ->
                 pages::tabs::open(r, id.clone());
                 cx.notify();
             })))
-        // No number tag here (owner 2026-11-14: "bỏ số đi"): the face's dot and the line under the name say the state.
+        // No number tag here: the face's dot and the line under the name say the state.
         .child(
             div()
                 .relative()
@@ -4873,7 +4874,7 @@ impl Live {
             move |_, _, window, cx| {
                 let n = |p: Pixels| (f64::from(f32::from(p)) * 100.).round() / 100.;
                 // A dialog (quick search, a form, a question) is drawn over the page, but Windows draws the pictures
-                // above the whole window: none while one is open (owner 2026-11-15: a window's picture over Ctrl+K).
+                // above the whole window: none while one is open (a window's picture over Ctrl+K).
                 let area = if window.has_active_dialog(cx) { None } else { me.area.borrow().map(|(_, a)| a) };
                 let msg = match area {
                     Some(a) => {
@@ -4931,7 +4932,7 @@ fn music_press(id: &'static str, name: &'static str, tip: String, act: crate::me
 }
 
 /// Sends a music key, then reads the song again at once and twice more shortly after: Spotify takes a moment to say
-/// its next song, and the card waited for the regular look (up to 2 s; the owner, 2026-11-18: "hơi chậm").
+/// its next song, and the card waited for the regular look (up to 2 s).
 fn music_go(r: &mut Root, act: crate::media::Act, cx: &mut Context<Root>) {
     cx.spawn(async move |this, cx| {
         cx.background_executor().spawn(async move { crate::media::act(act) }).await;

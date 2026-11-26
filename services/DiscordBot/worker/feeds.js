@@ -1,4 +1,4 @@
-// Game feeds (docs/superpowers/specs/2026-11-04-game-feeds-design.md): other games' alert bots post into hidden channels
+// Game feeds: other games' alert bots post into hidden channels
 // of Bloxkeep's server (a Follow, the bot itself invited, or a webhook), one channel per source, and the bot keeps what
 // arrives there as it came (/feed raw). A channel /feed show puts under a game reaches the apps too: each message as a
 // card (cardOf), sent down the apps' /feeds/connect sockets as it comes. Games and sources live here, so they come and go

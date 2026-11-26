@@ -574,6 +574,10 @@
       : { totalMb: 1750 + Math.round(Math.random() * 40), systemMb: 32 * 1024, usedPct: 63, availableMb: 12 * 1024, cpuPct: 12, gpuPct: 34, pcCpuPct: 41, commitMb: 27 * 1024 }),
     // (?jitter: the PC's figures change every tick, 1-digit to 100, for the top bar's pill: its length must not move.)
     ...(params.has('jitter') ? { usedPct: [3, 59, 100, 8, 71, 11][Math.floor(Date.now() / 1500) % 6], pcCpuPct: [100, 7, 23, 88, 1, 45][Math.floor(Date.now() / 1500) % 6], gpuPct: [9, 100, 38, 4, 77, 11][Math.floor(Date.now() / 1500) % 6] } : {}),
+    // (?cpu=6&ram=25&gpu=100: the PC's figures held at these.)
+    ...(params.has('cpu') ? { pcCpuPct: +params.get('cpu') } : {}),
+    ...(params.has('ram') ? { usedPct: +params.get('ram') } : {}),
+    ...(params.has('gpu') ? { gpuPct: +params.get('gpu') } : {}),
     // (?nofit: no window measured yet, as on a first run.)
     fit: params.has('nofit') ? null : params.has('farm') ? { max: 34, by: 'cpu', eachMb: 930 } : { max: 9, by: 'ram', eachMb: 1100 },
   });
@@ -1158,6 +1162,8 @@
           { userId: 5140000102, name: 'mochi_cat', displayName: 'Mochi', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: hideNames ? 'Account 2' : 'Farm 1' }] };
         // ?noprivate=1: no private servers; ?privatefail=1: Roblox didn't answer. One server only Farm 1 can join.
         case 'privateServers': await wait(500); if (params.has('privatefail')) return { asked: 2, failed: true, servers: [] };
+          // ?manyprivate=1: ten of them, a list longer than a screen.
+          if (params.has('manyprivate')) return { asked: 2, failed: false, servers: Array.from({ length: 10 }, (_, i) => ({ id: 950 + i, name: `Server ${i + 1}`, owner: 'Kiwi', ownerName: 'kiwi_runner', accessCode: `11111111-2222-4333-8444-${String(i).padStart(12, '0')}`, playing: i, maxPlayers: 20, via: ['Farm 1'], viaIds: [id(2)] })) };
           return { asked: 2, failed: false, servers: params.has('noprivate') ? [] : [
             { id: 901, name: tx('Farm server', 'Server farm'), owner: hideNames ? 'Account 1' : 'Sunny', ownerName: 'sunny_builds', accessCode: '11111111-2222-4333-8444-555555555555', playing: 3, maxPlayers: 12,
               via: hideNames ? ['Account 1', 'Account 2'] : [tx('Main', 'Tài khoản chính'), 'Farm 1'], viaIds: [id(4), id(2)] },

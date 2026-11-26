@@ -1,8 +1,8 @@
-// StartCover.cs: the window's start logo while the interface loads (shell_form::show_start_cover): still while the
-// window opens (it grows in with it, window_opening), then it hops in place, squashing as it lands, until the interface is
-// ready (owner, 2026-11-08: the moment before the password card should move too). Drawn here because nothing else can
-// be yet. It comes off only between hops (`at_rest`), where it sits as the interface's own logo starts, so one logo moves
-// all the way, without a jump.
+// StartCover.cs: the window's start logo while the interface loads (shell_form::show_start_cover): still while the window
+// opens (it grows in with it, window_opening), then it hops in place, squashing as it lands, until the interface is ready
+// (the moment before the password card should move too). Drawn here because nothing else can be yet. It comes off only
+// between hops (`at_rest`), where it sits as the interface's own logo starts, so one logo moves all the way, without a
+// jump.
 //
 // A child window filling the main window's client area (the C# Control docked to fill), on the windows thread.
 use std::{

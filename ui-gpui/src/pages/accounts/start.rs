@@ -39,7 +39,7 @@ pub fn steps(root: &Root, boxed: bool) -> Option<Div> {
                 if is_done {
                     d.bg(c(OK)).child(icon("check", 14., c(INK)))
                 } else if is_now {
-                    // (No step numbers: owner 2026-11-14, no numbers anywhere.)
+                    // (No step numbers, no numbers anywhere.)
                     d.bg(c(FACE)).child(div().size(px(8.)).rounded_full().bg(c(INK)))
                 } else {
                     d.bg(c(INSET)).border_1().border_color(c(DIM))

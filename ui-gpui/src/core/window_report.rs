@@ -1,6 +1,6 @@
 //! Short words for error.log about where windows are and how they look on screen, so a report like "nothing showed" or
-//! "all full screen" can be read from the log instead of guessed (owner, 2026-11-07: three window bugs in a day, each
-//! found only from a video). Process ids only, never account names: the log may be sent to us.
+//! "all full screen" can be read from the log instead of guessed (three window bugs in a day, each found only from a
+//! video). Process ids only, never account names: the log may be sent to us.
 use windows_sys::Win32::{
     Foundation::{POINT, RECT},
     UI::WindowsAndMessaging::{GA_ROOT, GetAncestor, GetWindowRect, GetWindowThreadProcessId, IsIconic, IsWindow, IsWindowVisible, IsZoomed, WindowFromPoint},

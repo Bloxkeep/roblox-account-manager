@@ -190,9 +190,8 @@ pub struct State {
     /// A theme id from `themes`.
     pub theme: String,
     /// The default theme's change from Dark to Sunset has been seen to here: a prefs.json from before it that still
-    /// said Dark was moved to Sunset, once (the owner, 2026-11-18: "những ai đang để theme default là qua sunset
-    /// hết"). Kept, so Dark picked again after that stays Dark. A file can't say whether its Dark was picked or
-    /// only never changed: both are moved that once.
+    /// said Dark was moved to Sunset, once. Kept, so Dark picked again after that stays Dark. A file can't say
+    /// whether its Dark was picked or only never changed: both are moved that once.
     pub sunset_default: bool,
     /// With Sync with Windows: the theme shown while Windows' apps are light, and while they are dark (a theme id each,
     /// never Sync with Windows or Custom; "light" and "dark" until chosen).
@@ -282,6 +281,8 @@ pub struct State {
     /// A copy of the last vault's Multi-Roblox switch, taken at start before the master password so Roblox windows
     /// opened any way run side by side even at the lock screen. Kept in step by AppController.
     pub multi_roblox_at_start: bool,
+    /// A Roblox client seen running on this PC (its file): see roblox_installs::note_running.
+    pub seen_roblox: Option<String>,
     pub game_feeds: FeedPrefs,
     pub wikis: WikiPrefs,
     /// Keys this build doesn't know (a newer one wrote them): saved back untouched rather than dropped.
@@ -343,6 +344,7 @@ impl Default for State {
             known_vault_ids: HashSet::new(),
             foreign_restore: None,
             multi_roblox_at_start: false,
+            seen_roblox: None,
             game_feeds: FeedPrefs::default(),
             wikis: WikiPrefs::default(),
             extra: IndexMap::new(),
@@ -473,7 +475,7 @@ const KNOWN: &[&str] = &[
     "language", "languageChosen", "theme", "sunsetDefault", "themeLight", "themeDark", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
     "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow", "panelWindows",
     "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
-    "multiRobloxAtStart", "discordPresence", "customTheme", "vaults", "lastVault", "askVault", "countOnline", "onlineId",
+    "multiRobloxAtStart", "seenRoblox", "discordPresence", "customTheme", "vaults", "lastVault", "askVault", "countOnline", "onlineId",
     "knownVaultIds", "foreignRestore", "savedThemes", "gameFeeds", "wikis",
     // Read and written here, but not in the C#'s list: kept out of `extra`, where a stale copy (remoteKey, a secret) sat.
     "globalHotkeys", "boardName", "boardNameChosen", "firstOpenTold", "remoteControl", "remoteKey",
@@ -718,6 +720,9 @@ pub fn load() {
     }
     if is_true(&root, "multiRobloxAtStart") {
         s.multi_roblox_at_start = true;
+    }
+    if let Some(seen) = text(&root, "seenRoblox").filter(|p| len16(p) <= 1024) {
+        s.seen_roblox = Some(seen.to_string());
     }
     if let Some(mini) = text(&root, "miniWindow") {
         s.mini_window = Some(mini.to_string());
@@ -1178,6 +1183,7 @@ fn snapshot(s: &State, language: &str) -> Map<String, Value> {
     put("skipConfirm", json!(ordinal_sorted(&s.skip_confirm)));
     put("multiWorked", json!(s.multi_worked));
     put("multiRobloxAtStart", json!(s.multi_roblox_at_start));
+    put("seenRoblox", json!(s.seen_roblox));
     put("knownVaultIds", json!(ordinal_sorted(&s.known_vault_ids)));
     put("foreignRestore", json!(s.foreign_restore));
     let feeds = &s.game_feeds;

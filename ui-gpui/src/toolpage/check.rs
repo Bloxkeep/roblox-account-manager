@@ -428,8 +428,8 @@ pub fn window_check(out: PathBuf, assets: PathBuf) {
                     say(acts.first().map(String::as_str) == Some(want), format!("{what} said {acts:?} to the core (want {want:?})"), &mut lines);
                 }
                 if matches!(case.kind, "mini" | "panel") && !case.other_thread {
-                    // Hidden, then opened again with its page kept (the core lets it go a minute after hiding): the
-                    // owner's "mini window hỏng rồi, ko on/off được" (2026-11-21) was a reopen whose page never said its
+                    // Hidden, then opened again with its page kept (the core lets it go a minute after hiding): a
+                    // mini window that would not turn on or off was a reopen whose page never said its
                     // size, so the window waited for good. A hidden window isn't drawn: sending it news says nothing;
                     // shown under the cloak and woken, as WebToolWindow::show does, it draws and says its size.
                     // SAFETY: plain calls on our own window.

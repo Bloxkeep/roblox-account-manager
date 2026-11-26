@@ -1,8 +1,8 @@
 // Roblox's own words in error.log. Bloxkeep's log says what Bloxkeep did; why Roblox showed an error box, quit as it
-// started or left a game is only in Roblox's own log, which users rarely send (owner, 2026-11-15: "error log should
-// cover it all"). So each window that ends on its own or by the person in Roblox (not closed by Bloxkeep) and each client
-// that quits before its window gets the lines of its Roblox log that say why (roblox_log_watcher::keep_line), with
-// names, ids, tokens and the Windows user's folder taken out as a bug report's log is (feedback.rs scrub).
+// started or left a game is only in Roblox's own log, which users rarely send. So each window that ends on its own or by
+// the person in Roblox (not closed by Bloxkeep) and each client that quits before its window gets the lines of its Roblox
+// log that say why (roblox_log_watcher::keep_line), with names, ids, tokens and the Windows user's folder taken out as a
+// bug report's log is (feedback.rs scrub).
 use crate::core::base::{Guid, Stamp};
 use std::cell::Cell;
 use std::sync::LazyLock;
@@ -37,11 +37,11 @@ impl App {
         log::note_file(&self.scrub_roblox_words(&text));
     }
 
-    /// A drop whose window Bloxkeep is about to close itself, to rejoin, or leaves open (rejoin off): Roblox's own
-    /// lines of it, into error.log. When such a window ends its lines are skipped (the close is Bloxkeep's own), and
-    /// Bloxkeep's line alone ("code 256", "code none") never says why Roblox dropped it: with Error Code 256 the answer
-    /// is only in Roblox's lines before the drop (the owner, 2026-11-15: "error log có cover được hết không"; it didn't).
-    /// At most once in ten minutes an account: one that keeps dropping would fill the log with the same lines.
+    /// A drop whose window Bloxkeep is about to close itself, to rejoin, or leaves open (rejoin off): Roblox's own lines
+    /// of it, into error.log. When such a window ends its lines are skipped (the close is Bloxkeep's own), and Bloxkeep's
+    /// line alone ("code 256", "code none") never says why Roblox dropped it: with Error Code 256 the answer is only in
+    /// Roblox's lines before the drop. At most once in ten minutes an account: one that keeps dropping would fill the log
+    /// with the same lines.
     pub fn note_drop_lines(&self, account: Guid, pid: i32, why: &str) {
         let now = Stamp::utc_now();
         {

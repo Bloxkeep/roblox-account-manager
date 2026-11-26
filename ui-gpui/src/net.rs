@@ -35,9 +35,9 @@ pub fn builder() -> ureq::AgentBuilder {
     b
 }
 
-/// A call the interface made that failed, in error.log (owner, 2026-11-15: every failure a person can meet must be
-/// there): what asked, the address without its query and with ids as "#", and why. The same failure of the same
-/// address is written once every five minutes, so a page polling while offline can't flood the log.
+/// A call the interface made that failed, in error.log (every failure a person can meet must be there): what
+/// asked, the address without its query and with ids as "#", and why. The same failure of the same address is
+/// written once every five minutes, so a page polling while offline can't flood the log.
 pub fn note_failed(what: &str, url: &str, why: &str) {
     use std::collections::HashMap;
     use std::sync::Mutex;

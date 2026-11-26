@@ -336,8 +336,7 @@ impl App {
     }
 
     /// The account's avatar on its tab and in the tab's account list. Shown while names are hidden too, as the main
-    /// window keeps the pictures then (the owner's call, 2026-11-07): without them two accounts shortened to "K…" can't
-    /// be told apart in the list (the owner's screenshot, 2026-11-15).
+    /// window keeps the pictures then: without them two accounts shortened to "K…" can't be told apart in the list.
     pub fn tab_avatar(&self, account: &Account) -> Option<String> {
         self.controller.avatar_urls.borrow().get(&account.user_id).cloned()
     }

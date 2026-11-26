@@ -1,6 +1,6 @@
 // What's new: the body of the dialog app.js opens after an update or from Settings › Bloxkeep updates. Newest release
 // first: headline features with a picture or short demo and a button to try it, then New, Improved and Fixed lists. No
-// icon beside each note (the owner found the icon tiles old-fashioned, 2026-10-26). Older skipped releases fold below.
+// icon beside each note (a user found the icon tiles old-fashioned). Older skipped releases fold below.
 import { useState } from 'react';
 import { Icon, useHost } from './host';
 

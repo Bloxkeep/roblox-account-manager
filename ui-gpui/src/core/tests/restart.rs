@@ -259,6 +259,18 @@ pub async fn run(c: &mut Checks, dir: &str) {
         app.state.ended_here.borrow().contains_key(&kicked) && stale(kicked) && !stale(nolog),
         (app.state.ended_here.borrow().len(), stale(kicked), stale(nolog)),
     );
+    // Played twice in a row and closed: Roblox's status still names the first window's server for minutes (on the
+    // a real run an account in one server, then in another, read "Playing · another device" four minutes after its close).
+    const LATER: &str = "99999999-8888-7777-6666-555555555555";
+    app.note_ended_here(nolog, Some(SERVER.into()), Some(PLACE), Stamp::utc_now().plus_secs(-120.0));
+    app.note_ended_here(nolog, Some(LATER.into()), Some(PLACE), Stamp::utc_now().plus_secs(-30.0));
+    c.check("fix 13: an earlier client's server is still a late report after a later one ended (fails on the old code)", stale(nolog), ());
+    let elsewhere = Presence { job_id: Some("00000000-0000-0000-0000-000000000001".into()), ..p.clone() };
+    c.check(
+        "…a server none of its clients here was in is still another device",
+        !app.is_stale_in_game(&app.find_account(nolog).expect("account"), &elsewhere),
+        (),
+    );
 
     // A rejoin waiting its turn (auto-rejoin's wait after failed tries): it holds no update back, and an update's restart
     // (or a lock) doesn't lose it.

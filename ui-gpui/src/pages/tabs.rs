@@ -1,6 +1,6 @@
-// Account tabs, as a browser has them, over Games (the owner's call, 2026-11-10: several accounts open at once, not one
-// account switched for another). A tab is an account with everything of Roblox's read for it (friends, avatar,
-// profile, inbox) and the part it was left on; picking a tab shows it at once, as it was. "+" opens another account.
+// Account tabs, as a browser has them, over Games (several accounts open at once, not one account switched for
+// another). A tab is an account with everything of Roblox's read for it (friends, avatar, profile, inbox) and the part
+// it was left on; picking a tab shows it at once, as it was. "+" opens another account.
 //
 // The pages go on reading `root.friends`, `root.avatar`… : those hold the tab shown. Leaving a tab puts them away in
 // it; coming to one takes them out. An answer still on its way for a tab put away finds another account there and is
@@ -132,9 +132,8 @@ const PULSE_EVERY: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// While an account's tab is shown and Bloxkeep is the window in use, Roblox is told the account is on its site, as
 /// roblox.com tells it (roblox::pulse): the account shows online to those its privacy lets see it, as it would with
-/// the website open (the owner, 2026-11-18: an open tab "cũng tính là đang online roblox"). Only roblox.com accounts
-/// (a VNG sign-in stays in the core); a refusal is in error.log (roblox.rs's writes), and the first one that went
-/// through is said there once.
+/// the website open (an open tab). Only roblox.com accounts (a VNG sign-in stays in the core); a refusal is in
+/// error.log (roblox.rs's writes), and the first one that went through is said there once.
 pub fn pulse(r: &mut Root, cx: &mut Context<Root>) {
     if !looping() {
         return;
@@ -179,8 +178,8 @@ pub fn picking(root: &Root) -> bool {
 const PICK_MANY: usize = 10;
 
 /// Who Roblox is opened as, as a browser's or a film site's "who is this?" has it: a face each, its name under it;
-/// the main accounts first. With many (a hundred, the owner's question) a search box over them finds one by its name
-/// or its Roblox name, and the grid runs from the top and scrolls.
+/// the main accounts first. With many a search box over them finds one by its name or its Roblox name, and the grid
+/// runs from the top and scrolls.
 pub fn picker(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
     const FACE: f32 = 84.;
     let mut able = available(root);
@@ -397,8 +396,7 @@ pub fn forget_gone(r: &mut Root) {
 }
 
 /// A tab closes. Closing the one shown shows its neighbour; the last one, as a browser's last tab, becomes a new
-/// one: no account, so Roblox asks who to open it as again (the owner, 2026-11-25: "nếu chỉ có 1 cái thì vẫn nên có
-/// dấu X để tắt chứ").
+/// one: no account, so Roblox asks who to open it as again.
 pub fn close(r: &mut Root, i: usize) {
     if i >= r.tabs.list.len() {
         return;
@@ -458,12 +456,11 @@ pub fn strip(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
             Some((words, _)) => format!("{name} · {}", root.tr(words)).into(),
             None => name.clone().into(),
         };
-        // Held and moved over another tab, it takes that tab's place, as a browser's tabs do (the owner,
-        // 2026-11-18: "kéo qua kéo lại được như trình duyệt"). The tabs are one width while there are several, so
-        // the one held is under the mouse again after each move.
-        // Held, it follows the mouse along the strip and takes another tab's place past half its width, as a browser's
-        // tabs do (the owner, 2026-11-19: the old way jumped from place to place and the page faded in each time). A
-        // press shows it at once, as a browser's does, so the one dragged is always the one shown.
+        // Held and moved over another tab, it takes that tab's place, as a browser's tabs do. The tabs are one width
+        // while there are several, so the one held is under the mouse again after each move. Held, it follows the
+        // mouse along the strip and takes another tab's place past half its width, as a browser's tabs do (the old way
+        // jumped from place to place and the page faded in each time). A press shows it at once, as a browser's does,
+        // so the one dragged is always the one shown.
         let key = t.account.clone().unwrap_or_else(|| format!("#{i}"));
         let held = tabs.dragging.filter(|d| d.moved && d.at == i);
         let offset = held.map(|d| held_offset(&d, tabs.list.len())).unwrap_or(0.);
@@ -484,7 +481,7 @@ pub fn strip(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
                 .pl(px(8.))
                 .pr(px(if closable { 5. } else { 12. }))
                 .flex()
-                // (One tab keeps its whole name: shrunk, the owner's showed "N…", 2026-11-12.)
+                // (One tab keeps its whole name: shrunk, a user's showed "N…".)
                 .flex_none()
                 .when(many, |d| d.w(px(TAB_WIDTH)))
                 .items_center()

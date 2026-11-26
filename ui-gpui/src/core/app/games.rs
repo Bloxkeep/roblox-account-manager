@@ -280,7 +280,7 @@ impl App {
     /// for the game page's country pick beside Play. Where a server is comes from one signed-in account's join answer
     /// (the picked ones first), at most 60 servers, two at a time; a server found once is known for the run. `ask`: how
     /// many to ask about this time: the page asks a few, shows them, and asks for the rest ("more") while they show
-    /// (the owner, 2026-11-19: "lâu mới hiện server": every one of 60 was asked before the menu showed any).
+    /// (every one of 60 was asked before the menu showed any).
     pub async fn server_regions(self: &Rc<Self>, place_id: i64, preferred: &[Guid], ask: usize) -> Res<Value> {
         self.held_vault().ok_or_else(|| Fail::user(l::t("Bloxkeep is locked.")))?;
         if place_id <= 0 {
@@ -614,7 +614,11 @@ impl App {
                 Ok(list) => {
                     for s in list {
                         match found.iter_mut().find(|f| f.server.access_code.to_lowercase() == s.access_code.to_lowercase()) {
-                            Some(f) => f.via.push(viewer),
+                            Some(f) => {
+                                if !f.via.contains(&viewer) {
+                                    f.via.push(viewer);
+                                }
+                            }
                             None => found.push(PrivateFound { server: s, via: vec![viewer] }),
                         }
                     }
@@ -769,8 +773,9 @@ impl App {
                 "accessCode": f.server.access_code,
                 "playing": f.server.playing,
                 "maxPlayers": f.server.max_players,
-                "via": f.via.iter().map(|id| self.find_account(*id).map(|a| self.name_text(&a)).unwrap_or_default()).filter(|n| !n.is_empty()).collect::<Vec<_>>(),
-                "viaIds": f.via.iter().map(|id| id.to_string()).collect::<Vec<_>>(),
+                // Names and ids side by side (the page pairs them): an account gone from the vault drops from both.
+                "via": f.via.iter().filter_map(|id| self.find_account(*id)).map(|a| self.name_text(&a)).collect::<Vec<_>>(),
+                "viaIds": f.via.iter().filter(|id| self.find_account(**id).is_some()).map(|id| id.to_string()).collect::<Vec<_>>(),
             })).collect::<Vec<_>>(),
         })
     }
@@ -863,11 +868,10 @@ async fn ask_where(cookie: String, place_id: i64, jobs: Vec<String>) -> Option<S
         let queue = Mutex::new(jobs.into_iter());
         let stop: Mutex<Option<String>> = Mutex::new(None);
         // Two at a time with a pause between, and Roblox's "too many" (HTTP 429) waited out a few times before giving
-        // up: six at once with no pause were refused at once and none of 99 servers was placed (the owner's log,
-        // 2026-11-18). What was placed is kept either way.
+        // up: six at once with no pause were refused at once and none of 99 servers was placed. What was placed is
+        // kept either way.
         let waits = std::sync::atomic::AtomicU32::new(0);
-        // Why a server got no place, counted for the log: none of 98 was placed and the log said nothing (the
-        // owner, 2026-11-19: "ko biết do roblox hay do app").
+        // Why a server got no place, counted for the log: none of 98 was placed and the log said nothing.
         let missed: Mutex<HashMap<String, u32>> = Mutex::new(HashMap::new());
         crate::threads::scope(|scope| {
             for _ in 0..2 {

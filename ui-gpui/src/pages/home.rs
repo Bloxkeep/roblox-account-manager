@@ -139,7 +139,7 @@ pub fn home(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     let focus = root.picked.and_then(|p| all.iter().position(|g| g.place == p)).unwrap_or(0);
     let inner = width - 2. * SIDE;
     // No accounts column beside the page (a narrow window): a button at the top right slides it in over the page
-    // (the owner's mock-up, 2026-11-15: "nút Accounts 8 ở góc phải để mở danh sách tài khoản").
+    // (a user's mock-up).
     let accounts_button = root.no_side.get().then(|| {
         div().pt(px(14.)).px(px(SIDE)).flex().justify_end().child(
             Button::new("home-accounts", format!("{}  {}", root.tr("nav.accounts"), root.accounts().len())).icon("users").on_click(cx.listener(|r, _, _, cx| {
@@ -175,8 +175,7 @@ pub fn home(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                         .flex()
                         .flex_col()
                         .gap(px(SECTION_GAP))
-                        // (No strip of the accounts here: the column beside the page lists them already, the owner
-                        // 2026-11-13: "thừa, bên cạnh có rồi".)
+                        // (No strip of the accounts here: the column beside the page lists them already.)
                         .child(shelf(root, &all, focus, inner, None, cx))
                         .child(presets(root, inner, cx))
                         .when(!root.accounts().is_empty(), |d| d.children(crate::pages::stats::recent(root, cx))),
@@ -184,8 +183,8 @@ pub fn home(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         ))
 }
 
-// ---- The welcome, before any account. Built to a launcher home the owner picked on Dribbble (2026-11-17, "Giữ C"
-// of three tried): Paulo Rasera's "Game Launcher" for Turtle (dribbble.com/shots/11189960). The picture of the game
+// ---- The welcome, before any account. Built to a launcher home picked on Dribbble (one of
+// three tried): Paulo Rasera's "Game Launcher" for Turtle (dribbble.com/shots/11189960). The picture of the game
 // Bloxkeep's users play most across the page's top, sharp, darkening to the left and down; a line of capitals, the
 // game's logo, the welcome and Add account at its left; three blocks over its faded foot, each under its own line of
 // capitals with a quiet button at its foot. Without the community's games (offline, before the first beat): no
@@ -269,10 +268,9 @@ fn hero_art(root: &Root, place: Option<i64>, w: f32, h: f32, (top, foot): (f32, 
 /// The hero's back, a billboard (Netflix's, Steam's library hero, the Xbox app's game page): the picture at the
 /// panel's right, top to foot at its own 16:9, so it is neither cut nor blown up; the words stand on the panel's plain
 /// ground at its left, the picture fading into that ground leftward and into the panel at its foot. It filled the
-/// whole width, near twice its size: a thumbnail's own words stood blurred behind the game's name (the owner's Steal
-/// An Egg, 2026-11-18: "cần cải thiện hero cái này nhiều nữa"). `over` lies on the picture (a gameplay clip).
-/// The room the hero's words keep at its left when its banner is a picture of its own (`hero_card`): the game's
-/// name and the row of buttons under it.
+/// whole width, near twice its size: a thumbnail's own words stood blurred behind the game's name (a user's Steal An
+/// Egg). `over` lies on the picture (a gameplay clip). The room the hero's words keep at its left when its banner is a
+/// picture of its own (`hero_card`): the game's name and the row of buttons under it.
 const HERO_WORDS: f32 = 440.;
 
 /// The hero's banner is a picture of its own: the panel is thin glass or clear (a custom theme at a low fade, glass
@@ -285,7 +283,7 @@ fn hero_card(width: f32, h: f32) -> bool {
 
 /// The banner as a picture of its own in a hero `width`×`h`: how wide and tall. Its own 16:9, as tall as the hero
 /// where there is room; narrower (and less tall) where the words need theirs; nothing where what is left is no
-/// picture worth showing. It lay over the name and the buttons in a narrow window (the owner, 2026-11-18).
+/// picture worth showing. It lay over the name and the buttons in a narrow window.
 fn hero_card_size(width: f32, h: f32) -> Option<(f32, f32)> {
     let w = (h * 16. / 9.).min(width - HERO_WORDS).round();
     (w >= 320.).then(|| (w, (w * 9. / 16.).round().min(h)))
@@ -297,7 +295,7 @@ fn hero_words_end(width: f32, h: f32) -> f32 {
         // A melting banner: the words end where the banner begins, its melting edge too. The melt is no ground for
         // words: let run on over it (as far as where the banner stands clear, my rule of alpha.26, and to the hero's
         // end before that), a long name lay on the picture ("Throw Food For Animals" across the banner with the
-        // panels' glass on, the owner's screenshot, 2026-11-18: "tắt khối kính phát vỡ UI luôn").
+        // panels' glass on, a screenshot).
         return (h * 16. / 9.).min(width).round();
     }
     match hero_card_size(width, h) {
@@ -308,8 +306,7 @@ fn hero_words_end(width: f32, h: f32) -> f32 {
 
 /// The box of a banner that is a picture of its own, `w`×`tall`: in the hero's top right corner (the panel's own,
 /// round as that is), its other corners round. Always from the top: stood in the middle of the hero's height where
-/// it was the shorter, its top edge was out of line with the Accounts column beside it (the owner, 2026-11-18: "cái
-/// banner ko thẳng hàng với account").
+/// it was the shorter, its top edge was out of line with the Accounts column beside it.
 fn hero_card_box(w: f32, tall: f32) -> Div {
     div().absolute().top_0().right_0().w(px(w)).h(px(tall)).rounded(px(R_L)).rounded_tr(px(R_PANEL)).overflow_hidden()
 }
@@ -360,8 +357,8 @@ fn own_hero(root: &Root, width: f32, kicker: String, title: String, sub: String,
 
 fn hero_back(root: &Root, place: Option<i64>, width: f32, h: f32, over: Option<AnyElement>, cx: &mut Context<Root>) -> Div {
     // A panel of thin glass, or a clear one, is no ground to melt into: the banner stood there cut square on three
-    // corners, round only at the panel's own (the owner, 2026-11-18: "thiếu bo góc à"). It is a picture of its own
-    // there, its four corners round, and nothing shaded.
+    // corners, round only at the panel's own. It is a picture of its own there, its four corners round, and
+    // nothing shaded.
     if hero_card(width, h) {
         let Some((w, tall)) = hero_card_size(width, h) else { return div().absolute().inset_0() };
         let art = hero_art(root, place, w, tall, (0., 0.), cx);
@@ -586,10 +583,10 @@ pub fn setup_follow(r: &mut Root, cx: &mut Context<Root>) {
     r.ask_once("setup-rejoin", "setAutoRejoin", json!({ "ids": off, "enabled": true }), cx, move |_, _| keep(all));
 }
 
-/// What Bloxkeep is used for, asked once before the first account (the owner's pick of 2026-11-19, from Asana's "main
-/// objective" cards, Attio's preview beside its questions and Airtable's steps bar): each answer ticked turns on the
-/// settings it needs, listed at the right as they will be; Skip leaves everything as it is. Then this PC (after
-/// "several accounts"), the look, and the welcome (Add account).
+/// What Bloxkeep is used for, asked once before the first account (from Asana's "main objective" cards, Attio's
+/// preview beside its questions and Airtable's steps bar): each answer ticked turns on the settings it needs, listed
+/// at the right as they will be; Skip leaves everything as it is. Then this PC (after "several accounts"), the look,
+/// and the welcome (Add account).
 fn setup(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let picks = SETS.with(|p| p.get());
     let option = |bit: u8, id: &'static str, mark: &'static str, title: &str, sub: &str| {
@@ -960,8 +957,7 @@ fn setup_theme(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     // (Then the ones most PCs are in now, as Appearance's Popular has them, up to eight in all.)
     for t in root.state.pointer("/community/data/themes").and_then(Value::as_array).into_iter().flatten() {
         let Some(id) = t.get("id").and_then(Value::as_str) else { continue };
-        // (Keep at dusk is left out here, Deep space in its place: the owner 2026-11-19, "bỏ cái thành lúc hoàng hôn ra
-        // ngoài chọn giao diện", "cho deep space vào thay thế".)
+        // (Keep at dusk is left out here, Deep space in its place.)
         if let Some(known) = crate::theme_table::GROUPS.iter().flat_map(|(_, l)| l.iter()).find(|k| **k == id)
             && *known != crate::theme::KEEP.id
             && !ids.contains(known)
@@ -1061,7 +1057,7 @@ fn welcome(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement 
     // page here with the words on it, under two shades of the panel's colour: with glass on the blocks only the
     // panel has none, and the words, the button and the blocks' heads stood on the bare picture (the shots of
     // every kind of theme, 2026-11-18; Sunset with that glass is the look a new Bloxkeep starts in). And it was
-    // someone else's game standing in for Bloxkeep (the owner, the same day).
+    // someone else's game standing in for Bloxkeep (the same day).
     let add = Button::new("home-w-add", root.tr("acc.add")).icon("plus").primary().big().on_click(cx.listener(|r, _, _, cx| r.add_account(cx)));
     div()
         .relative()
@@ -1083,8 +1079,8 @@ fn welcome(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement 
 
 /// Home drawn small: on a window too narrow for the accounts column, or a short one. Its stage is then a low band
 /// (the game's picture and the faces left out, what to do at its right) and its games stand in short tiles, so two
-/// rows of them show whole under it (the owner's mock-up of a small window, 2026-11-15: before, the stage took half
-/// the window and the second row of games was cut at the window's foot).
+/// rows of them show whole under it (a user's mock-up of a small window: before, the stage took half the window
+/// and the second row of games was cut at the window's foot).
 fn small(root: &Root) -> bool {
     root.no_side.get() || root.window_h.get() < 760.
 }
@@ -1145,10 +1141,10 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
     let cover = look(root, g.place, "cover").map(str::to_string);
     // The stage is ONE block on the game's own colour (taken from its picture, solid: the base its tiles stand on
     // elsewhere), the words on its left half and the cover filling its right half edge to edge, sharp. It was words on
-    // the bare panel with a small cover floating at the right (the owner, 2026-11-13: "trông đơn điệu quá").
+    // the bare panel with a small cover floating at the right.
     let icon_url = look(root, g.place, "icon").map(str::to_string).or_else(|| g.icon.clone());
     let tone = icon_url.as_deref().and_then(|u| images::tone(u, cx)).or_else(|| cover.as_deref().and_then(|u| images::tone(u, cx)));
-    // (Plain, not mixed with the game's colour: an orange game made it brown; the owner's rule of 2026-11-15.)
+    // (Plain, not mixed with the game's colour: an orange game made it brown.)
     let _ = tone;
     let badge = look(root, g.place, "icon").map(str::to_string).or_else(|| g.icon.clone()).and_then(|u| images::pic(&u, cx));
     let (dropped, since) = stage_facts(root, g);
@@ -1234,8 +1230,7 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
                 .gap_x(px(20.))
                 .gap_y(px(12.))
                 .rounded(px(R_L))
-                // (Plain charcoal: the game's colour is on its icon and name, not the band; the owner's rule of
-                // 2026-11-15.)
+                // (Plain charcoal: the game's colour is on its icon and name, not the band.)
                 .bg(crate::kit::block_ground())
                 .child(
                     div()
@@ -1260,18 +1255,17 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
                 .child(div().flex_none().max_w_full().child(acts)),
         );
     }
-    // A hero (the owner, 2026-11-17: "chỗ này làm hero được thì tuyệt"), built as the welcome's stage is, to Turtle's
-    // launcher home (dribbble.com/shots/11189960, "Giữ C"): the game's picture across the whole block, sharp, darkening
-    // to the left and down; its state in capitals, its logo, what it is doing and what to do at the left. Its gameplay
-    // clip plays under the shades while the mouse rests on it.
-    // (Edge to edge, the owner 2026-11-17: "ảnh nên tràn viền hơn nữa": the picture fills the panel's top to its
-    // edges, its round top corners, and fades into the panel at its foot, as the welcome's does.)
+    // A hero, built as the welcome's stage is, to Turtle's launcher home (dribbble.com/shots/11189960): the
+    // game's picture across the whole block, sharp, darkening to the left and down; its state in capitals, its logo,
+    // what it is doing and what to do at the left. Its gameplay clip plays under the shades while the mouse rests on
+    // it. (Edge to edge: the picture fills the panel's top to its edges, its round top corners, and fades into the
+    // panel at its foot, as the welcome's does.)
     let hero_h = hero_h(root, width);
     let beside = hero_beside(width, hero_h);
     let back = hero_back(root, Some(g.place), width, hero_h, clip.layer, cx);
     // What it is doing, in words of the page's size: a game being played has the bars music apps mark a song that
     // plays with (Spotify's, Apple Music's), in green; one played before its clock. It was a dot and a line of
-    // capitals, then a glass pill with a dot (the owner, 2026-11-19: "trông hơi lạc quẻ và AI"; picked A of three).
+    // capitals, then a glass pill with a dot (picked A of three).
     let kicker = if running {
         div().flex().items_center().gap(px(8.)).text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).text_color(c(OK)).child(crate::kit::playing_bars("stage-bars", true, c(OK))).child(state_word)
     } else {
@@ -1279,13 +1273,13 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
     };
     // Roblox's own words on the game (its first paragraph, cleaned: `blurb`) and its figures: how many play it now,
     // how many like it, who made it (Steam's redesigned library hero, dribbble.com/shots/26698011: a short
-    // description under the title; the owner, 2026-11-19: "đoạn này hơi trống").
+    // description under the title).
     let details = root.games.details.get(&g.place);
     let about = details.and_then(|d| d.get("description")).and_then(Value::as_str).and_then(blurb);
     let stats = details.map(|d| hero_figures(root, d)).filter(|f| !f.is_empty());
     // The words' room, from the hero's left pad to where its banner starts: the name is given that width in so many
     // px, less its icon's. Left to shrink by itself it didn't: a name wider than the room ran on over the banner
-    // ("Throw Food For Animals", the owner's main screen, 2026-11-18; the wider second screen had the room). A long
+    // ("Throw Food For Animals", a user's main screen; the wider second screen had the room). A long
     // name takes a second line before it is cut.
     let room = (width - 48. - hero_words_end(width, hero_h)).max(160.);
     let lead = if badge.is_some() { 76. } else { 0. };
@@ -1355,9 +1349,9 @@ fn hero_figure(label: String, value: String) -> Div {
 }
 
 /// The first words of a game's description on Roblox, fit for one line or two on the hero: its first paragraph after
-/// the lines that are no words (emoji only, "🔥UPDATE 24🔥", "‼️ NEW CODES ‼️", a link, a rule of ━━━), with
-/// links and the signs that are no letters (emoji, stars, rules) taken out. None when nothing like a sentence is left:
-/// the line is then not shown (the owner, 2026-11-19: "lỡ dòng mô tả đó nhiều hơn bình thường thì sao").
+/// the lines that are no words (emoji only, "🔥UPDATE 24🔥", "‼️ NEW CODES ‼️", a link, a rule of ━━━), with links and
+/// the signs that are no letters (emoji, stars, rules) taken out. None when nothing like a sentence is left: the line
+/// is then not shown.
 pub(crate) fn blurb(text: &str) -> Option<String> {
     // A sign kept: letters (every script) and digits, spaces, and the marks of a sentence.
     let kept = |ch: char| ch.is_alphanumeric() || ch.is_whitespace() || ".,;:!?'\"()-–—…’‘“”%&/+#@$".contains(ch);
@@ -1412,11 +1406,10 @@ fn hero_h(root: &Root, width: f32) -> f32 {
     (width * 0.3).clamp(340., 520.).min((root.window_h.get() - 380.).max(340.)).round()
 }
 
-/// Accounts but no game played yet (a brand new account): the hero is Bloxkeep's own (the owner 2026-11-17: "thiết
-/// kế 1 banner hero về bloxkeep đi"), in the same frame as a game's (Turtle's launcher home): Bloxkeep's own banner
-/// at the right (crisp::hero; a game's picture stood there first, and the owner had meant a picture of Bloxkeep's
-/// own, 2026-11-18), Bloxkeep's mark and name in capitals, what to do first, and Bloxkeep now in two figures (Nexus'
-/// figures under its buttons, dribbble.com/shots/27766654).
+/// Accounts but no game played yet (a brand new account): the hero is Bloxkeep's own, in the same frame as a game's
+/// (Turtle's launcher home): Bloxkeep's own banner at the right (crisp::hero; a game's picture stood there first,
+/// and a user had meant a picture of Bloxkeep's own), Bloxkeep's mark and name in capitals, what to do first, and
+/// Bloxkeep now in two figures (Nexus' figures under its buttons, dribbble.com/shots/27766654).
 fn bloxkeep_hero(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
     let figures: Vec<Div> = [("pcs", "home.w.pcs"), ("alts", "home.w.alts")]
         .iter()
@@ -1431,8 +1424,8 @@ fn bloxkeep_hero(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
     div().w_full().child(own_hero(root, width, "Bloxkeep".into(), root.tr("home.noGame"), root.tr("home.noGameSub"), pick.into_any_element(), under))
 }
 
-/// The first game, one click away: what Bloxkeep's users play most, each with Play for the first account (the
-/// owner's "Cả ba bước", 2026-11-19: after the first account, the top games with a button straight into one).
+/// The first game, one click away: what Bloxkeep's users play most, each with Play for the first account
+/// (after the first account, the top games with a button straight into one).
 fn first_games(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
     let id = root.accounts().first().and_then(|a| a.get("id").and_then(Value::as_str)).map(str::to_string)?;
     // (Two, one under the other: the hero's words column is narrow, and a third pushed its figures off a laptop's
@@ -1516,13 +1509,13 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, library: Option<Ho
         .map(|l| l.iter().filter(|g| g.get("name").and_then(Value::as_str).is_some_and(|n| !n.is_empty())).cloned().collect())
         .unwrap_or_default();
     // Nothing played yet: the community's games show instead of a line saying there are none (a new user's Home was
-    // one empty row, owner 2026-11-12).
+    // one empty row).
     let tab_now = library.unwrap_or_else(|| {
         if root.home_tab == HomeTab::Games && all.is_empty() && !community.is_empty() { HomeTab::Community } else { root.home_tab }
     });
     // (Two rows of them then, as nothing else is under the welcome: a big window had its lower half empty.)
     let no_presets = root.state.pointer("/settings/presets").and_then(Value::as_array).is_none_or(|l| l.is_empty());
-    // The library too, two rows while nothing plays (the figures then take a row): the owner's maximised window had its
+    // The library too, two rows while nothing plays (the figures then take a row): a user's maximised window had its
     // lower third empty under three presets (2026-11-12).
     let short = library.is_none() && small(root);
     let rows = if short || (all.is_empty() && no_presets) || playing_now(root) == 0 { 2 } else { 1 };
@@ -1753,7 +1746,7 @@ pub fn cover_tile(id: (&'static str, usize), cover: Option<String>, icon_url: Op
         .child(art)
         // Its name in the page's own white and one line under it: the picture above says which game it is, so the
         // small icon beside the name went, and the name's two colours with it (Steam's redesigned library,
-        // dribbble.com/shots/27091729; the owner approved the mock-up, 2026-11-19). A game being played says so with
+        // dribbble.com/shots/27091729; a user approved the mock-up). A game being played says so with
         // the bars music apps mark a song that plays with, in green, as the hero above does.
         .child(
             div()
@@ -1824,7 +1817,7 @@ fn presets(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement 
         });
         // (Of its game's colour, as an account's card is of the game it plays.)
         let (ground, ground_hot, edge, edge_hot) = toned(if rich() { p.get("iconUrl").and_then(Value::as_str).and_then(|u| images::tone(u, cx)) } else { None });
-        // The card opens the preset to change it; its Play button runs it (the owner, 2026-11-17).
+        // The card opens the preset to change it; its Play button runs it.
         let open = p.clone();
         cards = cards.child(crate::kit::block_card(("preset", i))
                 .on_click(cx.listener(move |r, _, window, cx| {

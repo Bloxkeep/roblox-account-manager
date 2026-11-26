@@ -329,7 +329,7 @@ fn part(root: &Root, user: i64, kind: &str, games: &[Game], at: usize, of: usize
         .items_center()
         .gap(px(8.))
         // (Its mark in the starter card's tile, the name at a group's size and how many it holds beside it, as the
-        // Home page's heads count theirs: "hơi xoàng" at 14 px, the owner, 2026-11-25.)
+        // Home page's heads count theirs at 14 px.)
         .child(div().size(px(40.)).flex_none().mr(px(4.)).rounded(px(R_M)).bg(c(RAISED_2)).flex().items_center().justify_center().child(icon(glyph(kind), 18., c(FACE))))
         .child(div().flex_1().min_w_0().flex().flex_col().gap(px(2.))
             .child(div().flex().items_baseline().gap(px(8.)).min_w_0()
@@ -431,8 +431,7 @@ fn part_menu(root: &Root, user: i64, kind: &str, at: usize, of: usize, cx: &mut 
 }
 
 /// The × over a game under the mouse: takes it out of its section. Inside the picture's corner, not hanging off it:
-/// half outside, the mouse left the picture on its way to it and it faded away under it (the owner, 2026-11-25: "nút
-/// remove khó bấm vl").
+/// half outside, the mouse left the picture on its way to it and it faded away under it.
 fn take_out(root: &Root, user: i64, kind: &str, i: usize, group: SharedString, cx: &mut Context<Root>) -> Div {
     let k = kind.to_string();
     div().absolute().top(px(6.)).right(px(6.)).opacity(0.).group_hover(group, |s| s.opacity(1.)).child(

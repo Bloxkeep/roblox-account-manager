@@ -19,8 +19,9 @@ use super::{
 };
 use crate::core::{
     base::{Cancel, Fail, Guid, Res, Stamp},
+    close_plan::{Cause, End, Open, Then, Who},
     game_target::GameTarget,
-    input_turn, l, log,
+    l, log,
     models::Account,
     multi_instance, prefs,
     roblox_api::{self, ServerInfo, is_fail_kind, realm},
@@ -29,6 +30,7 @@ use crate::core::{
     roblox_processes, rt, system_memory,
     vault::Vault,
     win_kit::{self, Rect, Size},
+    window_desk::{Arrangement, Lift, choose_tiles},
     window_report,
 };
 
@@ -206,9 +208,6 @@ pub struct LaunchingState {
     /// Launches whose window didn't come within PENDING_TIMEOUT: one appearing within LATE_TIMEOUT more is still
     /// claimed for it (see track_processes).
     pub late: RefCell<Vec<Rc<PendingLaunch>>>,
-    /// A field, so the checks can see what Close and a launch to close once claimed end, without ending anything.
-    /// None: roblox_processes::close.
-    pub close_client: RefCell<Option<Arc<dyn Fn(i32, bool)>>>,
     /// Launches that took `launch_cts` so far (see launch_accounts).
     pub launch_generation: std::cell::Cell<u64>,
 }
@@ -225,15 +224,12 @@ pub const REPLACED_GRACE: Duration = Duration::from_secs(15);
 pub const LATE_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 /// How long windows opened into a game are waited for to be in it before they are tiled.
 pub const JOIN_WAIT_FOR_TILES: Duration = Duration::from_secs(60);
-
-/// `_closeClient(pid, force)`.
-pub(super) fn close_client(app: &App, pid: i32, force: bool) {
-    let f = app.launching.close_client.borrow().clone();
-    match f {
-        Some(f) => f(pid, force),
-        None => roblox_processes::close(pid, force),
-    }
-}
+/// The longest the next account of a launch waits for the one before it to join its game (from that one's start; the
+/// wait between accounts, if longer): a window stuck loading or in a queue doesn't hold the rest back.
+pub const JOIN_WAIT_MAX: Duration = Duration::from_secs(20);
+/// How long after joining its game a window is tiled: Roblox sizes its window again as it joins (maximised again, if
+/// it was last closed so), and a tile given before that is undone.
+pub const TILE_SETTLE: Duration = Duration::from_secs(3);
 
 /// In the app's language ("1.5 GB", "1,5 ГБ"): lang.rs › mb.
 fn format_mb(mb: i64) -> String {
@@ -347,6 +343,12 @@ impl App {
         each_server: Option<EachServer>,
         reserved: Option<Cancel>,
     ) -> Res<LaunchResult> {
+        // Close, update, reopen or Roblox's own update under way: a window opened now would be closed by it, or make it
+        // give up (close_plan.rs O1).
+        if let Open::Refuse(no) = self.may_open(Who::Person, None, Stamp::utc_now()) {
+            log::note(&format!("Launch: {} account(s) not opened, {}.", accounts.len(), no.words()));
+            return Err(Fail::user(App::open_refused_text(no).unwrap_or_default()));
+        }
         // Banned accounts aren't opened: their window would only show the ban. Roblox VNG accounts open like the
         // others, with a ticket from Roblox VNG's sign-in (tried from 2026-10-19).
         let left_out: Vec<Guid> = accounts.iter().filter(|acc| acc.banned == Some(true)).map(|acc| acc.id).collect();
@@ -361,6 +363,8 @@ impl App {
         // Taken before the first await: a second Play meanwhile would pass check_can_launch, and its "switching" list
         // could close the client this one had just opened.
         let launch_start = Stamp::utc_now(); // the windows opened from here are waited for before tiling
+        // Asked now: an earlier Close of these accounts no longer holds them (close_plan.rs O2).
+        self.close_desk.release_closed(accounts.iter().map(|acc| acc.id));
         let cts = reserved.unwrap_or_default();
         *self.controller.launch_cts.borrow_mut() = Some(cts.clone());
         // PORT: `_launchCts == cts` (a reference compare); base::Cancel doesn't expose its Arc, so a count of the launches
@@ -605,7 +609,7 @@ impl App {
                 if !switching.is_empty() { format!(", {} switching", switching.len()) } else { String::new() },
                 if force { ", confirmed" } else { "" },
                 // What Settings' "When a Roblox window opens" (or the preset) says, so error.log shows why windows were
-                // or weren't arranged: the owner's came up maximised and unarranged with no line to say which was set
+                // or weren't arranged: a user's came up maximised and unarranged with no line to say which was set
                 // (2026-11-18).
                 match self.preset_for(preset_id).and_then(|p| p.arrange) {
                     Some(true) => "arranged (the preset)",
@@ -628,6 +632,17 @@ impl App {
             let mut closed_servers: Vec<String> = Vec::new();
             let closed_has = |list: &Vec<String>, job: &str| list.iter().any(|j| j.eq_ignore_ascii_case(job));
 
+            // Arranged as they open: each window takes its tile as it joins its game, the tiles laid out for all the launch's
+            // accounts from the first, so none moves when the next one comes (see tile_when_open).
+            if self.preset_for(preset_id).and_then(|p| p.arrange).unwrap_or(s.multi_instance && s.multi_instance_tile) {
+                if !self.preset_for(preset_id).is_some_and(|p| p.profile == AFK_PROFILE) {
+                    *self.controller.tile_plan.borrow_mut() = Some((launch_start, accounts.iter().map(|acc| acc.id).collect()));
+                }
+                rt::spawn({
+                    let app = self.clone();
+                    async move { app.tile_when_open(preset_id, launch_start).await }
+                });
+            }
             let mut i: isize = 0;
             while (i as usize) < accounts.len() && same_vault(self, &vault) {
                 ct.check()?;
@@ -651,8 +666,8 @@ impl App {
                     }
                     let n = self.name(&account);
                     self.progress(Some(&l::f("Closing {0}'s Roblox to switch games…", &[&n])));
-                    self.controller.user_closed.borrow_mut().insert(account.id); // not a disconnect: no auto-rejoin into the old game
-                    roblox_processes::close(old.0, self.in_game_now(old.0));
+                    // Not a disconnect: no auto-rejoin into the old game.
+                    self.ask_close(Some(account.id), old.0, Cause::Switch, Then::StayClosed, false);
                     let mut waited = 0;
                     let mut wait_result = Ok(());
                     while is_running(self, account.id) && waited < 15_000 {
@@ -669,7 +684,7 @@ impl App {
                             short(account.id),
                             old.0
                         ));
-                        self.controller.user_closed.borrow_mut().remove(&account.id);
+                        self.close_desk.withdraw(old.0, Cause::Switch);
                     }
                     wait_result?;
                 }
@@ -698,14 +713,25 @@ impl App {
                     continue;
                 }
 
+                // Closed by the person (or a schedule's stop) since this launch began, while it waited or opened the
+                // ones before: it stays closed (close_plan.rs O2). Asked before the others are
+                // marked as replaced by it.
+                if let Open::Refuse(no) = self.may_open(Who::Person, Some(account.id), launch_start) {
+                    log::note(&format!("Launch: account {} skipped, {}.", short(account.id), no.words()));
+                    if let Some(text) = App::open_refused_text(no) {
+                        errors.push(format!("{}: {text}", self.name_text(&account)));
+                    }
+                    i += 1;
+                    continue;
+                }
                 let n = self.name(&account);
                 let (at, of) = (i + 1, accounts.len());
                 self.progress(Some(&l::f("Launching {0} ({1}/{2})…", &[&n, &at, &of])));
                 let started_at = Stamp::utc_now();
                 if !multi_instance::armed() {
-                    let ids: Vec<Guid> = self.controller.running.borrow().keys().copied().collect();
-                    for id in ids {
-                        if id != account.id && self.controller.user_closed.borrow_mut().insert(id) {
+                    let others: Vec<(Guid, i32)> = self.controller.running.borrow().iter().map(|(id, (pid, _))| (*id, *pid)).collect();
+                    for (id, pid) in others {
+                        if id != account.id && self.expect_close(Some(id), pid, Cause::Switch, Then::StayClosed) {
                             replaced.push(id);
                         }
                     }
@@ -723,6 +749,14 @@ impl App {
                     Ok(()) => {
                         launched += 1;
                         opened = true;
+                        // Closed while its sign-in ticket was fetched (nothing to close then): its window closes as soon as
+                        // it shows.
+                        if self.close_desk.held_closed.borrow().get(&account.id).is_some_and(|held| *held > launch_start) {
+                            log::note(&format!("Launch: account {} closed while it opened; its window closes as it shows.", short(account.id)));
+                            for l in pending(self).into_iter().filter(|p| p.account_id == account.id) {
+                                self.close_when_it_shows(&l);
+                            }
+                        }
                     }
                     Err(ex) if !ct.is_cancelled() && (roblox_api::is_expected_error(&ex) || is_start_error(&ex) || matches!(ex, Fail::User(_))) => {
                         log::note(&format!("Launch: account {} didn't open ({}).", short(account.id), launch_fail_kind(&ex)));
@@ -803,8 +837,7 @@ impl App {
                     );
                     // Goes again, to the new server; not a drop for auto-rejoin.
                     if let Some(stuck) = run_of(self, account.id) {
-                        self.controller.user_closed.borrow_mut().insert(account.id);
-                        roblox_processes::close(stuck.0, true);
+                        self.ask_close(Some(account.id), stuck.0, Cause::Switch, Then::StayClosed, true);
                         let mut waited = 0;
                         while is_running(self, account.id) && waited < 15_000 {
                             delay(&ct, Duration::from_millis(300)).await?;
@@ -812,7 +845,7 @@ impl App {
                         }
                         if is_running(self, account.id) {
                             log::note(&format!("Launch: account {}'s window {} wouldn't close to move servers; it stays.", short(account.id), stuck.0));
-                            self.controller.user_closed.borrow_mut().remove(&account.id); // it wouldn't close: it stays, and auto-rejoin still looks after it
+                            self.close_desk.withdraw(stuck.0, Cause::Switch); // it wouldn't close: it stays, and auto-rejoin still looks after it
                             i += 1;
                             continue;
                         }
@@ -866,13 +899,6 @@ impl App {
             }
             if launched > 0 {
                 self.refresh_presence_soon(Duration::from_secs(20));
-            }
-            let s = settings();
-            if launched > 0 && self.preset_for(preset_id).and_then(|p| p.arrange).unwrap_or(s.multi_instance && s.multi_instance_tile) {
-                rt::spawn({
-                    let app = self.clone();
-                    async move { app.tile_when_open(preset_id, launch_start).await }
-                });
             }
             self.persist();
         }
@@ -995,12 +1021,15 @@ impl App {
             }
             rt::sleep(Duration::from_millis(1000)).await;
         }
-        for id in replaced.iter().filter(|id| is_running(&self, **id)) {
-            self.controller.user_closed.borrow_mut().remove(id);
+        for id in &replaced {
+            if let Some(run) = run_of(&self, *id) {
+                self.close_desk.withdraw(run.0, Cause::Switch);
+            }
         }
     }
 
-    /// With the first account whose sign-in Roblox accepts, so a dead first account doesn't stop the whole launch.
+    /// With the first account whose sign-in Roblox accepts, so a dead first account doesn't stop the whole launch; nor
+    /// one Roblox holds a notice on ("User is moderated": every call with its sign-in is refused, the link is fine).
     pub(crate) async fn resolve_share(
         self: &Rc<Self>,
         accounts: &[Account],
@@ -1014,7 +1043,8 @@ impl App {
             return Err(Fail::user(l::t("Share links are read with a Roblox account. Select one that isn't Roblox VNG.")));
         }
         let mut candidates: Vec<Account> = Vec::new();
-        for acc in global.iter().filter(|acc| acc.cookie_valid != Some(false)).chain(global.iter()) {
+        let fine = |acc: &&&Account| acc.cookie_valid != Some(false) && !self.moderated_lately(acc.id);
+        for acc in global.iter().filter(fine).chain(global.iter().filter(|acc| acc.cookie_valid != Some(false))).chain(global.iter()) {
             if !candidates.iter().any(|c| c.id == acc.id) {
                 candidates.push((*acc).clone());
             }
@@ -1028,6 +1058,15 @@ impl App {
                     log::note(&format!("Launch: share link read refused for account {}'s sign-in; trying the next.", short(candidates[i].id)));
                     self.confirm_signed_out(candidates[i].id, ct, false).await;
                     ct.check()?;
+                }
+                Err(ex) if ex.moderated() => {
+                    self.note_moderated(candidates[i].id);
+                    if i == candidates.len() - 1 {
+                        // No other account to read it with: said of the account, by name (the launch may hold several).
+                        let n = self.name(&candidates[i]);
+                        return Err(Fail::user(format!("{n}: {}", l::t("Roblox has a notice on this account to accept first. Open its roblox.com and accept it."))));
+                    }
+                    log::note(&format!("Launch: Roblox holds a notice on account {} (moderated), so it can't read the share link; trying the next.", short(candidates[i].id)));
                 }
                 Err(ex) => return Err(ex),
             }
@@ -1067,6 +1106,7 @@ impl App {
         }
         let own_start = self.controller.last_session_start.get();
         let mut said: Option<String> = None;
+        let mut waited_join = false;
         *self.controller.launch_waiting.borrow_mut() = Some(next.into_iter().collect());
         let result: Res<()> = async {
             loop {
@@ -1074,14 +1114,27 @@ impl App {
                 let from = if last != own_start { last } else { started_at };
                 let rest = delay_seconds as f64 - Stamp::utc_now().secs_since(from);
                 let opening = self.controller.rejoining.get() || pending_count(self) > 0;
-                if rest <= 0.0 && !opening {
+                let joining = self.still_joining_since(account.id, started_at, delay_seconds);
+                if rest <= 0.0 && !opening && !joining {
+                    if waited_join {
+                        let took = Stamp::utc_now().secs_since(started_at).round() as i64;
+                        let joined = run_of(self, account.id).and_then(|r| log_of(self, r.0)).is_some_and(|l| l.status == "ingame");
+                        log::note(&format!(
+                            "Launch: account {} {} {took} s after its start; the next goes on.",
+                            short(account.id),
+                            if joined { "joined its game" } else { "not in its game" }
+                        ));
+                    }
                     return Ok(());
                 }
+                waited_join |= rest <= 0.0 && !opening && joining;
                 let text = if rest > 0.0 {
                     let left = rest.ceil() as i64;
                     l::f("Waiting {0}s before the next account…", &[&left])
-                } else {
+                } else if opening {
                     l::t("Waiting for the previous Roblox window to open…")
+                } else {
+                    l::t("Waiting for the previous account to join its game…")
                 };
                 if said.as_deref() != Some(text.as_str()) {
                     self.progress(Some(&text));
@@ -1217,7 +1270,12 @@ impl App {
                 let close_it = closing_remove(&self, &launch);
                 if close_it {
                     log::note(&format!("Roblox window {pid} came up and was closed, as asked while it opened."));
-                    close_client(self, pid, false);
+                    self.ask_close(Some(launch.account_id), pid, Cause::User, Then::StayClosed, false);
+                    // It may have reached its server meanwhile, and Roblox's status then names it for minutes: an end
+                    // here, so that reads as stale, not "playing on another device". (It never ran as the account's,
+                    // so the ended clients' loop doesn't see it.)
+                    let t = launch.target.as_ref();
+                    self.note_ended_here(launch.account_id, t.and_then(|t| t.job_id.clone()), t.map(|t| t.place_id), now);
                 } else {
                     self.controller.running.borrow_mut().insert(launch.account_id, (pid, launch.clone()));
                     self.persist_soon(); // the open clients on disk (see persist)
@@ -1232,8 +1290,9 @@ impl App {
             // Every new client quit without a game window: stop waiting. Unless Roblox's updater started since: the
             // updated client comes from it a while later, and dropping the launch left that window nobody's.
             for launch in pending(self) {
-                if pids.iter().any(|p| !launch.before.contains(p) && !claimed.contains(p)) {
+                if let Some(new) = pids.iter().copied().find(|p| !launch.before.contains(p) && !claimed.contains(p)) {
                     set_seen_alive(&self, &launch, now);
+                    self.controller.pending_seen_pid.borrow_mut().insert(LaunchRef(launch.clone()), new);
                 } else if let Some(seen) = seen_alive(&self, &launch)
                     && now.secs_since(seen) > secs(super::controller::PENDING_GONE_GRACE)
                 {
@@ -1243,16 +1302,32 @@ impl App {
                     }
                     log::note(&format!("Launch: account {}'s Roblox quit before its window came.", short(launch.account_id)));
                     let (in_a_row, handoff) = self.note_quit(&launch);
-                    let cleared = handoff && self.end_handoff_targets() > 0;
-                    // Opened by hand: said. "Opened 1 account." was the last word with no window to show for it (the
-                    // owner's run, 2026-11-13). A rejoin has its own words (drop_pending), a handed-over one its session's end.
+                    // What it left behind, off this thread: Roblox's crash report, Windows' error record with the fault. With
+                    // neither, it ended itself (handing its launch on, or giving up as it started).
+                    if let Some(pid) = self.controller.pending_seen_pid.borrow_mut().remove(&LaunchRef(launch.clone())) {
+                        let ran_for = Duration::from_secs_f64(now.secs_since(launch.started_at.get()).max(0.0));
+                        crate::threads::run(move || {
+                            let found = crate::core::roblox_crash_info::describe(pid, ran_for);
+                            log::note(&format!(
+                                "Launch: the Roblox that quit ({pid}, within {} s of the launch) left: {}.",
+                                ran_for.as_secs(),
+                                found.as_deref().unwrap_or("no crash report, no Windows error record")
+                            ));
+                        });
+                    }
+                    // A second quit in a row with other windows open, whatever its log says (most leave none): a Roblox
+                    // with no window that is nobody's is ended too, as after a hand-over.
+                    let cleared = (handoff || in_a_row >= 2) && self.end_handoff_targets(handoff) > 0;
+                    // Opened by hand: said. "Opened 1 account." was the last word with no window to show for it. A rejoin has
+                    // its own words (drop_pending), a handed-over one its session's end.
                     if !launch.rejoin
                         && !closing_has(self, &launch)
                         && get_by(&self.launching.handed_over.borrow(), &launch).is_none()
                         && let Some(account) = self.find_account(launch.account_id)
                     {
                         let n = self.name(&account);
-                        let said = if in_a_row >= 2 && !cleared {
+                        // (Closing every window is the way out only of a hand-over to a Roblox that couldn't be ended.)
+                        let said = if handoff && in_a_row >= 2 && !cleared {
                             l::f("{0}: Roblox closed again before its window opened. If it keeps happening, close all Roblox windows, then open them again.", &[&n])
                         } else {
                             l::f("{0}: Roblox closed before its window opened. Try again.", &[&n])
@@ -1311,7 +1386,9 @@ impl App {
                 if close_it { "; closed, as asked meanwhile" } else { "" }
             ));
             if close_it {
-                close_client(self, pid, false);
+                self.ask_close(Some(launch.account_id), pid, Cause::User, Then::StayClosed, false);
+                let t = launch.target.as_ref();
+                self.note_ended_here(launch.account_id, t.and_then(|t| t.job_id.clone()), t.map(|t| t.place_id), now); // as above
             } else {
                 self.controller.running.borrow_mut().insert(launch.account_id, (pid, launch.clone()));
                 self.persist_soon();
@@ -1411,9 +1488,9 @@ impl App {
                 live.folder
             ));
         } else if roblox_installs::is_behind(Some(&have), Some(&live)) && !self.live_not_here(&live) {
-            // Roblox released a new build while windows are open (the owner's question, 2026-11-14): Roblox's own client behind
-            // the live build runs Roblox's installer as it opens, and that installer ends every client, as the other channel's did.
-            // Not when Roblox hasn't rolled that build out to this PC yet (live_not_here): the client opens on its own build then.
+            // Roblox released a new build while windows are open: Roblox's own client behind the live build runs Roblox's installer
+            // as it opens, and that installer ends every client, as the other channel's did. Not when Roblox hasn't rolled that
+            // build out to this PC yet (live_not_here): the client opens on its own build then.
             log::note(&format!(
                 "Roblox start: account {} held back, Roblox's build {} ({}) is behind the live {} ({}), and opening it would update Roblox and close the {open} Roblox open.",
                 short(account.id),
@@ -1458,6 +1535,12 @@ impl App {
             self.progress(Some(&l::t("Waiting for Roblox to finish updating…")));
             delay(ct, Duration::from_millis(500)).await?;
         }
+        // A window just asked to close may still start Roblox's tray copy, which the close's sweep then ends: a client
+        // started meanwhile would hand its launch to that copy and quit (roblox_processes::soft_close_under_way).
+        let closing_since = Stamp::utc_now();
+        while roblox_processes::soft_close_under_way() && Stamp::utc_now().secs_since(closing_since) < 15.0 {
+            delay(ct, Duration::from_millis(250)).await?;
+        }
         // Roblox's tray copy would take this launch over and open no window (Bloxstrap: "Roblox failed to launch").
         self.close_tray_copies(ct).await?;
         let chosen_via = launch_via.to_string();
@@ -1482,8 +1565,13 @@ impl App {
         // ticket right before starting the client, too).
         let ticket = {
             let (cookie, realm_of, c) = (account.cookie.clone(), account.realm.clone(), ct.clone());
-            rt::blocking(move || roblox_api::get_auth_ticket(&cookie, &c, &realm_of)).await?
+            rt::blocking(move || roblox_api::get_auth_ticket(&cookie, &c, &realm_of)).await
         };
+        // Roblox holds a notice on the account: the status check and share links are asked with another from now on.
+        if ticket.as_ref().is_err_and(|ex| ex.moderated()) {
+            self.note_moderated(account.id);
+        }
+        let ticket = ticket?;
         ct.check()?;
         let Some(now_account) = self.find_account(account.id) else { return Err(Fail::user(l::t("Account not found."))) };
         let account = &now_account;
@@ -1566,7 +1654,7 @@ impl App {
         self.controller.last_session_start.set(Stamp::utc_now());
         // (Its window is looked for at once, not after the idle check's seconds.)
         self.controller.proc_interval_ms.set(500);
-        self.controller.user_closed.borrow_mut().remove(&account.id);
+        self.close_desk.forget_closes(account.id); // opened again: an earlier close of it is no longer under way (a server switch lasts until it is in its game)
         self.forget_late(account.id); // opened again: a window of the earlier try is not this one's
         let place = target.as_ref().map(|t| t.place_id);
         let home_screen = target.is_none();
@@ -1620,14 +1708,17 @@ impl App {
         Ok(true)
     }
 
-    /// A new client crashed at once in Roblox's SingleInstanceGuard ("Failed to send message …, error: 1400"): it found
-    /// a Roblox already running and handed its launch to it ("NoReload Detector: WebPlay NoReload with Tray only!", the
-    /// owner's Roblox log, 2026-11-13), whose window wasn't there to take it. Every start after it crashed the same way
-    /// until that Roblox was gone: a person's error.log, 2026-11-16 to 11-21, nine crashes in four runs, each with "1
-    /// Roblox already running" and each over once Close all ended it. So the Roblox with no window that no account
-    /// owns and no launch under way may be starting is ended now, and the next start opens. Each is said, with what it
-    /// was, so the next report shows it. The number ended.
-    pub fn end_handoff_targets(&self) -> usize {
+    /// A new client crashed at once in Roblox's SingleInstanceGuard ("Failed to send message …, error: 1400"): it found a
+    /// Roblox already running and handed its launch to it ("NoReload Detector: WebPlay NoReload with Tray only!", a real
+    /// Roblox log), whose window wasn't there to take it. Every start after it crashed the same way until that Roblox was
+    /// gone: a person's error.log, 2026-11-16 to 11-21, nine crashes in four runs, each with "1 Roblox already running"
+    /// and each over once Close all ended it. So the Roblox with no window that no account owns and no launch under way
+    /// may be starting is ended now, and the next start opens. Each is said, with what it was, so the next report shows
+    /// it. The number ended. `handoff`: the quit client's log shows the hand-over; false: clients quit before their
+    /// windows twice in a row with other windows open and left no word why (most leave no log at all), and such a Roblox
+    /// is ended all the same.
+    pub fn end_handoff_targets(&self, handoff: bool) -> usize {
+        let why = if handoff { "a new Roblox crashed handing its launch to it" } else { "new Roblox clients keep quitting before their windows" };
         let players = roblox_processes::get_players();
         let windows = roblox_processes::visible_windows(&players.iter().map(|p| p.pid).collect::<Vec<_>>());
         let owned: HashSet<i32> = self.controller.running.borrow().values().map(|(pid, _)| *pid).collect();
@@ -1647,7 +1738,7 @@ impl App {
             }
             let tray = roblox_processes::is_tray_copy(p.pid, p.created);
             log::note(&format!(
-                "Launch: Roblox {} (no window, {}, started {}) ended: a new Roblox crashed handing its launch to it.",
+                "Launch: Roblox {} (no window, {}, started {}) ended: {why}.",
                 p.pid,
                 if tray { "its notification-area copy" } else { "no account's" },
                 started.map_or("when not known".to_string(), |at| format!("{:.0} s ago", Stamp::utc_now().secs_since(at)))
@@ -1656,7 +1747,10 @@ impl App {
             ended += 1;
         }
         if ended == 0 {
-            log::note("Launch: a new Roblox crashed handing its launch to a Roblox already running; none without a window to end (each has an account's window, or may be a launch's).");
+            log::note(&format!(
+                "Launch: {why}; of the {} Roblox running, none without a window to end (each has an account's window, or may be a launch's).",
+                players.len()
+            ));
         }
         ended
     }
@@ -1692,8 +1786,19 @@ impl App {
 
     /// `force`: end the process at once (a frozen client) instead of asking its windows to close first.
     pub fn close_accounts(&self, ids: &[Guid], force: bool) -> Value {
+        self.close_accounts_for(ids, force, Cause::User)
+    }
+
+    /// Close (the person's), or a schedule's stop (`Cause::Stop`): closed for good, no auto-rejoin.
+    pub fn close_accounts_for(&self, ids: &[Guid], force: bool, cause: Cause) -> Value {
         let mut closed = 0;
+        let mut already = 0;
         for &id in ids {
+            // A launch still getting this account's ticket (not opening yet, nothing to close) leaves it closed
+            // (close_plan.rs O2).
+            if matches!(cause, Cause::User | Cause::Stop) {
+                self.close_desk.hold_closed(id);
+            }
             self.controller.rejoin_queue.borrow_mut().retain(|r| r.account_id != id);
             self.controller.rejoins_in_a_row.borrow_mut().remove(&id); // closed by the person: a client opened later counts its drops from one
             // A rejoin under way (looking for its player, getting its ticket, waiting for Roblox's update): called off.
@@ -1706,7 +1811,7 @@ impl App {
             let mut theirs: Vec<Rc<PendingLaunch>> = pending(self).into_iter().filter(|p| p.account_id == id).collect();
             theirs.extend(self.launching.late.borrow().iter().filter(|p| p.account_id == id).cloned());
             for launch in theirs {
-                let added = closing_add(&self, &launch);
+                let added = self.close_when_it_shows(&launch);
                 if added {
                     closed += 1;
                     self.push_state();
@@ -1715,16 +1820,21 @@ impl App {
             let Some(info) = run_of(self, id) else {
                 continue;
             };
-            self.controller.user_closed.borrow_mut().insert(id);
-            close_client(self, info.0, force || self.in_game_now(info.0));
-            closed += 1;
+            // Counted as closed only when asked now; one already closing (a second Close) is said apart.
+            match self.ask_close(Some(id), info.0, cause, Then::StayClosed, force) {
+                super::close_desk::Asked::Closing => closed += 1,
+                super::close_desk::Asked::Refused(crate::core::close_plan::No::AlreadyClosing(_)) => already += 1,
+                _ => {}
+            }
         }
         log::note(&format!(
-            "Close: {closed} window(s) or opening(s) closed for {} account(s){}.",
+            "Close: {closed} window(s) or opening(s) closed for {} account(s){}{}.",
             ids.len(),
+            if already > 0 { format!(", {already} already closing") } else { String::new() },
             if force { ", forced" } else { "" }
         ));
-        json!(closed)
+        // The person's count: a window already on its way out is still one closing.
+        json!(closed + already)
     }
 
     pub fn close_all(&self, force: bool) -> Value {
@@ -1736,21 +1846,19 @@ impl App {
         if let Some(c) = rejoin {
             c.cancel();
         }
-        let ids: Vec<Guid> = self.controller.running.borrow().keys().copied().collect();
-        self.controller.user_closed.borrow_mut().extend(ids);
         self.controller.rejoin_queue.borrow_mut().clear();
         self.controller.rejoins_in_a_row.borrow_mut().clear();
         self.launching.handed_over.borrow_mut().clear();
         // Clients still opening would show up later, untracked: closed as soon as they appear instead.
         if pending_count(self) > 0 {
             for l in pending(self) {
-                closing_add(&self, &l);
+                self.close_when_it_shows(&l);
             }
             self.push_state();
         }
         let late = self.launching.late.borrow().clone();
         for l in &late {
-            closing_add(&self, l);
+            self.close_when_it_shows(l);
         }
         // Roblox starts a windowless background client when its last window closes; sweep those for a moment
         // so "close all" really leaves nothing running and multi-instance can re-arm.
@@ -1762,7 +1870,7 @@ impl App {
             late.len(),
             if force { ", forced" } else { "" }
         ));
-        json!(roblox_processes::close_all(force, Some(&|pid| self.in_game_now(pid))))
+        json!(self.close_everything(force))
     }
 
     /// The sweep would kill a new client.
@@ -1776,11 +1884,11 @@ impl App {
         delay(ct, Duration::from_secs_f64(remaining)).await
     }
 
-    /// Tiles every Roblox window on one monitor: tracked accounts first (by name), then any other clients.
-    /// `auto`: tiling after a launch: minimised windows stay minimised. A light-AFK preset's, or one the person put
-    /// away, gets no tile; one that "When a window joins a game" minimises gets its tile as the place it opens at
-    /// (`resting_clients`).
-    /// `at_mouse`: the hotkey: on the screen the mouse is on, wherever Bloxkeep is (owner, 2026-11-02).
+    /// Tiles every Roblox window on one monitor: tracked accounts first (by name), then any other clients. `auto`:
+    /// tiling after a launch: minimised windows stay minimised. A light-AFK preset's, or one the person put away,
+    /// gets no tile; one that "When a window joins a game" minimises gets its tile as the place it opens at
+    /// (`resting_clients`). `at_mouse`: the hotkey: on the screen the mouse is on, wherever Bloxkeep is. Who takes which
+    /// tile is decided here; the window desk carries it out (window_desk.rs `desk_arrange`).
     pub async fn arrange_windows(self: &Rc<Self>, monitor: i32, auto: bool, at_mouse: bool) -> Res<Value> {
         let screens = win_kit::all_screens();
         let owner = self.controller.owner.get();
@@ -1794,35 +1902,18 @@ impl App {
         } else {
             win_kit::screen_from_handle(owner)
         };
-        let mut tracked_runs: Vec<(String, i32)> = running(self)
-            .into_iter()
-            .map(|(id, run)| (self.find_account(id).map(|a| a.label()).unwrap_or_default(), run.0))
-            .collect();
-        tracked_runs.sort_by(|a, b| win_kit::culture_cmp(&a.0, &b.0));
-        let tracked: Vec<i32> = tracked_runs.into_iter().map(|t| t.1).collect();
-        let mut others: Vec<i32> = roblox_processes::get_player_pids().into_iter().filter(|p| !tracked.contains(p)).collect();
-        others.sort();
-        let mut afk = if auto { self.afk_clients() } else { HashSet::new() };
-        afk.extend(self.main_pids()); // the window played on stays where the person put it
         // Clicked: the windows come over every other app, the last one taking the keyboard (after a launch they come over
         // too, but the keyboard stays: the person may be typing elsewhere).
         let app_window = if !auto && owner_in_view { owner } else { 0 };
-        // After a nudge, a picture or a macro's turn under way: each puts its window back as it found it.
-        let turn = rt::blocking(|| input_turn::enter("arrange", None)).await?;
-        // The layout as it is once the turn came (the C# held the live settings object, read after the wait).
-        let s = self.vault(|d| d.settings.clone()).ok();
-        self.processes.window_sizes.borrow_mut().clear();
-        let pids: Vec<i32> = tracked.iter().chain(others.iter()).copied().filter(|p| !afk.contains(p)).collect();
-        let before = window_report::states(&pids.iter().map(|p| roblox_processes::main_window(*p)).collect::<Vec<_>>());
-        let layout = s.as_ref().map(|s| s.window_layout.clone()).unwrap_or_else(|| "fill".into());
-        let custom = s.as_ref().map(|s| Size::new(s.window_width, s.window_height)).unwrap_or_default();
-        let area = screen.working_area;
-        let resting = if auto { self.resting_clients() } else { Vec::new() };
-        let done = {
-            let (pids, layout) = (pids.clone(), layout.clone());
-            rt::blocking(move || roblox_processes::arrange_grid(&pids, area, &layout, auto, &resting, app_window, custom, at_mouse)).await
+        let lift = if auto {
+            Lift::Quietly
+        } else if app_window != 0 || at_mouse {
+            Lift::Keyboard
+        } else {
+            Lift::No
         };
-        self.forget_going_back();
+        let area = screen.working_area;
+        let laid = self.desk_arrange(|app| app.arrangement(area, auto, lift)).await?;
         // What it came to, as the person sees it: each window in its place, or what's wrong with it (window_report).
         let how = if auto {
             "after opening"
@@ -1833,16 +1924,51 @@ impl App {
         };
         let index = screens.iter().position(|x| *x == screen).map(|i| i as i64).unwrap_or(-1) + 1;
         log::note(&format!(
-            "Arrange ({how}, screen {index} of {}, {layout}{}): {done} of {} window(s), before {}; {}{}.",
+            "Arrange ({how}, screen {index} of {}, {}{}): {} of {} window(s), before {}; {}{}.",
             screens.len(),
+            laid.layout,
             if app_window != 0 { ", Bloxkeep in view" } else { "" },
-            pids.len(),
-            if before.is_empty() { "none" } else { &before },
-            roblox_processes::last_arrange_note(),
-            window_report::placed(&pids.iter().map(|p| (*p, roblox_processes::main_window(*p))).collect::<Vec<_>>(), area)
+            laid.done,
+            laid.windows,
+            if laid.before.is_empty() { "none" } else { &laid.before },
+            laid.note,
+            laid.placed
         ));
-        drop(turn);
-        Ok(json!(done))
+        Ok(json!(laid.done))
+    }
+
+    /// Who takes which tile on `area`, read once the input turn is the Arrange's: the accounts' windows by name, then any
+    /// other clients; a launch tiling as its windows join keeps tiles empty for its accounts still to come. A main
+    /// account's window stays where the person put it; after a launch a light-AFK preset's gets no tile either.
+    fn arrangement(&self, area: Rect, auto: bool, lift: Lift) -> Arrangement {
+        let mut tracked_runs: Vec<(String, i32)> = running(self)
+            .into_iter()
+            .map(|(id, run)| (self.find_account(id).map(|a| a.label()).unwrap_or_default(), if auto && self.tile_later(id, &run) { 0 } else { run.0 }))
+            .collect();
+        // A launch tiling as its windows join (tile_when_open): its accounts still to come keep their tiles empty (pid 0),
+        // so the grid is the whole launch's from the first and a window placed stays in its tile.
+        if auto && let Some((_, plan)) = self.controller.tile_plan.borrow().as_ref() {
+            for id in plan.iter().filter(|id| !is_running(self, **id)) {
+                if let Some(a) = self.find_account(*id).filter(|a| !a.is_main) {
+                    tracked_runs.push((a.label(), 0));
+                }
+            }
+        }
+        tracked_runs.sort_by(|a, b| win_kit::culture_cmp(&a.0, &b.0));
+        let tracked: Vec<i32> = tracked_runs.into_iter().map(|t| t.1).collect();
+        let mut others: Vec<i32> = roblox_processes::get_player_pids().into_iter().filter(|p| !tracked.contains(p)).collect();
+        others.sort();
+        let mut afk = if auto { self.afk_clients() } else { HashSet::new() };
+        afk.extend(self.main_pids()); // the window played on stays where the person put it
+        // The layout as it is once the turn came.
+        let s = self.vault(|d| d.settings.clone()).ok();
+        let layout = s.as_ref().map(|s| s.window_layout.clone()).unwrap_or_else(|| "fill".into());
+        let custom = s.as_ref().map(|s| Size::new(s.window_width, s.window_height)).unwrap_or_default();
+        let order: Vec<(i32, isize)> =
+            tracked.iter().chain(others.iter()).copied().filter(|p| !afk.contains(p)).map(|p| (p, if p == 0 { 0 } else { roblox_processes::main_window(p) })).collect();
+        let resting = if auto { self.resting_clients() } else { Vec::new() };
+        let (slots, open) = choose_tiles(&order, auto, &resting);
+        Arrangement { windows: order.into_iter().filter(|w| w.0 != 0).collect(), slots, area, layout, custom, open, clicked: !auto, lift }
     }
 
     /// The clients whose windows "When a window joins a game" minimises (Settings' choice, or their preset's), other
@@ -1863,20 +1989,44 @@ impl App {
             .collect()
     }
 
-    /// Multi-Roblox's "tile" option or the preset's Arrange windows, once the launch's last window is up.
+    /// Multi-Roblox's "tile" option or the preset's Arrange windows, started with the launch: each window takes its tile
+    /// a moment after it joins its game (the tiles laid out for every account of the launch, `tile_plan`, so a window
+    /// once placed stays), then all of them once the last window is up. Tiled only once all had opened, the first
+    /// windows stood at Roblox's size for a minute or more and then jumped to another screen.
     /// `preset_id`: its choice decides (asked again at the end, in case it changed).
     async fn tile_when_open(self: Rc<Self>, preset_id: Option<Guid>, launch_start: Stamp) {
-        let deadline = Stamp::utc_now().plus_secs(secs(PENDING_TIMEOUT));
         let since = launch_start;
-        while !self.controller.disposed.get()
-            && (pending_count(&self) > 0 || self.controller.launch_cts.borrow().is_some())
-            && Stamp::utc_now() < deadline
-        {
+        let mine = |app: &App| app.controller.tile_plan.borrow().as_ref().is_some_and(|(at, _)| *at == launch_start);
+        let _plan_ends = crate::core::base::on_drop({
+            let app = self.clone();
+            move || {
+                if mine(&app) {
+                    *app.controller.tile_plan.borrow_mut() = None;
+                }
+            }
+        });
+        let mut tiled: HashSet<i32> = HashSet::new();
+        let mut deadline: Option<Stamp> = None;
+        while !self.controller.disposed.get() && (pending_count(&self) > 0 || self.controller.launch_cts.borrow().is_some()) {
+            // (The launch's own wait is as long as it takes; once it is done, its last windows get PENDING_TIMEOUT.)
+            if self.controller.launch_cts.borrow().is_none() {
+                let at = *deadline.get_or_insert_with(|| Stamp::utc_now().plus_secs(secs(PENDING_TIMEOUT)));
+                if Stamp::utc_now() >= at {
+                    break;
+                }
+            }
+            // Another launch took over (it tiles its own and these with them).
+            if !mine(&self) && self.controller.tile_plan.borrow().is_some() {
+                return;
+            }
+            if mine(&self) && vault_now(&self).is_some() && self.tile_joined(since, &mut tiled).await {
+                continue;
+            }
             rt::sleep(Duration::from_millis(500)).await;
         }
         // Roblox sizes its window again as it joins its game (maximised again, if it was last closed so): tiled 3 s after
-        // the last window came up, 6 windows still loading on a busy PC came back full screen one by one (owner's video,
-        // 2026-11-07 12:25). So each window opened into a game is waited for until it is in it (a minute at most).
+        // the last window came up, 6 windows still loading on a busy PC came back full screen one by one. So each window
+        // opened into a game is waited for until it is in it (a minute at most).
         let join_by = Stamp::utc_now().plus_secs(secs(JOIN_WAIT_FOR_TILES));
         while !self.controller.disposed.get() && self.controller.launch_cts.borrow().is_none() && Stamp::utc_now() < join_by && self.still_joining(since) {
             rt::sleep(Duration::from_millis(500)).await;
@@ -1919,6 +2069,50 @@ impl App {
         }
     }
 
+    /// The account's window opened by this launch (started at `started_at` or later) into a game, not in it yet (its log
+    /// says nothing, or joining), and up less than `JOIN_WAIT_MAX` (or the wait between accounts, if longer). Many
+    /// windows joining at once made each slow to join and some failed (Error 256); the next account waits for this one to
+    /// join, as MultiAlt does. A window that ended, failed or opened to Roblox's home screen isn't waited for.
+    fn still_joining_since(&self, account_id: Guid, started_at: Stamp, delay_seconds: i32) -> bool {
+        let Some((pid, launch)) = run_of(self, account_id) else { return false };
+        let cap = secs(JOIN_WAIT_MAX).max(delay_seconds as f64);
+        launch.started_at.get() >= started_at
+            && launch.target.is_some()
+            && Stamp::utc_now().secs_since(started_at) < cap
+            && log_of(self, pid).is_none_or(|l| l.status == "joining")
+    }
+
+    /// A window of the launch tiling as its windows join that isn't in its game yet (a minute at most): its tile is kept
+    /// empty for now, as Roblox sizes its window again as it joins and would undo it.
+    fn tile_later(&self, id: Guid, run: &Run) -> bool {
+        let now = Stamp::utc_now();
+        self.controller.tile_plan.borrow().as_ref().is_some_and(|(_, plan)| plan.contains(&id))
+            && now.secs_since(run.1.started_at.get()) < secs(JOIN_WAIT_FOR_TILES)
+            && !log_of(self, run.0).is_some_and(|l| l.status == "ingame" && now.secs_since(l.at) >= secs(TILE_SETTLE))
+    }
+
+    /// Tiles the windows of the launch started at `since` that joined their game `TILE_SETTLE` ago or more and weren't
+    /// tiled yet (into `tiled`); every window takes its tile from the plan, so those already in theirs stay. True when
+    /// it arranged.
+    async fn tile_joined(self: &Rc<Self>, since: Stamp, tiled: &mut HashSet<i32>) -> bool {
+        let mut skip = self.afk_clients();
+        skip.extend(self.main_pids());
+        let now = Stamp::utc_now();
+        let joined: Vec<i32> = running(self)
+            .into_iter()
+            .filter(|(_, r)| r.1.started_at.get() >= since && r.1.target.is_some() && !skip.contains(&r.0) && !tiled.contains(&r.0))
+            .filter(|(_, r)| log_of(self, r.0).is_some_and(|l| l.status == "ingame" && now.secs_since(l.at) >= secs(TILE_SETTLE)))
+            .map(|(_, r)| r.0)
+            .collect();
+        if joined.is_empty() {
+            return false;
+        }
+        tiled.extend(joined.iter().copied());
+        log::note(&format!("Arrange as they join: window(s) {} in their game, each to its tile.", joined.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(", ")));
+        let _ = self.arrange_windows(-1, true, false).await;
+        true
+    }
+
     /// A window opened since `since` into a game, not in it yet (its log says nothing, or joining). Light-AFK and main
     /// accounts' windows aren't tiled, so aren't waited for.
     fn still_joining(&self, since: Stamp) -> bool {
@@ -1946,15 +2140,16 @@ impl App {
         if let Some(handed) = handed
             && !closed
         {
-            self.on_session_ended(launch.account_id, launch, handed.1);
+            // Its client handed over and ended long since: whatever closed it then was taken in when it ended.
+            self.on_session_ended(launch.account_id, launch, handed.1, End::Unasked);
             return;
         }
         if launch.rejoin
             && !closed
             && let Some(account) = self.find_account(launch.account_id)
         {
-            // Its client quit before a window came (crashed as it started): tried again a few times, as a drop in game
-            // is. Before, the account was left out for good (review, 2026-10-30). Not a late one: its window may still come.
+            // Its client quit before a window came (crashed as it started): tried again, as a drop in game is, for as
+            // long as auto-rejoin is on. Not a late one: its window may still come.
             if !late && self.retry_open(&account, launch) {
                 return;
             }
@@ -1968,13 +2163,14 @@ impl App {
     }
 
     /// A rejoin that opened no window goes again later (see RejoinRequest::open_retries) while auto-rejoin is on and
-    /// nothing else of the account's is open or waiting. False once its tries are used up: then it is said.
+    /// nothing else of the account's is open or waiting: soon at first, then further apart (`open_retry_delay`), with
+    /// no last try. Giving up after four left the account closed for good, though a start by hand right after such a
+    /// quit opened. Said once, after MAX_OPEN_RETRIES more tries.
     fn retry_open(&self, account: &Account, launch: &PendingLaunch) -> bool {
         let Some(target) = launch.target.clone() else {
             return false;
         };
-        if launch.open_retries >= MAX_OPEN_RETRIES
-            || !self.rejoin_on(account, launch.preset_id)
+        if !self.rejoin_on(account, launch.preset_id)
             || account.banned == Some(true)
             || (target.follow.is_none() && self.game_ban_of(account, Some(target.place_id)).is_some())
             || is_running(self, account.id)
@@ -1983,7 +2179,18 @@ impl App {
         {
             return false;
         }
-        let delay = retry_delay(launch.open_retries);
+        let delay = open_retry_delay(launch.open_retries);
+        if launch.open_retries == MAX_OPEN_RETRIES {
+            let n = self.name(account);
+            self.notify(
+                &l::f("{0} hasn't reopened yet: Roblox keeps closing as it starts. Bloxkeep keeps trying.", &[&n]),
+                "warn",
+                "rejoinFail",
+                account.id,
+                true,
+                None,
+            );
+        }
         self.controller.rejoin_queue.borrow_mut().push(RejoinRequest {
             account_id: account.id,
             target: GameTarget { job_id: None, ..target },
@@ -2000,6 +2207,18 @@ impl App {
             delay.as_secs()
         ));
         true
+    }
+}
+
+/// Before the next try of a rejoin whose client quit before its window: 10 s, 30 s, 1 min, 2 min, then MAX_RETRY_DELAY.
+/// The quit itself is known some 20 s after the start, and the try right after one often opens.
+pub(super) fn open_retry_delay(tries: i32) -> Duration {
+    match tries.max(0) {
+        0 => Duration::from_secs(10),
+        1 => Duration::from_secs(30),
+        2 => Duration::from_secs(60),
+        3 => Duration::from_secs(120),
+        _ => MAX_RETRY_DELAY,
     }
 }
 

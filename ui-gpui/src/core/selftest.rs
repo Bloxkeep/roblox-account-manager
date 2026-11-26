@@ -301,8 +301,7 @@ pub fn codes(out: &str) -> i32 {
 /// against a feed (BLOXKEEP_UPDATE_SOURCE, a folder of vpk's files), the download, and the install once this process
 /// exits, started again with --core-version-mark MARK. For a copy of Bloxkeep installed for the test only (its own
 /// folder, its own name), on a scratch BLOXKEEP_DATA: the suites ask these decisions without acting on them, and
-/// until a real release is out nothing else runs the steps themselves on the Rust build (the owner, 2026-11-15:
-/// "chức năng đó có ổn khi qua rust chưa").
+/// until a real release is out nothing else runs the steps themselves on the Rust build.
 pub fn update_try(mark: &str) -> i32 {
     if std::env::var("BLOXKEEP_DATA").map(|d| d.is_empty()).unwrap_or(true) || std::env::var("BLOXKEEP_UPDATE_SOURCE").map(|d| d.is_empty()).unwrap_or(true) {
         println!("BLOXKEEP_DATA (a scratch folder) and BLOXKEEP_UPDATE_SOURCE (the feed) must be set: this never runs on the real app.");

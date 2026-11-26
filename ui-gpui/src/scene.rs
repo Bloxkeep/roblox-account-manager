@@ -127,7 +127,7 @@ pub fn layer(window: &mut Window, cx: &mut Context<Root>) -> Option<AnyElement> 
     // Wallpaper Engine's wallpaper live (Settings › Appearance › Follow Wallpaper Engine, with Wallpaper Engine running):
     // its own window's picture over the theme's picture.
     // (Only behind the custom theme, whose backdrop the wallpaper is: with another theme picked while the following
-    // was on, it went on playing behind that theme's glass, the owner's Sunset over autumn leaves, 2026-11-18.)
+    // was on, it went on playing behind that theme's glass, a user's Sunset over autumn leaves.)
     let live = match crate::wallpaper_engine::live().filter(|_| crate::theme::showing_custom()) {
         Some(h) => {
             let kept = cx.default_global::<Scene>().live.as_ref().filter(|(k, _)| *k == h).map(|(_, v)| v.clone());
@@ -176,8 +176,8 @@ pub fn lost(ids: &[gpui_kit::ImageId], cx: &mut App) {
     }
     let s = cx.default_global::<Scene>();
     // (Lost once, as when the graphics card starts over, it is drawn again and lets go of its pixels again: kept for
-    // good from the first loss, the theme's picture held 14.6 MB at 2560 px for the rest of the run, the owner's
-    // error.log 2026-11-20. Lost again, it is wanted in two places, and kept.)
+    // good from the first loss, the theme's picture held 14.6 MB at 2560 px for the rest of the run, a real
+    // error.log . Lost again, it is wanted in two places, and kept.)
     if s.lost_once {
         s.keep_pixels = true;
     }
@@ -202,13 +202,13 @@ pub fn lost(ids: &[gpui_kit::ImageId], cx: &mut App) {
 /// How long the old look takes to fade out over a new theme (the C# app's page: 0.2 s, ease-out).
 const FADE: f32 = 0.2;
 /// How long a new theme's picture is waited for before the fade starts without it (a slow file must not hold the pick).
-/// (0.7 s first: Aurora's picture took longer at 2560 px, so the old look faded to a bare ground and the picture
-/// popped in after it, the owner's recording of 2026-11-19. It comes at half size first now: `picture`.)
+/// (0.7 s first: Aurora's picture took longer at 2560 px, so the old look faded to a bare ground and the picture popped
+/// in after it, a recording . It comes at half size first now: `picture`.)
 const FADE_WAIT: std::time::Duration = std::time::Duration::from_millis(1500);
 
 /// Keeps the window as it looked in the frame last drawn, to fade out over the theme now coming in (called as the
 /// next frame begins, before anything of it is drawn: theme::take_fade). The C# app's page changed themes so (a view
-/// transition); the port swapped the look at once (the owner, 2026-11-18).
+/// transition); the port swapped the look at once.
 pub fn fade_from(window: &mut Window, cx: &mut App) {
     // (The frame last drawn, as GPUI gives it: red, green, blue; kept as GPUI draws pictures: blue, green, red.)
     let Ok(mut frame) = window.render_to_image() else { return };
@@ -304,7 +304,7 @@ fn frost_under(r: Corners<Pixels>, pane: Hsla, window: &Window, cx: &App) -> Opt
     // Under the panel's own fill (clear with glass on the blocks only), as much more of the theme's ground as its words
     // need on this picture: a custom theme's glass is as thin as its fade says, and at a low fade over a light picture
     // its words were lost (a fixed floor stood in for this while following Wallpaper Engine: too thick on a dark
-    // wallpaper, the owner 2026-11-18, and not there at all without the following).
+    // wallpaper, and not there at all without the following).
     let veil = reading_veil(&b, pane, cx);
     Some(
         canvas(
@@ -437,8 +437,8 @@ pub fn carries_words(cx: &App) -> bool {
 /// What glass lays over the frosted picture besides the theme's wash and its own `pane`, so the theme's words read on
 /// it: more of the theme's ground, only as much as it takes for 4.5:1 against the picture's worst part (its lightest
 /// under light words, its darkest under dark ones). A theme made thin (the custom one at 0 % fade, over a sunlit
-/// wallpaper) left a block as a tenth of white on the bare picture (the owner, 2026-11-18: "mù mắt"); a dark picture
-/// needs nothing more and keeps its look (Sunset).
+/// wallpaper) left a block as a tenth of white on the bare picture; a dark picture needs nothing more and keeps its
+/// look (Sunset).
 fn reading_veil(b: &crate::theme::Backdrop, pane: Hsla, cx: &App) -> Option<Hsla> {
     use crate::theme::{MUTED, TEXT, c, contrast, over};
     let e = cx.try_global::<Scene>()?.extremes?;
@@ -523,7 +523,7 @@ fn picture(key: Key, b: &Backdrop, window: &mut Window, cx: &mut Context<Root>) 
         return same_file;
     }
     // A picture not shown yet comes at half size first (a quarter of the dots: Aurora's took ~1.4 s whole at 2560 px,
-    // the owner's recording of 2026-11-19), shown stretched while the whole one is drawn after it.
+    // a recording), shown stretched while the whole one is drawn after it.
     let key = if same_file.is_none() && key.w > 960 { Key { w: key.w / 2, h: key.h / 2, ..key } } else { key };
     if s.drawing.is_none() && s.failed.as_ref() != Some(&key) {
         s.drawing = Some(key.clone());
@@ -677,7 +677,7 @@ fn draw_task(key: Key, under: Hsla, veil: Option<Hsla>, cx: &mut Context<Root>) 
 /// `whole`: not cut to `w`×`h` but drawn in its own shape at the size that covers them, for the window to cut as it
 /// shows it (each side at most 1.6 times the window's: a very wide or tall picture is cut that far, in its middle).
 /// Cut to the window's exact size, every size had a picture framed its own way, and a window changing size showed
-/// the old one stretched and then jumped to the new one (the owner's recording, 2026-11-18).
+/// the old one stretched and then jumped to the new one.
 fn draw(bytes: &[u8], svg: bool, whole: bool, w: u32, h: u32, blur: u32, under: Rgba, veil: Option<Rgba>) -> Option<image::RgbaImage> {
     // The size drawn: `w`×`h`, or the whole picture's at the scale `s` that covers them.
     let drawn = |sw: f32, sh: f32, s: f32| -> (u32, u32) {
@@ -745,9 +745,9 @@ fn draw(bytes: &[u8], svg: bool, whole: bool, w: u32, h: u32, blur: u32, under: 
 
 /// The SVG drawn as resvg::render draws it, but a group under a strong blur drawn small and stretched to size. resvg
 /// blurs a group in three copies of the blur's whole area, past the window's own size: Space's glow (a blur of 70 on a
-/// 200 % area) took 3 x 81.5 MB at 2861x1465 for a moment, and Rust's heap went to 198 MB as the theme was drawn (the
-/// owner's "vào trang AVT nó tăng phát lên 200MB", error.log 2026-11-23 23:41). A blur that strong has no detail a
-/// smaller copy loses; what is sharp (Space's stars) is still drawn at full size, in its place in the order.
+/// 200 % area) took 3 x 81.5 MB at 2861x1465 for a moment, and Rust's heap went to 198 MB as the theme was drawn. A
+/// blur that strong has no detail a smaller copy loses; what is sharp (Space's stars) is still drawn at full size, in
+/// its place in the order.
 fn paint_svg(group: &resvg::usvg::Group, t: resvg::tiny_skia::Transform, pixmap: &mut resvg::tiny_skia::Pixmap) {
     use resvg::{tiny_skia::{FilterQuality, Pixmap, PixmapPaint, Transform}, usvg::Node};
     for node in group.children() {

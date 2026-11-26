@@ -230,7 +230,7 @@ pub async fn run(c: &mut Checks, dir: &str) {
     let kept = kept_from(&filler(20));
     c.check("the last six lines are kept", kept.len() == 6 && kept.last().is_some_and(|l| l.contains("pass t drawn")), &kept);
 
-    // Seen in the owner's real logs (2026-11-15): six memory callbacks and four heartbeats as the last lines.
+    // Seen in real logs: six memory callbacks and four heartbeats as the last lines.
     let mut text = filler(3);
     for i in 0..6 {
         text += &line("10:05:17", &format!("{}.2", 300 + i), "[FLog::SingleSurfaceApp] memoryPrioritizationCallback (level:3)");

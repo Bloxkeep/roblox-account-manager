@@ -145,8 +145,8 @@ export function MonitorView({ preview }: { preview: boolean }) {
   }
 
   const all = lanes(tiles, t('mon.noGame'));
-  // One game has its heading too, for its buttons for all the windows (owner, 2026-11-07: no Minimise all with one
-  // game), but nothing to fold or show alone.
+  // One game has its heading too, for its buttons for all the windows (no Minimise all with one game), but nothing
+  // to fold or show alone.
   const multi = all.length > 1;
   const solo = multi && soloGame !== null ? all.find(l => l.game === soloGame) ?? null : null;
   const shown = solo ? [solo] : all;
@@ -262,7 +262,7 @@ export function MonitorView({ preview }: { preview: boolean }) {
           {l.ok ? <span className="mon-st ok">{tn('mon.nOk', l.ok)}</span> : null}
         </div>
         <div className="mon-lane-acts">
-          {/* Over every app, or behind every app, as they are (owner, 2026-11-08). */}
+          {/* Over every app, or behind every app, as they are. */}
           <IconButton type="button" title={t('mon.frontAll')} aria-label={t('mon.frontAll')} onClick={() => laneAct(l, 'front')}><Glyph d="front" /></IconButton>
           <IconButton type="button" title={t('mon.backAll')} aria-label={t('mon.backAll')} onClick={() => laneAct(l, 'back')}><Glyph d="back" /></IconButton>
           <IconButton type="button" title={t(anyUp ? 'mon.minAll' : 'mon.restoreAll')} aria-label={t(anyUp ? 'mon.minAll' : 'mon.restoreAll')}

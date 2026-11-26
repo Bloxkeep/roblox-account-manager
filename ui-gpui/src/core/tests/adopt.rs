@@ -134,7 +134,7 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     let dropped = ClientState::new("disconnected", Some(PLACE), Some("job".into()), Some(277), Stamp::utc_now());
     let drop = |id: Guid| {
         let launch = app.controller.running.borrow().get(&id).map(|r| r.1.clone());
-        launch.is_some_and(|l| app.queue_rejoin(id, &l, Some(&dropped)))
+        launch.is_some_and(|l| app.queue_rejoin(id, &l, Some(&dropped), crate::core::close_plan::End::Unasked))
     };
     c.check("a window with no sign of a public server gets no game to rejoin", target_of(&app, main).is_none(), &target_of(&app, main));
     c.check("…so a drop isn't rejoined into a public server", !drop(main) && app.controller.rejoin_queue.borrow().is_empty(), ());

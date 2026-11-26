@@ -335,7 +335,7 @@ pub fn auto(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .into_any_element()
 }
 
-/// A list's scroll bar: shown while it scrolls, then it fades (owner 2026-11-12: a bar always there looked ugly).
+/// A list's scroll bar: shown while it scrolls, then it fades (a bar always there looked ugly).
 pub(crate) fn scroll_bar(id: &'static str, handle: &ScrollHandle) -> Div {
     scroll_bar_named(id, handle)
 }

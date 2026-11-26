@@ -196,7 +196,7 @@ ${foot ? `<footer class="foot">
     <p class="foot-legal">${t.foot.disclaimer}</p>
   </div>
 </footer>` : ''}
-<script>{ /* A picture or clip of the app opens large on a click (the owner, 2026-11-19: small ones were hard to read);
+<script>{ /* A picture or clip of the app opens large on a click (small ones were hard to read);
   a click anywhere or Esc closes it. Pictures inside a link, the logo and small ones stay as they are. */
   const d = document.createElement('dialog'); d.className = 'zoom'; document.body.append(d);
   const can = el => el.closest('main') && !el.closest('a, header, footer, dialog') && (el.tagName === 'VIDEO' || el.naturalWidth >= 400);

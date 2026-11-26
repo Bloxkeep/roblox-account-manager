@@ -1,7 +1,7 @@
 //! Roblox's online status of each account, and the checks whether an account was signed out.
 //! (AppController.Presence.cs)
 use std::{
-    cell::Cell,
+    cell::{Cell, RefCell},
     collections::{HashMap, HashSet},
     rc::Rc,
     time::Duration,
@@ -28,15 +28,33 @@ pub struct PresenceState {
     pub presence_failing: Cell<bool>,
     /// When a sign-in outage was last written to error.log (at most every half hour).
     pub sign_in_outage_noted: Cell<Stamp>,
+    /// Accounts Roblox answered "User is moderated" for (a notice to accept on roblox.com), and when: every call with
+    /// such a sign-in is refused, so for MODERATED_FOR the status check and a share link are asked with another account.
+    /// One held notice on the first account left every account's status unread and every share link unopened.
+    pub moderated: RefCell<HashMap<Guid, Stamp>>,
 }
+
+/// How long an account Roblox called moderated is passed over as the one asking for the others; then it is tried again
+/// (the notice may have been accepted).
+const MODERATED_FOR: Duration = Duration::from_secs(10 * 60);
 
 impl Default for PresenceState {
     fn default() -> PresenceState {
-        PresenceState { presence_failing: Cell::new(false), sign_in_outage_noted: Cell::new(min_stamp()) }
+        PresenceState { presence_failing: Cell::new(false), sign_in_outage_noted: Cell::new(min_stamp()), moderated: RefCell::new(HashMap::new()) }
     }
 }
 
 impl App {
+    /// Roblox answered "User is moderated" for this account's sign-in just now.
+    pub fn note_moderated(&self, account_id: Guid) {
+        self.presence.moderated.borrow_mut().insert(account_id, Stamp::utc_now());
+    }
+
+    /// Roblox called this account moderated within MODERATED_FOR: not the one to ask for the others.
+    pub fn moderated_lately(&self, account_id: Guid) -> bool {
+        self.presence.moderated.borrow().get(&account_id).is_some_and(|at| Stamp::utc_now().secs_since(*at) < secs(MODERATED_FOR))
+    }
+
     pub fn refresh_presence_soon(&self, delay: Duration) {
         let at = Stamp::utc_now().plus_secs(secs(delay));
         if at < self.controller.next_presence.get() {
@@ -70,7 +88,10 @@ impl App {
         }
 
         let busy = crate::core::base::Busy::set(&self.controller.presence_busy);
-        let viewer: Option<Account> = accounts.iter().find(|a| a.cookie_valid != Some(false) && !a.cookie.is_empty() && a.realm == realm::GLOBAL).cloned();
+        // The first account whose sign-in Roblox takes; one holding a notice (moderated_lately) only when there is no other.
+        let can_ask = |a: &&Account| a.cookie_valid != Some(false) && !a.cookie.is_empty() && a.realm == realm::GLOBAL;
+        let viewer: Option<Account> = accounts.iter().filter(can_ask).find(|a| !self.moderated_lately(a.id)).or_else(|| accounts.iter().find(can_ask)).cloned();
+        let viewer_held = viewer.as_ref().is_some_and(|v| self.moderated_lately(v.id));
         let run: Res<bool> = async {
             // Roblox's accounts only: Roblox VNG counts user ids apart, so a VNG account's number is someone else on Roblox
             // (whose game and server its card once showed). A VNG account's status comes with its own sign-in below.
@@ -143,7 +164,9 @@ impl App {
                     }
                     // Keep what the other account saw; auto-rejoin won't act on it.
                     Err(ex) if roblox_api::is_expected_error(&ex) => {
-                        if ex.cookie_invalid() {
+                        if ex.moderated() {
+                            self.note_moderated(account.id);
+                        } else if ex.cookie_invalid() {
                             rejected.push(account);
                         }
                     }
@@ -208,6 +231,19 @@ impl App {
                 if let Some(v) = &viewer {
                     self.confirm_signed_out(v.id, &Cancel::new(), false).await;
                 }
+                Ok(())
+            }
+            // The account asking holds a notice from Roblox: passed over, and the check goes again at once with the next
+            // account. (Already passed over and asked for want of another: a failed check like any other, below.)
+            Err(ex) if ex.moderated() && viewer.is_some() && !viewer_held && same_vault(self, &vault) => {
+                if let Some(v) = &viewer {
+                    self.note_moderated(v.id);
+                    log::note(&format!(
+                        "Status check: Roblox holds a notice on account {} (moderated), so its sign-in is refused; the others are asked with another account.",
+                        short(v.id)
+                    ));
+                }
+                self.controller.next_presence.set(Stamp::utc_now().plus_secs(2.0));
                 Ok(())
             }
             Err(ex) if roblox_api::is_expected_error(&ex) => {

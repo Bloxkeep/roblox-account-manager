@@ -20,7 +20,7 @@ pub const FEEDBACK_URL: &str = "https://bloxkeep-feedback.bloxkeep-app.workers.d
 pub const FEEDBACK_TEXT_MAX: usize = 2000;
 pub const FEEDBACK_CONTACT_MAX: usize = 100;
 /// All of error.log.2, error.log.1 and error.log (1 MB each at most, a little over with the last line): trouble from early
-/// in the week reported at its end still has its lines (owner, 2026-11-17). Sent gzipped as `logGz`.
+/// in the week reported at its end still has its lines. Sent gzipped as `logGz`.
 pub const FEEDBACK_LOG_MAX: usize = 3_600_000;
 /// The plain `log` sent beside it, what the feedback service took before `logGz` (its end, 200 000 characters): a service
 /// from before still gets that much. 12 000 characters cut off a rejoin's first tries and the start of what went wrong

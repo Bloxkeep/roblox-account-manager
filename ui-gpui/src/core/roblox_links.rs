@@ -1,10 +1,10 @@
 // Bloxkeep as the program Windows opens Roblox's roblox-player: links with (the website's Play button, a friend's
-// "Join"), a switch in Settings › Launching (the owner, 2026-11-17: "launcher của riêng bloxkeep như bloxstrap"). Taken
-// in the person's own registry (HKCU, no administrator), the command it replaced kept beside it ("BloxkeepBefore") and
-// put back when the switch goes off or Bloxkeep is uninstalled. Roblox's installer takes the link back at every
-// update: while the switch is on, Bloxkeep takes it again (`reclaim`), unless a Bloxstrap-style launcher took it, which
-// is the person moving on. A link that comes in starts Roblox at once, the way the program before would have
-// (`roblox_launcher::open_link`), and never shows Bloxkeep's window. The link holds a sign-in ticket: never logged.
+// "Join"), a switch in Settings › Launching. Taken in the person's own registry (HKCU, no administrator), the command
+// it replaced kept beside it ("BloxkeepBefore") and put back when the switch goes off or Bloxkeep is uninstalled.
+// Roblox's installer takes the link back at every update: while the switch is on, Bloxkeep takes it again (`reclaim`),
+// unless a Bloxstrap-style launcher took it, which is the person moving on. A link that comes in starts Roblox at once,
+// the way the program before would have (`roblox_launcher::open_link`), and never shows Bloxkeep's window. The link
+// holds a sign-in ticket: never logged.
 use crate::core::base::{Fail, Res};
 use crate::core::roblox_installs::{self as installs, file_name};
 use crate::core::win_kit::{self, Hive, RegKey};

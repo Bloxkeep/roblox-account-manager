@@ -55,8 +55,9 @@ fn roblox(req: &HttpRequest, asked: &Mutex<Vec<String>>, fail_b: &AtomicBool) ->
         return json_answer(429, json!({}));
     }
     // Alpha's list comes in two pages; Beta sees only the shared server; a server without an access code is left out.
+    // As Roblox does, a page asked any other way than ?cursor= is page one again.
     match cookie.as_str() {
-        "cookie-a" if !query.contains("exclusiveStartKeyCursor") => json_answer(200, json!({ "data": [server(SHARED, "Farm", 3)], "nextPageCursor": "page2" })),
+        "cookie-a" if !query.contains("cursor=page2") || query.contains("StartKeyCursor") => json_answer(200, json!({ "data": [server(SHARED, "Farm", 3)], "nextPageCursor": "page2" })),
         "cookie-a" => json_answer(
             200,
             json!({ "data": [server(ONLY_A, "Base", 7), { "name": "No code", "playing": 1, "maxPlayers": 5 }], "nextPageCursor": null }),
@@ -214,8 +215,8 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     let list = list.unwrap_or_default();
     let codes: Vec<&str> = list.iter().map(|s| s.access_code.as_str()).collect();
     c.check(
-        "one account's list: both pages read (the next asked with exclusiveStartKeyCursor), the server without a code left out",
-        codes == [SHARED, ONLY_A] && asked_now().iter().any(|q| q.ends_with("?exclusiveStartKeyCursor=page2")),
+        "one account's list: both pages read (the next asked with cursor), each server once, the server without a code left out",
+        codes == [SHARED, ONLY_A] && asked_now().iter().any(|q| q.ends_with("?cursor=page2")),
         list.iter().map(|s| s.name.clone()).collect::<Vec<_>>().join(","),
     );
     let first = list.first();

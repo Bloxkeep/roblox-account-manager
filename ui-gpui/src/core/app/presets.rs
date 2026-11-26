@@ -12,19 +12,18 @@ use std::{
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use super::App;
+use super::{App, close_desk::Asked};
 // The server picker a preset hands the launch (LaunchAccountsAsync's pickServer).
 use super::launching::PickServer;
 use super::controller::{id_of, ids_of, long_of, opt_bool, opt_str, str_of};
 use super::schedule::{next_run, parse_schedule, schedule_dto};
 use crate::core::{
-    anti_afk,
     base::{Cancel, Fail, Guid, Res, Stamp, new_guid},
+    close_plan::{Cause, No, Then, Why},
     discord_webhook,
     game_target::{FollowedPlayer, GameTarget},
     input_turn, l, log,
     models::{Account, AppSettings, LaunchPreset, PresetSchedule},
-    multi_instance,
     roblox_api::{self, Presence, RobloxUser, ServerInfo},
     roblox_log_watcher, roblox_processes, rt,
     vault::Vault,
@@ -59,7 +58,12 @@ pub const AFK_PROFILE: &str = "afk";
 /// preset's: follows Settings). A preset's "show" leaves its windows open where Settings minimise. Anything else is "".
 /// Where the window stands (Settings' Maximise or tiles, a preset's Arrange) is another thing and holds either way: a
 /// minimised window has its tile or its maximised state as what it opens to.
-pub const ON_JOIN_RECENT: std::time::Duration = std::time::Duration::from_secs(60);
+pub const ON_JOIN_RECENT: std::time::Duration = std::time::Duration::from_secs(90);
+/// How long after its join line a window is left to load before it is minimised. Roblox writes the join line
+/// (game_join_loadtime) as it reaches the server, before the place has loaded (the game's own scripts began 12 s later
+/// in a real log), and writes nothing when loading ends; minimised a second after joining, windows sat on their
+/// loading screen until they were clicked.
+pub const ON_JOIN_LOADING: std::time::Duration = std::time::Duration::from_secs(30);
 
 pub fn on_join_value(v: &str) -> &'static str {
     match v {
@@ -86,16 +90,15 @@ pub const HEAVY_FOR: Duration = Duration::from_secs(3 * 60);
 
 #[derive(Default)]
 pub struct PresetsState {
-    /// Windows of a light-AFK preset already minimised once in their game (by process id).
+    /// Windows the join rule is done with (minimised once, or left up on purpose), by process id. The window desk
+    /// keeps it; a session picked up again at unlock seeds it (a window minimised before Bloxkeep closed stays as the
+    /// person has it now).
     pub afk_minimised: RefCell<HashSet<i32>>,
-    /// When each of them was asked to minimise (it does so a moment later, on its own thread).
-    pub put_away: RefCell<HashMap<i32, Stamp>>,
-    /// Windows maximised for Settings' "Maximise" (by process id), and at which point of starting up.
+    /// Windows Settings' "Maximise" is done with (by process id), and at which point of starting up ("shown",
+    /// "ingame"). The window desk keeps it; a window adopted from outside Bloxkeep is seeded "ingame" (left as it is).
     pub maximised: RefCell<HashMap<i32, String>>,
-    /// When each window Bloxkeep opened was first seen (by process id): one whose client writes no log is maximised a while after.
-    pub window_first_seen: RefCell<HashMap<i32, Stamp>>,
-    /// Restarts under way: the account's client is closing, to open again into this target (see QueueRejoin).
-    pub restarts: RefCell<HashMap<Guid, (GameTarget, Stamp)>>,
+    /// The one place that minimises, maximises and places windows for the rules on the tick (window_desk.rs).
+    pub desk: crate::core::window_desk::Desk,
     /// Since when each client has been above Restart a heavy window's choice.
     pub heavy_since: RefCell<HashMap<i32, Stamp>>,
     /// Windows whose due restart was logged as held back (once each).
@@ -885,152 +888,25 @@ impl App {
         .unwrap_or(false)
     }
 
-    /// A light-AFK preset's window, or one whose "On joining a game" is Minimise, is minimised once in its game (Roblox
-    /// draws less then). Only once, so a window brought back up stays up; one in use at that moment is left alone. A
-    /// window that reached its game a while ago isn't (the choice made just now doesn't put away windows already
-    /// playing), but a light-AFK one is, as before. A main account's window is the one played on: left as the person
-    /// has it, as the tiles leave it (a light-AFK preset's still goes).
+    /// "When a window joins a game": a light-AFK preset's window, or one whose choice is Minimise, is minimised once
+    /// in its game (Roblox draws less then), when its game has loaded. Decided by window_plan.rs and carried out by the
+    /// window desk, which runs all of the tick's window rules in one pass (this is one of its entry points).
     pub fn minimise_afk_windows(&self, now: Stamp, windows: &HashMap<i32, Vec<isize>>) {
-        self.presets.afk_minimised.borrow_mut().retain(|pid| windows.contains_key(pid));
-        self.presets.put_away.borrow_mut().retain(|pid, _| windows.contains_key(pid));
-        if self.held_vault().is_none() || input_turn::busy() {
-            return;
-        }
-        let mut foreground: Option<i32> = None;
-        let runs: Vec<(i32, Option<Guid>)> = self.controller.running.borrow().values().map(|(pid, launch)| (*pid, launch.preset_id)).collect();
-        let main = self.main_pids();
-        for (pid, preset_id) in runs {
-            let joined = self.controller.logs.borrow().state_of(pid).filter(|s| s.status == "ingame").map(|s| s.at);
-            let list = windows.get(&pid);
-            if crate::core::live_monitor::watching(pid)
-                || self.presets.afk_minimised.borrow().contains(&pid)
-                || joined.is_none()
-                || list.is_none_or(|l| l.is_empty())
-                || self.on_join_of(preset_id) != "minimise"
-            {
-                continue;
-            }
-            let afk = self.preset_for(preset_id).is_some_and(|p| p.profile == AFK_PROFILE);
-            let who = if afk { "Light AFK" } else { "On joining" };
-            self.presets.afk_minimised.borrow_mut().insert(pid);
-            if !afk && main.contains(&pid) {
-                log::note(&format!("{who}: window {pid} left as it is, a main account's."));
-                continue;
-            }
-            if !afk && joined.is_some_and(|at| now.secs_since(at) > ON_JOIN_RECENT.as_secs_f64()) {
-                continue;
-            }
-            if *foreground.get_or_insert_with(roblox_processes::foreground_pid) == pid && anti_afk::person_active() {
-                log::note(&format!("{who}: window {pid} in its game left up, in use."));
-                continue;
-            }
-            log::note(&format!("{who}: window {pid} minimised, in its game."));
-            self.presets.put_away.borrow_mut().insert(pid, now);
-            roblox_processes::minimise(roblox_processes::main_window_of(list.expect("checked above")));
-        }
+        self.window_desk(now, windows);
     }
 
-    /// Settings' "Maximise" for windows Bloxkeep opened this run: once up a few seconds or in a game, and again on joining if
-    /// Roblox resized it. Maximised, not fullscreen, so windows don't fight over Roblox's one fullscreen switch. Not light-AFK or
-    /// tiled presets' windows; not while they're busy in another window (Windows brings a maximised one to the front).
-    /// A minimised window stays minimised and opens maximised (it was passed over, so with "When a window joins a
-    /// game" on Minimise the choice of Maximise did nothing).
+    /// Settings' "Maximise" for windows Bloxkeep opened this run (window_plan.rs); one of the window desk's entry points.
     pub fn maximise_new_windows(&self, now: Stamp, windows: &HashMap<i32, Vec<isize>>) {
-        self.presets.maximised.borrow_mut().retain(|pid, _| windows.contains_key(pid));
-        self.presets.window_first_seen.borrow_mut().retain(|pid, _| windows.contains_key(pid));
-        if !self.vault(|d| d.settings.maximize_on_open).unwrap_or(false) || input_turn::busy() {
-            return;
-        }
-        let started = self.relaunch.started.get();
-        let mut foreground: Option<i32> = None;
-        let runs: Vec<(i32, Stamp, Option<Guid>)> =
-            self.controller.running.borrow().values().map(|(pid, launch)| (*pid, launch.started_at.get(), launch.preset_id)).collect();
-        for (pid, started_at, preset_id) in runs {
-            // Only windows opened since Bloxkeep started: ones picked up after a restart were sized by the person already.
-            let Some(list) = windows.get(&pid).filter(|l| !l.is_empty()) else {
-                continue;
-            };
-            if started_at < started {
-                continue;
-            }
-            if let Some(preset) = self.preset_for(preset_id) {
-                if preset.profile == AFK_PROFILE || preset.arrange == Some(true) {
-                    continue;
-                }
-            }
-            if self.going_back(pid) {
-                continue; // a rejoin going back to its account's place (rejoin_place.rs)
-            }
-            let seen = *self.presets.window_first_seen.borrow_mut().entry(pid).or_insert(now);
-            // In a game, or up a while (Roblox's home screen, still loading, or a client that writes no log).
-            let in_game = self.controller.logs.borrow().state_of(pid).is_some_and(|s| s.status == "ingame");
-            let step = if in_game {
-                "ingame"
-            } else if now.secs_since(seen) >= secs(MAXIMISE_WITHOUT_LOG) {
-                "shown"
-            } else {
-                ""
-            };
-            let done = self.presets.maximised.borrow().get(&pid).cloned();
-            if step.is_empty() || done.is_some_and(|done| done == step || done == "ingame") {
-                continue;
-            }
-            let main = roblox_processes::main_window_of(list);
-            // One that is minimised as it joins: not maximised in view first (it would come to the front only to be
-            // put away), and once in its game not before the step that minimises it has seen it and its minimise,
-            // asked a moment ago, has come about (maximised in between, it stayed up).
-            if self.on_join_of(preset_id) == "minimise" && !roblox_processes::is_minimised(main) {
-                let asked = self.presets.put_away.borrow().get(&pid).copied();
-                if step != "ingame" || !self.presets.afk_minimised.borrow().contains(&pid) || asked.is_some_and(|at| now.secs_since(at) < secs(PUT_AWAY_WAIT)) {
-                    continue;
-                }
-            }
-            // Put away: it stays away (maximised, it also lost its RAM limit for resting windows). A minimised one
-            // opens maximised when it is opened; nothing shows, so this doesn't wait for the person.
-            if roblox_processes::is_minimised(main) || roblox_processes::is_hidden(main) {
-                let hidden = roblox_processes::is_hidden(main);
-                let set = !hidden && roblox_processes::restore_maximised(main);
-                log::note(&format!(
-                    "Maximise: window {pid} left {}{}.",
-                    if hidden { "hidden" } else { "minimised" },
-                    if set { "; it opens maximised" } else { "" }
-                ));
-                self.presets.maximised.borrow_mut().insert(pid, "ingame".into());
-                continue;
-            }
-            // A window about to be minimised as it joins is minimised first (the step before this one), then opens
-            // maximised; before its game it is maximised as any other.
-            if *foreground.get_or_insert_with(roblox_processes::foreground_pid) != pid && anti_afk::person_active() {
-                continue; // the next tick: not over what the person is doing
-            }
-            log::note(&format!("Maximise: window {pid} maximised ({}).", if step == "ingame" { "in its game" } else { "up 10 s" }));
-            roblox_processes::maximise(main);
-            self.presets.maximised.borrow_mut().insert(pid, step.into());
-        }
+        self.window_desk(now, windows);
     }
 
     /// A preset's "restart every N hours": a client in its game that ran that long is closed and reopened through auto-rejoin's
     /// path, one at a time (menu or error screens are auto-rejoin's). A window in use while the person is at the PC waits; one merely
     /// in front of an idle PC is restarted. A client that couldn't be reopened (Multi-Roblox not ready with other windows, a signed-out
     /// or banned account) is left running.
+    /// A restart that doesn't close in time is the close desk's to give up (close_desk.rs `close_desk_tick`).
     pub fn restart_due_clients(&self, now: Stamp) {
         const MB: i64 = 1024 * 1024;
-        let overdue: Vec<Guid> = self
-            .presets
-            .restarts
-            .borrow()
-            .iter()
-            .filter(|(_, (_, at))| now.secs_since(*at) > secs(RESTART_CLOSE_TIMEOUT) || now < *at)
-            .map(|(id, _)| *id)
-            .collect();
-        for id in overdue {
-            log::note(&format!(
-                "Reopen (restart, switch or update): account {}'s window didn't close within {} s; left running.",
-                short(&id),
-                RESTART_CLOSE_TIMEOUT.as_secs()
-            ));
-            self.presets.restarts.borrow_mut().remove(&id);
-        }
         let running_pids: HashSet<i32> = self.controller.running.borrow().values().map(|(pid, _)| *pid).collect();
         self.presets.restart_held_noted.borrow_mut().retain(|pid| running_pids.contains(pid));
         let heavy_mb = self.vault(|d| d.settings.restart_above_mb as i64).unwrap_or(0);
@@ -1047,7 +923,7 @@ impl App {
         self.track_hung(now);
         let held = self.held_vault().is_none()
             || self.controller.running.borrow().is_empty()
-            || !self.presets.restarts.borrow().is_empty()
+            || self.close_desk.reopening()
             || input_turn::busy()
             || self.settling()
             || self.controller.rejoining.get()
@@ -1061,8 +937,6 @@ impl App {
             return;
         }
         let started = self.relaunch.started.get();
-        let mut foreground: Option<i32> = None;
-        let mut main: Option<HashSet<i32>> = None;
         let mut runs: Vec<(Guid, i32, Rc<super::controller::PendingLaunch>)> =
             self.controller.running.borrow().iter().map(|(id, (pid, launch))| (*id, *pid, launch.clone())).collect();
         runs.sort_by(|a, b| a.2.started_at.get().cmp(&b.2.started_at.get()));
@@ -1071,44 +945,40 @@ impl App {
             // reopened it (RoALT closes and reopens one after 30 s).
             let frozen = self.presets.hung_since.borrow().get(&pid).copied();
             if let Some(frozen) = frozen.filter(|f| now.secs_since(*f) >= secs(HUNG_FOR))
-                && !self.rejoin.closing_for_rejoin.borrow().contains(&pid)
+                && self.close_desk.closing_of(pid).is_none()
                 && let Some(stuck) = self.find_account(id)
             {
                 let frozen_s = now.secs_since(frozen) as i64;
-                // Reopened only where auto-rejoin would: on, a game to go back to, signed in, not banned, Multi-Roblox
-                // ready. Never the account the person plays (MAIN): they see it and may wait for it.
-                let running_count = self.controller.running.borrow().len();
-                let reopen = launch.target.is_some()
-                    && self.rejoin_on(&stuck, launch.preset_id)
-                    && stuck.cookie_valid != Some(false)
-                    && stuck.banned != Some(true)
-                    && (multi_instance::armed() || running_count == 1)
-                    && !main.get_or_insert_with(|| self.main_pids()).contains(&pid);
-                if !reopen {
-                    if self.presets.hung_told.borrow_mut().insert(pid) {
-                        log::note(&format!("Frozen: window {pid} not responding for {frozen_s} s; left open (not reopened by auto-rejoin)."));
-                        self.notify(&l::f("{0}'s Roblox window stopped responding.", &[&self.name(&stuck)]), "warn", "restartHung", id, true, None);
+                // Reopened only where auto-rejoin would: on, a game to go back to, signed in, not banned (on Roblox or by
+                // the game), Multi-Roblox ready. Never the account the person plays (MAIN): they see it and may wait
+                // for it. Ended at once: a frozen window takes no WM_CLOSE (close_plan.rs A4 to A6).
+                let asked = match &launch.target {
+                    None => Asked::Refused(No::NoTarget),
+                    Some(_) => self.ask_close_with(Some(id), pid, Cause::Restart(Why::Hung), Then::Reopen(self.restart_target(pid, &launch)), true, || {
+                        log::note(&format!("Restart: closing window {pid} to reopen it, not responding for {frozen_s} s."));
+                        self.presets.hung_since.borrow_mut().remove(&pid);
+                        self.notify(&l::f("Restarting {0}'s Roblox: its window stopped responding…", &[&self.name(&stuck)]), "warn", "restartHung", id, true, None);
+                    }),
+                };
+                match asked {
+                    Asked::Closing => return,
+                    Asked::Waiting(_) => continue,
+                    Asked::Refused(_) => {
+                        if self.presets.hung_told.borrow_mut().insert(pid) {
+                            log::note(&format!("Frozen: window {pid} not responding for {frozen_s} s; left open (not reopened by auto-rejoin)."));
+                            self.notify(&l::f("{0}'s Roblox window stopped responding.", &[&self.name(&stuck)]), "warn", "restartHung", id, true, None);
+                        }
+                        continue;
                     }
-                    continue;
                 }
-                log::note(&format!("Restart: closing window {pid} to reopen it, not responding for {frozen_s} s."));
-                let target = self.restart_target(pid, &launch);
-                self.presets.restarts.borrow_mut().insert(id, (target, now));
-                self.rejoin.closing_for_rejoin.borrow_mut().insert(pid); // Bloxkeep's own close: neither a drop nor closed by Roblox
-                self.presets.hung_since.borrow_mut().remove(&pid);
-                self.notify(&l::f("Restarting {0}'s Roblox: its window stopped responding…", &[&self.name(&stuck)]), "warn", "restartHung", id, true, None);
-                roblox_processes::close(pid, true); // a frozen window takes no WM_CLOSE
-                return;
             }
             let preset = self.preset_for(launch.preset_id);
             let launch_started = launch.started_at.get();
             let due = preset.as_ref().is_some_and(|p| p.restart_hours > 0 && now.secs_since(launch_started) >= p.restart_hours as f64 * 3600.0);
-            // Too heavy for long enough; never the account the person plays (MAIN).
-            let heavy = !due
-                && self.presets.heavy_since.borrow().get(&pid).is_some_and(|since| now.secs_since(*since) >= secs(HEAVY_FOR))
-                && !main.get_or_insert_with(|| self.main_pids()).contains(&pid);
+            // Too heavy for long enough; never the account the person plays (MAIN, close_plan.rs A5).
+            let heavy = !due && self.presets.heavy_since.borrow().get(&pid).is_some_and(|since| now.secs_since(*since) >= secs(HEAVY_FOR));
             let state = self.controller.logs.borrow().state_of(pid);
-            if !(due || heavy) || launch.target.is_none() || self.rejoin.closing_for_rejoin.borrow().contains(&pid) || state.as_ref().is_some_and(|s| s.status != "ingame") {
+            if !(due || heavy) || launch.target.is_none() || self.close_desk.closing_of(pid).is_some() || state.as_ref().is_some_and(|s| s.status != "ingame") {
                 continue;
             }
             let Some(account) = self.find_account(id) else {
@@ -1118,49 +988,39 @@ impl App {
             if state.is_none() && launch_started < started && now.secs_since(started) < secs(roblox_log_watcher::search_limit()) {
                 continue;
             }
-            if *foreground.get_or_insert_with(roblox_processes::foreground_pid) == pid && anti_afk::person_active() {
-                continue;
-            }
-            // Auto-rejoin's path would refuse to open it again (see RejoinAsync): it would stay closed.
-            let running_count = self.controller.running.borrow().len();
-            if account.cookie_valid == Some(false) || account.banned == Some(true) || (!multi_instance::armed() && running_count > 1) {
-                if self.presets.restart_held_noted.borrow_mut().insert(pid) {
-                    log::note(&format!(
-                        "Restart: window {pid} due ({}) but left running: {}.",
-                        if heavy { "heavy" } else { "its preset's hours" },
-                        if account.cookie_valid == Some(false) {
-                            "signed out"
-                        } else if account.banned == Some(true) {
-                            "banned on Roblox"
-                        } else {
-                            "Multi-Roblox not ready"
-                        }
-                    ));
-                }
-                continue;
-            }
+            // A window in use waits; one auto-rejoin's path would refuse to open again (see RejoinAsync) stays running,
+            // as one the game banned (close_plan.rs A4, A5).
             let commit = self.mini.client_commit.borrow().get(&pid).copied().unwrap_or(0);
-            log::note(&format!(
-                "Restart: closing window {pid} to reopen it, {}.",
+            let why = if heavy { Why::Heavy } else { Why::Hours };
+            let asked = self.ask_close_with(Some(id), pid, Cause::Restart(why), Then::Reopen(self.restart_target(pid, &launch)), false, || {
+                log::note(&format!(
+                    "Restart: closing window {pid} to reopen it, {}.",
+                    if heavy {
+                        format!("{} MB for {} min", commit / MB, HEAVY_FOR.as_secs() / 60)
+                    } else {
+                        format!("every {} h", preset.as_ref().map_or(0, |p| p.restart_hours))
+                    }
+                ));
                 if heavy {
-                    format!("{} MB for {} min", commit / MB, HEAVY_FOR.as_secs() / 60)
+                    self.presets.heavy_since.borrow_mut().remove(&pid);
+                    let gb = (commit as f64 / (1024 * MB) as f64 * 10.0).round() / 10.0;
+                    self.notify(&l::f("Restarting {0}'s Roblox: it used {1} GB of RAM…", &[&self.name(&account), &gb]), "info", "restartHeavy", id, true, None);
                 } else {
-                    format!("every {} h", preset.as_ref().map_or(0, |p| p.restart_hours))
+                    let hours = preset.as_ref().map_or(0, |p| p.restart_hours);
+                    self.toast(&l::f("Restarting {0}'s Roblox (its preset restarts it every {1} h)…", &[&self.name(&account), &hours]), "info");
                 }
-            ));
-            let target = self.restart_target(pid, &launch);
-            self.presets.restarts.borrow_mut().insert(id, (target, now));
-            self.rejoin.closing_for_rejoin.borrow_mut().insert(pid); // Bloxkeep's own close: neither a drop nor closed by Roblox
-            if heavy {
-                self.presets.heavy_since.borrow_mut().remove(&pid);
-                let gb = (commit as f64 / (1024 * MB) as f64 * 10.0).round() / 10.0;
-                self.notify(&l::f("Restarting {0}'s Roblox: it used {1} GB of RAM…", &[&self.name(&account), &gb]), "info", "restartHeavy", id, true, None);
-            } else {
-                let hours = preset.as_ref().map_or(0, |p| p.restart_hours);
-                self.toast(&l::f("Restarting {0}'s Roblox (its preset restarts it every {1} h)…", &[&self.name(&account), &hours]), "info");
+            });
+            match asked {
+                Asked::Closing => return,
+                // A main account's heavy window was never a restart's: nothing said, as before.
+                Asked::Waiting(_) | Asked::Refused(No::Main) => continue,
+                Asked::Refused(no) => {
+                    if self.presets.restart_held_noted.borrow_mut().insert(pid) {
+                        log::note(&format!("Restart: window {pid} due ({}) but left running: {}.", if heavy { "heavy" } else { "its preset's hours" }, no.words()));
+                    }
+                    continue;
+                }
             }
-            roblox_processes::close(pid, self.in_game_now(pid));
-            return;
         }
     }
 

@@ -1,8 +1,8 @@
 // Tests/Bloxkeep.Tests/ServerHopSuite.cs: "Switch to another server" (app/server_hop.rs): windows playing in a public
 // server are closed and opened again into another server of their game with room, the same one for accounts of the same
 // game, never the one they leave; a private server or a window not in a game is left alone; no other server with room:
-// said, nothing closed. Roblox's server list is a stand-in (roblox_api::STAND_IN); no window is closed (close_for_reopen
-// is the test's).
+// said, nothing closed. Roblox's server list is a stand-in (roblox_api::STAND_IN); no window is closed (the close desk's
+// hook is the test's).
 use std::{
     cell::RefCell,
     collections::HashSet,
@@ -24,7 +24,9 @@ use super::{
 use crate::core::{
     app::{App, controller::PendingLaunch},
     base::{Cancel, Guid, Stamp},
+    close_plan::Cause,
     game_target::GameTarget,
+    multi_instance,
     models::{Account, LaunchPreset},
     roblox_api::{self, HttpRequest, HttpResponse},
     roblox_log_watcher::{ClientState, Tail},
@@ -108,13 +110,15 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     window(&app, a2, 802, place(), "ingame", Some("old-server"), None);
     window(&app, a3, 803, GameTarget { access_code: Some("private-code".into()), ..place() }, "ingame", Some("private-server"), None);
     let closed: Rc<RefCell<Vec<i32>>> = Rc::new(RefCell::new(Vec::new()));
-    let real_close = app.bot_check.close_for_reopen.borrow().clone();
+    let real_close = app.close_desk.close_hook.borrow().clone();
     {
         let closed = closed.clone();
-        *app.bot_check.close_for_reopen.borrow_mut() = Some(Rc::new(move |pid, _| closed.borrow_mut().push(pid)));
+        *app.close_desk.close_hook.borrow_mut() = Some(Rc::new(move |pid, _| closed.borrow_mut().push(pid)));
     }
     let closed_now = || closed.borrow().clone();
-    let going = |a: Guid| app.presets.restarts.borrow().get(&a).map(|r| r.0.clone());
+    let going = |a: Guid| app.close_desk.reopen_of(a);
+    let moving_len = || app.close_desk.moving.borrow().len();
+    let was_armed = multi_instance::armed();
 
     let roblox = Arc::new(Roblox { list: Mutex::new(FIRST_LIST.into()), server_errors: AtomicI32::new(0), signed_out: AtomicBool::new(false) });
     let plain = {
@@ -133,12 +137,23 @@ pub async fn run(c: &mut Checks, _dir: &str) {
         format!("{only_private:?}"),
     );
 
+    // Without Multi-Roblox, a window reopened while others are open would close them: none is closed to begin with, as
+    // a restart isn't (close_plan.rs A4; fails on the old code).
+    multi_instance::set_armed(false);
+    let unarmed = call(&app, "switchServer", json!({ "ids": [a1, a2] })).await;
+    c.check(
+        "Multi-Roblox not ready with other windows open: nothing closed, nothing marked as moving (fails on the old code)",
+        matches!(&unarmed, Ok(v) if v == 0) && closed_now().is_empty() && moving_len() == 0 && going(a1).is_none(),
+        format!("{unarmed:?} {:?}", closed_now()),
+    );
+    multi_instance::set_armed(true);
+
     let moved = call(&app, "switchServer", json!({ "ids": [a1, a2, a3] })).await;
     let mut sorted = closed_now();
     sorted.sort();
     c.check(
         "two accounts of a game: both closed to reopen, the private one left alone",
-        matches!(&moved, Ok(v) if v == 2) && sorted == [801, 802] && !app.presets.restarts.borrow().contains_key(&a3),
+        matches!(&moved, Ok(v) if v == 2) && sorted == [801, 802] && going(a3).is_none(),
         sorted.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(","),
     );
     c.check(
@@ -146,24 +161,47 @@ pub async fn run(c: &mut Checks, _dir: &str) {
         going(a1).is_some_and(|t| t.place_id == PLACE && t.job_id.as_deref() == Some("roomy")) && going(a2) == going(a1),
         going(a1),
     );
-    let marked: HashSet<Guid> = app.server_hop.hopping.borrow().keys().copied().collect();
+    let marked: HashSet<Guid> = app.close_desk.moving.borrow().keys().copied().collect();
     c.check(
         "…marked as moving, so a preset's Rejoin server doesn't send them back",
         marked == HashSet::from([a1, a2]) && app.hopping(),
         (),
     );
-    for since in app.server_hop.hopping.borrow_mut().values_mut() {
+    // A switch lasts until the account's next window is in its game, not just until its reopen starts (fails on the
+    // old code: the mark lasted only by its clock).
+    let close_of = |pid: i32| app.close_desk.closing_of(pid);
+    c.check(
+        "…a server switch outranks nothing the person asks: Close of a moving account ends its switch (fails on the old code)",
+        {
+            let _ = app.close_accounts(&[a2], false);
+            close_of(802).is_some_and(|r| r.cause == Cause::User && r.then == crate::core::close_plan::Then::StayClosed) && !app.close_desk.moving_of(a2)
+        },
+        format!("{:?}", close_of(802)),
+    );
+    let at_rest = app.close_ended(a1, 801, None);
+    window(&app, a1, 805, GameTarget::new(PLACE, Some("roomy".into()), None, None), "joining", None, None);
+    app.close_desk_tick(Stamp::utc_now(), &HashSet::from([805]));
+    let still_moving = app.close_desk.moving_of(a1);
+    window(&app, a1, 805, GameTarget::new(PLACE, Some("roomy".into()), None, None), "ingame", Some("roomy"), None);
+    app.close_desk_tick(Stamp::utc_now(), &HashSet::from([805]));
+    c.check(
+        "…the switched window ended: reopened into the new server, moving until the new window is in its game, then not (fails on the old code)",
+        matches!(&at_rest, crate::core::close_plan::End::Reopen(t) if t.job_id.as_deref() == Some("roomy")) && still_moving && !app.close_desk.moving_of(a1),
+        format!("{at_rest:?} {still_moving}"),
+    );
+    app.close_desk.moving.borrow_mut().insert(a1, Stamp::utc_now());
+    for since in app.close_desk.moving.borrow_mut().values_mut() {
         *since = Stamp::utc_now().plus_secs(-600.0);
     }
     c.check(
         "…a mark no reopening took counts no more after a few minutes (fails on the old code)",
-        !app.hopping() && app.server_hop.hopping.borrow().is_empty(),
+        !app.hopping() && moving_len() == 0,
         (),
     );
 
     // The window closed while Roblox gave the list: nothing to move, and nothing marked.
     closed.borrow_mut().clear();
-    app.presets.restarts.borrow_mut().clear();
+    app.close_desk.clear();
     window(&app, a1, 821, place(), "ingame", Some("old-server"), None);
     // The stand-in answers on a worker thread; the window is taken away when the server list is asked for.
     let asked_list = Arc::new(AtomicI32::new(0));
@@ -202,11 +240,8 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     let gone = gone_out.borrow().clone();
     c.check(
         "a window that closed while Roblox answered: not closed again, not marked as moving (fails on the old code)",
-        matches!(&gone, Some(Ok(v)) if v == 0)
-            && closed_now().is_empty()
-            && app.server_hop.hopping.borrow().is_empty()
-            && !app.presets.restarts.borrow().contains_key(&a1),
-        format!("{gone:?} {:?} {}", closed_now(), app.server_hop.hopping.borrow().len()),
+        matches!(&gone, Some(Ok(v)) if v == 0) && closed_now().is_empty() && moving_len() == 0 && going(a1).is_none(),
+        format!("{gone:?} {:?} {}", closed_now(), moving_len()),
     );
     plain();
 
@@ -218,29 +253,22 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     roblox.signed_out.store(false, Ordering::SeqCst);
     c.check(
         "a sign-in Roblox refuses: the window isn't closed, not marked as moving (fails on the old code)",
-        matches!(&refused, Ok(v) if v == 0)
-            && closed_now().is_empty()
-            && app.server_hop.hopping.borrow().is_empty()
-            && !app.presets.restarts.borrow().contains_key(&a1),
-        format!("{refused:?} {:?} {}", closed_now(), app.server_hop.hopping.borrow().len()),
+        matches!(&refused, Ok(v) if v == 0) && closed_now().is_empty() && moving_len() == 0 && going(a1).is_none(),
+        format!("{refused:?} {:?} {}", closed_now(), moving_len()),
     );
 
     // Locked after the switch: the reopenings went with the vault, and so do the marks.
     window(&app, a1, 822, place(), "ingame", Some("old-server"), None);
     let _ = call(&app, "switchServer", json!({ "ids": [a1] })).await;
-    let was_marked = app.server_hop.hopping.borrow().len() == 1;
+    let was_marked = moving_len() == 1;
     let _ = call(&app, "lock", json!({})).await;
-    c.check(
-        "locked after a switch: no account is still marked as moving (fails on the old code)",
-        was_marked && app.server_hop.hopping.borrow().is_empty(),
-        (),
-    );
+    c.check("locked after a switch: no account is still marked as moving (fails on the old code)", was_marked && moving_len() == 0, ());
     unlock(&app).await;
     // Unlocking may have picked windows up again: the checks below set their own.
     app.controller.running.borrow_mut().clear();
 
     closed.borrow_mut().clear();
-    app.presets.restarts.borrow_mut().clear();
+    app.close_desk.clear();
     window(&app, a1, 811, place(), "ingame", Some("roomy"), None);
     *roblox.list.lock().unwrap() = r#"{"data":[{"id":"roomy","playing":5,"maxPlayers":20},{"id":"full","playing":20,"maxPlayers":20}],"nextPageCursor":null}"#.into();
     let none = call(&app, "switchServer", json!({ "ids": [a1] })).await;
@@ -294,8 +322,7 @@ pub async fn run(c: &mut Checks, _dir: &str) {
 
     // ── leaving a crowded server ──
     closed.borrow_mut().clear();
-    app.presets.restarts.borrow_mut().clear();
-    app.server_hop.hopping.borrow_mut().clear();
+    app.close_desk.clear();
     app.controller.running.borrow_mut().shift_remove(&a3);
     let ago = || Stamp::utc_now().plus_secs(-300.0);
     joined(&app, a1, 831, place(), "ingame", Some("old-server"), ago(), None);
@@ -329,8 +356,7 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     closed.borrow_mut().clear();
     count_servers(3).await;
     c.check("…not counted again while one is on its way", closed_now().is_empty(), ());
-    app.server_hop.hopping.borrow_mut().clear();
-    app.presets.restarts.borrow_mut().clear();
+    app.close_desk.clear();
     joined(&app, a1, 833, place(), "ingame", Some("old-server"), Stamp::utc_now(), None);
     count_servers(3).await;
     c.check("a window just in is left alone", closed_now().is_empty(), format!("{:?}", closed_now()));
@@ -349,8 +375,7 @@ pub async fn run(c: &mut Checks, _dir: &str) {
         let _ = app.vault_mut(|d| d.settings.presets.retain(|p| p.id != preset_id));
     }
     closed.borrow_mut().clear();
-    app.presets.restarts.borrow_mut().clear();
-    app.server_hop.hopping.borrow_mut().clear();
+    app.close_desk.clear();
     let any_server = LaunchPreset { name: "any".into(), server: "any".into(), account_ids: vec![a1], ..Default::default() };
     let any_id = any_server.id;
     let _ = app.vault_mut(|d| d.settings.presets.push(any_server));
@@ -360,7 +385,8 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     let _ = app.vault_mut(|d| d.settings.presets.retain(|p| p.id != any_id));
 
     app.controller.running.borrow_mut().clear();
-    app.presets.restarts.borrow_mut().clear();
-    *app.bot_check.close_for_reopen.borrow_mut() = real_close;
+    app.close_desk.clear();
+    *app.close_desk.close_hook.borrow_mut() = real_close;
+    multi_instance::set_armed(was_armed);
     no_network();
 }

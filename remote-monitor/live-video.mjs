@@ -120,8 +120,8 @@ export function createLive(key, connect = attach) {
 
   async function start(source, sharp = false) {
     // Switching windows stops one view and starts the next at once: the old encoder takes a moment to end, and the
-    // new view was refused as "already active" whenever it had not yet (the owner's third window, 2026-11-18). It
-    // waits for that end instead (a few seconds at most).
+    // new view was refused as "already active" whenever it had not yet (a user's third window). It waits for that
+    // end instead (a few seconds at most).
     if (stopping && !closed && !current && !starting) await Promise.race([stopped, sleep(5000)]);
     if (closed || current || starting || stopping) throw Object.assign(new Error('Another live viewer is active.'), { code: 'inUse' });
     starting = true;

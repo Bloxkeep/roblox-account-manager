@@ -1,9 +1,9 @@
 // What the app's memory is made of, in error.log: the process's private bytes and working set beside what the app can
 // count itself (Rust's heap, the pixels pictures hold, the graphics card's picture atlas, the pictures kept). The
-// owner, 2026-11-20: Task Manager showed 167 MB, then over 250, a peak of 596 MB, and nothing said of what; measured
-// from outside, a dozen private blocks of 11-27 MB grew while the Roblox tab was used, too big and too few to name.
-// A line a minute after the start, every 10 minutes, and whenever Task Manager's number grew 64 MB past the last line
-// (at most one a minute), so a peak is caught with what made it.
+// owner: Task Manager showed 167 MB, then over 250, a peak of 596 MB, and nothing said of what; measured from
+// outside, a dozen private blocks of 11-27 MB grew while the Roblox tab was used, too big and too few to name. A line
+// a minute after the start, every 10 minutes, and whenever Task Manager's number grew 64 MB past the last line (at
+// most one a minute), so a peak is caught with what made it.
 use std::time::{Duration, Instant};
 
 use gpui_kit::App;

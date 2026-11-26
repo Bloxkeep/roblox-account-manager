@@ -1,10 +1,10 @@
 //! Roblox mods (modstore.rs) for the windows Bloxkeep opens, and taken out again.
 //!
-//! Since 2026-11-17 (the owner's "làm cái số 2", after RoALT's way) Roblox's own folder is never written: a window with
-//! mods opens from Bloxkeep's own copy of Roblox's build (`mod_copy`, %LOCALAPPDATA%\Bloxkeep\Roblox mods\<build>),
-//! which shares Roblox's files by hard links and has the mods as new files over them. Mods an older Bloxkeep laid into
-//! Roblox's builds are taken back out at the next window (Roblox's files back, byte for byte). The notes below still
-//! serve those, and the copies (as kept copies, `match_kept`).
+//! Since 2026-11-17 (after RoALT's way) Roblox's own folder is never written: a window with mods opens from Bloxkeep's
+//! own copy of Roblox's build (`mod_copy`, %LOCALAPPDATA%\Bloxkeep\Roblox mods\<build>), which shares Roblox's files by
+//! hard links and has the mods as new files over them. Mods an older Bloxkeep laid into Roblox's builds are taken back
+//! out at the next window (Roblox's files back, byte for byte). The notes below still serve those, and the copies (as
+//! kept copies, `match_kept`).
 //!
 //! What each build was given is noted (mods\applied.json), with Roblox's own file kept aside first
 //! (mods\.originals\<build>\…): a mod turned off, removed, or overridden by another gets Roblox's file back, byte for

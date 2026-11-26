@@ -1,7 +1,7 @@
-//! About how many Roblox windows this PC runs at once (the owner, 2026-11-15: "dự đoán máy này chạy tối đa được bao nhiêu
-//! acc"). Measured, not guessed: what this person's own windows take each (RAM, memory Windows has promised them, CPU,
-//! GPU), against what the PC has left of each; the one that runs out first sets the number. With no window open, what
-//! the windows took last time (kept in capacity.json). Nothing is said before a window has been measured.
+//! About how many Roblox windows this PC runs at once. Measured, not guessed: what this person's own windows take each
+//! (RAM, memory Windows has promised them, CPU, GPU), against what the PC has left of each; the one that runs out first
+//! sets the number. With no window open, what the windows took last time (kept in capacity.json). Nothing is said before
+//! a window has been measured.
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};

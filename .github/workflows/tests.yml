@@ -4,9 +4,8 @@
 #  - The app (ui-gpui, Rust) built as the release builds it, then its checks (Bloxkeep.exe --core-suites), each suite in a
 #    process of its own with throwaway data, as build.bat runs them. The suites that need the network are left out, so
 #    nothing here depends on the internet reaching Roblox, and no Roblox, Bloxkeep data or account is involved. A suite
-#    that runs over 15 minutes is stopped and counts as a failure.
-# Needs no secret and asks for none: a pull request from a fork runs it too. The interface checks (Tests/ui/run.mjs) stay a
-# hand-started run (Interface checks workflow, the owner's call of 2026-10-23).
+#    that runs over 15 minutes is stopped and counts as a failure. Needs no secret and asks for none: a pull request from a
+# fork runs it too. The interface checks (Tests/ui/run.mjs) stay a hand-started run (Interface checks workflow).
 name: Tests
 
 on:

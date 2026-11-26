@@ -13,6 +13,7 @@ use super::controller::{JsonKind, bool_of, has, str_of};
 use super::state::log_connection;
 use crate::core::{
     base::{Guid, Res, Stamp},
+    close_plan::{Cause, Then},
     input_turn, l, log, roblox_processes, rt, ui, window_report,
 };
 
@@ -239,7 +240,7 @@ impl App {
         {
             self.close_accounts(&[id], false);
         } else {
-            roblox_processes::close(client.pid, self.in_game_now(client.pid));
+            self.ask_close(None, client.pid, Cause::Untracked, Then::StayClosed, false);
         }
     }
 
@@ -272,7 +273,7 @@ impl App {
         Ok(self.monitor_act(&client, &str_of(a, "what")))
     }
 
-    /// A game's heading: front (over every app) or back (behind every app) for its windows {ids} (owner, 2026-11-08).
+    /// A game's heading: front (over every app) or back (behind every app) for its windows {ids}.
     pub fn monitor_lane_command(&self, a: &Value) -> Res<Value> {
         self.vault(|_| ())?; // RequireVault
         let what = str_of(a, "what");

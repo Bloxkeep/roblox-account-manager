@@ -448,7 +448,7 @@ function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
     ? <button key="close-one" className="pill-btn stop" data-act="close-one"><Icon name="power" />{t('card.close')}</button>
     : a.rejoin
       ? <button key="cancel-rejoin" className="pill-btn stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" />{t('rj.cancel')}</button>
-    // Banned by Roblox: Play skips it, so its button is Roblox's appeal page, signed in as it (owner, 2026-11-06).
+    // Banned by Roblox: Play skips it, so its button is Roblox's appeal page, signed in as it.
     : a.banned
       ? <button key="appeal" className="pill-btn relogin" data-act="appeal" title={t('card.appealTip')}><Icon name="external" />{t('card.appeal')}</button>
     : a.cookieValid === false

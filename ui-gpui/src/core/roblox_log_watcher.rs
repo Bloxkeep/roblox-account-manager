@@ -104,6 +104,12 @@ pub(crate) struct Tail {
     user_id: Option<i64>,
     /// Shown as a drop by a reason line (see drop_on_reason): the disconnect line after it adds nothing.
     pub(crate) dropped_by_reason: bool,
+    /// When Roblox marked the client idle (see SESSION_MARK); None while it counts as active or isn't logged.
+    pub(crate) roblox_idle: Option<Stamp>,
+    /// When input last brought it back from idle.
+    pub(crate) roblox_woke: Option<Stamp>,
+    /// The clock on its last session line.
+    session_ts: Option<f64>,
     /// Roblox's own words for error.log (see keep_line): lines that tell why a window ended, and the last few lines.
     said: VecDeque<Kept>,
     other: VecDeque<Kept>,
@@ -138,6 +144,9 @@ impl Tail {
             update_hand_off: None,
             user_id: None,
             dropped_by_reason: false,
+            roblox_idle: None,
+            roblox_woke: None,
+            session_ts: None,
             said: VecDeque::new(),
             other: VecDeque::new(),
             last_lines: VecDeque::new(),
@@ -221,10 +230,9 @@ static REASON_LINE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"setting repl
 // Used only when the replicator line gave none (285: the player left). Not yet seen on a real kick, so it may
 // come before or after the disconnect line.
 static NOTIFICATION_REASON_LINE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"Disconnection Notification\. Reason: (\d+)").expect("notification"));
-// The server's own code, from the 0.744 client's strings; not seen in a log yet.
-// Roblox couldn't reach the server it was sent to: its "Connection Failed" box (279 "No response from server"). Logged
-// after "Joining game", with no serverId and no disconnect line after it (the owner's test 2026-11-14, 0.747, a rejoin into
-// a server that had just run out of memory):
+// The server's own code, from the 0.744 client's strings; not seen in a log yet. Roblox couldn't reach the server it was
+// sent to: its "Connection Failed" box (279 "No response from server"). Logged after "Joining game", with no serverId and
+// no disconnect line after it (a test, 0.747, a rejoin into a server that had just run out of memory):
 //   [DFLog::NetworkClient] Failed to connect to server at 128.116.46.33|50694, no response.
 //   [DFLog::NetworkClient] Failed to connect to server after falling back from RbxTransport to RakNet. Disconnect code: 279. ...
 // RbxTransport's own failure before it ("[DFLog::RbxTransportDummyClient] Failed to establish connection") is not the end:
@@ -247,7 +255,7 @@ pub static REASON_WORDS: LazyLock<HashMap<&'static str, i32>> = LazyLock::new(||
     HashMap::from([
         // DisconnectErrors: Roblox's box says "Lost connection due to an unknown error. Please reconnect. (Error Code:
         // 256)" (its CoreScriptLocalization key InGame.ConnectionError.DisconnectErrors); the client logs its own words
-        // for it (the owner's error.log 2026-11-18: three windows dropped in the same second, logged with no number).
+        // for it (a real error.log: three windows dropped in the same second, logged with no number).
         ("Disconnected from game, please reconnect", 256),
         ("Lost connection due to an unknown error. Please reconnect.", 256),
         ("Protocol mismatch, please reconnect", 259),                                            // DisconnectProtocolMismatch
@@ -309,7 +317,7 @@ const COMMIT_REFUSED_MARK: &str = "cannot commit OS memory";
 const ALLOCATION_REFUSED_MARK: &str = "out-of-memory on OS allocation";
 const OUT_OF_MEMORY_CRASH_MARK: &str = "RBXCRASH: OutOfMemory";
 // A window closed in order (X, a close message, making room) logs its tray copy starting, then shutDown. A crash or
-// a kill writes neither (2026-10-22: 7 of 40 logs on the owner's PC had both, the 2 crashes neither).
+// a kill writes neither (7 of 40 logs on a real PC had both, the 2 crashes neither).
 const SHUT_DOWN_MARK: &str = "[FLog::SingleSurfaceApp] shutDown:";
 const TRAY_RELAUNCH_MARK: &str = "Successfully launched new process in systray mode";
 // The join held for Roblox's bot check: "[DFLog::HttpTraceError] HttpResponse(…)status:403 … url:{
@@ -321,13 +329,22 @@ const JOIN_REQUEST_MARK: &str = "/v1/join-";
 // An outdated client starts Roblox's updater with its own launch link: "[FLog::UpdateController] Update thread: start
 // ""…\RobloxPlayerInstaller.exe" roblox-player:…". After "Update mode is chosen as BACKGROUND" it goes on into its game
 // and the updater opens nothing; without that line it quits a second or two later and the updater opens the updated
-// client with the same link about 8-10 s on (the owner's logs of 2026-10-30, 0.744 -> 0.745: four of each).
+// client with the same link about 8-10 s on (real logs, 0.744 -> 0.745: four of each).
 const UPDATE_THREAD_MARK: &str = "[FLog::UpdateController] Update thread: start";
 const BACKGROUND_UPDATE_MARK: &str = "[FLog::UpdateController] Update mode is chosen as BACKGROUND";
 // Every game join reports who joined (0.745, 2026-11-03): "[FLog::GameJoinLoadTime] Report game_join_loadtime: placeid:…,
 // join_time:…, universeid:…, referral_page:Home, sid:…, clienttime:…, userid:12345,". A window opened outside Bloxkeep
 // (from Roblox's own app) is matched to its account by it.
 const JOIN_REPORT_MARK: &str = "game_join_loadtime";
+// Roblox's session clock (0.748): "[FLog::SessionL2ValidationHelper] onSessionChange sc_count 5 sh_count 30 cur_l2ts
+// 605.24 elapsed_l2b 601.38", and an onSessionHeartbeat line every 20 s. cur_l2ts runs on while the player is active;
+// about 600 s after the last input a change line marks the client idle and the clock stops there (the idle kick comes
+// 600 s later). The next input logs another change at the stopped value, and the clock runs again. So a change whose
+// clock moved on since the line before = gone idle; a change at the stopped value while idle = input reached it.
+// Counts 1 to 4 are a session starting (a join).
+const SESSION_MARK: &str = "[FLog::SessionL2ValidationHelper] onSession";
+static SESSION_LINE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"onSession(Change|Heartbeat) sc_count (\d+) .*?cur_l2ts ([0-9.]+)").expect("session"));
 static JOIN_REPORT_USER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"userid:(\d{1,19})").expect("userid"));
 const MAX_READ: i64 = 4 * 1024 * 1024;
 
@@ -416,6 +433,17 @@ impl RobloxLogWatcher {
     /// (UPDATE_THREAD_MARK). None too for one updating in the background, which goes on itself.
     pub fn update_hand_off_at(&self, pid: i32) -> Option<Stamp> {
         self.tails.get(&pid).and_then(|t| t.update_hand_off)
+    }
+
+    /// When Roblox itself marked the client idle (no input for about ten minutes; it kicks ten minutes later). None
+    /// while it counts as active, or when its log doesn't say.
+    pub fn roblox_idle_since(&self, pid: i32) -> Option<Stamp> {
+        self.tails.get(&pid).and_then(|t| t.roblox_idle)
+    }
+
+    /// When input last brought the client back from idle, as its log tells.
+    pub fn roblox_woke_at(&self, pid: i32) -> Option<Stamp> {
+        self.tails.get(&pid).and_then(|t| t.roblox_woke)
     }
 
     /// Its log is found and followed, so what it said (or didn't) can be read.
@@ -534,9 +562,9 @@ impl RobloxLogWatcher {
                 *u = (u.0, now.plus_secs(u.2), (u.2 * 2.0).min(MAX_WAIT_SECS));
             }
         }
-        // Read on a worker: reading a log Roblox is writing can take a second or more (2026-10-29, the owner's PC:
-        // 0.2-1.8 s on the window's thread, 1,315 checks over 100 ms in an hour). Lines are applied here, so states
-        // only change on the window's thread, a poll later.
+        // Read on a worker: reading a log Roblox is writing can take a second or more (a real PC: 0.2-1.8 s on the
+        // window's thread, 1,315 checks over 100 ms in an hour). Lines are applied here, so states only change on
+        // the window's thread, a poll later.
         let changed = self.take_reads();
         if self.reading.is_none() && !self.tails.is_empty() {
             let wanted: Vec<(i32, u64, String, i64)> = self.tails.values().map(|t| (t.pid, t.serial, t.path.clone(), t.offset)).collect();
@@ -628,9 +656,9 @@ impl RobloxLogWatcher {
 }
 
 /// A client's state once it has ended: a leave logged and no game joined since is a leave, even without the
-/// disconnect line that normally completes it. The owner's PC, 2026-10-29: back to Roblox's home from a game
-/// (leaveUGCGameInternal) and the window closed with X 3 s later, before Roblox logged that line; the state stayed
-/// "ingame" and auto-rejoin opened the account again as if it had dropped.
+/// disconnect line that normally completes it. a real PC: back to Roblox's home from a game (leaveUGCGameInternal)
+/// and the window closed with X 3 s later, before Roblox logged that line; the state stayed "ingame" and
+/// auto-rejoin opened the account again as if it had dropped.
 fn ended(tail: &Tail) -> Option<ClientState> {
     match &tail.state {
         Some(state) if tail.leaving && (state.status == "ingame" || state.status == "joining") => {
@@ -726,7 +754,7 @@ fn read(tail: &mut Tail) -> bool {
 fn read_chunk(path: &str, offset: i64) -> (i64, Option<String>) {
     let attempt = || -> std::io::Result<(i64, Option<String>)> {
         // Its size first, which opens no handle (so no antivirus scan of the file): a log that didn't grow, as most
-        // don't between two ticks, isn't opened at all (reads of 0.2–1.8 s were seen on the owner's PC).
+        // don't between two ticks, isn't opened at all (reads of 0.2–1.8 s were seen on a real PC).
         if std::fs::metadata(path)?.len() as i64 == offset {
             return Ok((offset, None));
         }
@@ -850,8 +878,8 @@ static NEVER_KEPT_WORDS: LazyLock<Regex> = LazyLock::new(|| {
 });
 /// Roblox's own words in the game-output channel, kept all the same: its start handing the launch to a Roblox already
 /// running ("NoReload Detector: WebPlay NoReload with Tray only!") is said only there, and that is what a client that
-/// crashes at once in SingleInstanceGuard was doing (the owner's Roblox log, 2026-11-13). A person's error.log
-/// (2026-11-16 to 11-21, nine such crashes) had the crash with the line before it cut.
+/// crashes at once in SingleInstanceGuard was doing. A person's error.log (2026-11-16 to 11-21, nine such crashes)
+/// had the crash with the line before it cut.
 static ROBLOX_OUTPUT: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\[FLog::Output\] (?:NoReload Detector|App NoReload)").expect("roblox-output pattern")
 });
@@ -869,7 +897,7 @@ static OTHER_ERROR: LazyLock<Regex> = LazyLock::new(|| {
 static ASSET_NOISE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)rbxasset|rbxcdn|sound|wrap|deform|asset|texture|mesh|animation|memoryPrioritization").expect("asset-noise pattern")
 });
-/// A join's routine steps (owner's real logs, 2026-11-15: they filled the kept lines after every rejoin and say nothing of why).
+/// A join's routine steps (real logs: they filled the kept lines after every rejoin and say nothing of why).
 static ROUTINE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)Replicator (?:created|destroyed)|Time taken to initialize|Assigned peer id|Join snapshot timer|MegaReplicator|UDMUX Address|serverId:|NetworkClient:Remove").expect("routine pattern")
 });
@@ -968,7 +996,7 @@ fn parse_i32(s: &str) -> Option<i32> {
 /// "Disconnected" box, and its "Time to disconnect replication data" line may never come, so the window read as in its
 /// game for good (a RoALT user's report 2026-11-14: kicked on joining, still "In game"). Not while leaving, nor in a
 /// teleport (its old server's lines), nor a join still on its old server, nor the client's own request (285). None of
-/// these lines is logged on a plain leave or teleport (the owner's 0.747 logs, 2026-11-12/13).
+/// these lines is logged on a plain leave or teleport (a user's 0.747 logs, /13).
 fn drop_on_reason(tail: &mut Tail, code: Option<i32>, line: &str) {
     // Roblox's own network line only, never a game's output quoting one.
     let Some(tag) = line.find('[') else { return };
@@ -981,7 +1009,7 @@ fn drop_on_reason(tail: &mut Tail, code: Option<i32>, line: &str) {
     // In a teleport, a reason while the old server is still connected is that server's own (RoALT's "instanced server"
     // report, 2026-11-13: a 277 before the old server's disconnect line, and the teleport went on). One after the old
     // server is gone is the move failing: Roblox's "Disconnected" box, Error Code 256 mid-teleport. A teleport that
-    // goes through logs no reason at all (the owner's 0.748 logs, 2026-11-19).
+    // goes through logs no reason at all (a user's 0.748 logs).
     if tail.leaving
         || code == Some(CLIENT_REQUEST)
         || !(state.status == "ingame" || state.status == "joining")
@@ -1007,6 +1035,10 @@ fn drop_on_reason(tail: &mut Tail, code: Option<i32>, line: &str) {
 
 /// One line of the log: what it changes in the client's state.
 pub(crate) fn apply(tail: &mut Tail, line: &str) {
+    if line.contains(SESSION_MARK) {
+        session_line(tail, line);
+        return;
+    }
     if line.contains(JOIN_REPORT_MARK) {
         if let Some(who) = JOIN_REPORT_USER.captures(line) {
             if let Some(user) = parse_i64(&who[1]) {
@@ -1206,6 +1238,30 @@ pub(crate) fn apply(tail: &mut Tail, line: &str) {
     }
 }
 
+/// Roblox's idle mark (see SESSION_MARK).
+fn session_line(tail: &mut Tail, line: &str) {
+    let Some(c) = SESSION_LINE.captures(line) else { return };
+    let Ok(clock) = c[3].parse::<f64>() else { return };
+    // Stopped, the clock repeats the same digits; running, it has moved on, if only by the half second since a heartbeat.
+    let moved = tail.session_ts.is_some_and(|last| clock > last + 0.000_001);
+    let at = time_of(line);
+    if &c[1] == "Change" {
+        if parse_i64(&c[2]).is_some_and(|n| n <= 4) {
+            tail.roblox_idle = None;
+        } else if moved {
+            tail.roblox_idle = Some(at);
+        } else if tail.roblox_idle.is_some() {
+            tail.roblox_idle = None;
+            tail.roblox_woke = Some(at);
+        }
+    } else if moved && tail.roblox_idle.is_some() {
+        // Its clock runs again though no change line said so: active.
+        tail.roblox_idle = None;
+        tail.roblox_woke = Some(at);
+    }
+    tail.session_ts = Some(clock);
+}
+
 // A numeric code can arrive after the words. Replicator (3) > numeric notification (2) > mapped words (1); equal
 // ranks keep the first.
 fn remember_reason(tail: &mut Tail, code: i32, rank: i32) {
@@ -1231,8 +1287,8 @@ pub fn is_ban(metadata: &str) -> bool {
     }
 }
 
-/// When a timed ban ends, UTC: its endTimestamp, else beginTimestamp + durationSeconds. None for a permanent ban
-/// (durationSeconds -1, or no end given). The owner's test 2026-11-14 (BanAsync, 120 s):
+/// When a timed ban ends, UTC: its endTimestamp, else beginTimestamp + durationSeconds. None for a permanent ban (durationSeconds -1, or no end given). a test (BanAsync,
+/// 120 s):
 /// {"moderatorType":"creator","durationSeconds":"120","endTimestamp":"2026-11-13T23:09:32Z","dynamicReasonTextFilterStatus":"2","beginTimestamp":"2026-11-13T23:07:32Z"};
 /// without it the account was still treated as banned ten minutes after the ban ended.
 pub fn ban_end_of(metadata: &str) -> Option<Stamp> {
@@ -1342,7 +1398,15 @@ pub fn replay(text: &str) -> Vec<String> {
     let mut out = Vec::new();
     let opt = |v: Option<i64>| v.map(|x| x.to_string()).unwrap_or_default();
     for line in text.split_inclusive('\n') {
-        if apply_text(&mut tail, line) {
+        let (idle, woke) = (tail.roblox_idle, tail.roblox_woke);
+        let changed = apply_text(&mut tail, line);
+        if tail.roblox_idle != idle && tail.roblox_idle.is_some() {
+            out.push(format!("robloxIdle|{}", tail.roblox_idle.map(|t| t.to_utc().unix_secs()).unwrap_or_default()));
+        }
+        if tail.roblox_woke != woke {
+            out.push(format!("robloxWoke|{}", tail.roblox_woke.map(|t| t.to_utc().unix_secs()).unwrap_or_default()));
+        }
+        if changed {
             if let Some(s) = &tail.state {
                 out.push(format!(
                     "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",

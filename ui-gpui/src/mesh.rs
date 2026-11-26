@@ -18,7 +18,7 @@ type Band<'a> = Box<dyn FnOnce() + Send + 'a>;
 /// Runs the bands at once on the shared pool (threads.rs) and returns when every one is done; a band that panics
 /// panics here once all are. A thread made and ended for every band of every picture left ~184 bytes behind in
 /// NVIDIA's graphics driver each time, never given back: 16 threads a picture, 30 pictures a second while the avatar
-/// moves, and Bloxkeep passed 1 GB within the hour (the owner, 2026-11-19: "sao kinh dị vậy").
+/// moves, and Bloxkeep passed 1 GB within the hour.
 fn run_bands(bands: Vec<Band<'_>>) {
     crate::threads::scope(|s| {
         for band in bands {
@@ -167,7 +167,7 @@ impl Tex {
 struct Mat {
     kd: [f32; 3],
     /// (Shared: the materials of one model, and its mask, mostly name the same picture, and each kept its own copy:
-    /// a model held 9.5 MB of pictures, the owner's error.log of alpha.15, 2026-11-22.)
+    /// a model held 9.5 MB of pictures, a real error.log of alpha.15.)
     tex: Option<Arc<Tex>>,
     /// The see-through map (map_d): its alpha, or its grey where it has none.
     mask: Option<Arc<Tex>>,
@@ -504,7 +504,7 @@ impl Rig {
 
         // It breathes (about 3 s a breath, slower when sleepy): the arms open a little from the body and close, the
         // head lifts a touch. The body stands straight; it was sheared from side to side over its planted feet and
-        // leaned as if about to fall (the owner, 2026-11-20).
+        // leaned as if about to fall.
         let breath = (t * (2.1 - 0.7 * sleepy)).sin();
         // It looks round now and then, as someone waiting does (`glance`).
         let (gaze, tilt) = glance(t);
@@ -845,7 +845,7 @@ fn rig_of(tris: &mut [Tri], names: &[String]) -> Option<Rig> {
     let leg = hips.iter().flatten().map(|&g| hi[g][1] - blo[1]).fold(0f32, f32::max);
     // A worn thing goes with the head when it reaches over the head's middle, above it: a hat, glasses, hair. One that
     // also reaches well down below the neck goes with it only when it covers the top of the head (long hair): a scarf
-    // reaches just over the head's middle and turned with the head (the owner's avatar, 2026-11-20).
+    // reaches just over the head's middle and turned with the head (a user's avatar).
     let hc = c(head);
     let reach = (hi[head][0] - lo[head][0]).max(hi[head][2] - lo[head][2]) * 1.5;
     let head_h = hi[head][1] - lo[head][1];
@@ -862,7 +862,7 @@ fn rig_of(tris: &mut [Tri], names: &[String]) -> Option<Rig> {
     }
     // What hangs swings: hair as far as it hangs below the neck, and a cape (a thin sheet behind the body). Glasses, a
     // hat, a scarf, wings or a sword on the back are held fast, as in Roblox: they swung about their tops and came off
-    // the avatar (the owner's avatar, 2026-11-20).
+    // the avatar (a user's avatar).
     let neck_y = lo[head][1];
     let fb = 2 - side;
     let hang = (0..n)
@@ -1070,8 +1070,8 @@ impl Model {
                     // Roblox names the colour picture itself as every material's mask: its own alpha is the mask
                     // then, and a picture without any is solid. Read as grey (below), a dark worn thing went
                     // see-through: on R15, where each worn thing has a picture of its own, black sunglasses and a
-                    // dark scarf were not there at all, while R6's one shared picture (with alpha) drew them (the
-                    // owner's two models, read from the files Roblox gave, 2026-11-18).
+                    // dark scarf were not there at all, while R6's one shared picture (with alpha) drew them (a
+                    // user's two models, read from the files Roblox gave).
                     let own = name == colours;
                     let mask = picture(&name).map(|t| {
                         // A map of its own with no alpha says it in grey (a copy: the picture may be a colour too).
@@ -1212,8 +1212,8 @@ impl Model {
 
     /// The model with its skin in another colour, at once: on the body's parts, the dots and material colours that are
     /// one of the old skin colours (within a few steps) become the new one; what is worn over the skin keeps its own.
-    /// Roblox takes seconds to make the new model after a change (owner, 2026-11-17: "đổi skin color… load khá lâu"):
-    /// this one shows meanwhile, and Roblox's replaces it when it comes.
+    /// Roblox takes seconds to make the new model after a change: this one shows meanwhile, and Roblox's replaces it
+    /// when it comes.
     pub fn recoloured(&self, from: &[[u8; 3]], to: [u8; 3]) -> Model {
         let mut m = self.clone();
         // A picture several body parts share is repainted once, and they keep sharing it.
@@ -1503,10 +1503,9 @@ impl Model {
             c
         };
         // Drawn in bands of rows, one per core, each with its own depth and colours: a 560-dot stage is 1.25 million
-        // dots a picture at four per dot, which one core drew far too slowly to follow a drag or a walk (the owner,
-        // 2026-11-15: "lag kinh khủng khiếp"). The same picture as before, dot for dot. The bands run on threads kept
-        // for them (`run_bands`), not threads made for each picture.
-        // How lit a dot is (and its gloss), from its normal.
+        // dots a picture at four per dot, which one core drew far too slowly to follow a drag or a walk. The same
+        // picture as before, dot for dot. The bands run on threads kept for them (`run_bands`), not threads made for
+        // each picture. How lit a dot is (and its gloss), from its normal.
         let lit_dot = |nrm: V3, shine: f32| -> (f32, f32) { shade(nrm, light, halfway, f, shine) };
         let mut out = vec![0u8; size * size * 4];
         let cores = cores.clamp(1, BAND_THREADS);

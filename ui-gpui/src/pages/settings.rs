@@ -752,7 +752,7 @@ fn picker(
         let this = cx.entity().downgrade();
         list = list.child(
             // (Each in a cell of its own width, its name and @name on a line each, cut with … when long: side by side
-            // in 220 dots a long name was squeezed to a letter a line, the owner's shot, 2026-11-15.)
+            // in 220 dots a long name was squeezed to a letter a line, a shot.)
             div().w(px(220.)).flex_none().flex().flex_col().pr(px(12.)).child({
                 let check = Check::new((key, i), ticked.contains(&id)).label(label).on_toggle(move |v, _, cx| {
                     let v = *v;
@@ -1007,8 +1007,7 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .px(px(PAGE_X))
         .pt(px(22.))
         .pb(px(22.))
-        // (With glass on the blocks only the head stands on the picture itself: no line across it there, the owner
-        // 2026-11-18.)
+        // (With glass on the blocks only the head stands on the picture itself: no line across it there.)
         .when(!crate::theme::glass_blocks(), |d| d.border_b_1().border_color(c(LINE)))
         .flex()
         .items_center()
@@ -1026,7 +1025,7 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .child(div().w(px(if narrow { 240. } else { 300. })).min_w(px(if compact { 120. } else { 160. })).flex_shrink(1.).child(field(&root.set_q, Some("search"))));
     // The list of parts: the panel's left column, its own ground to the panel's foot. With glass on the blocks only it
     // is a block of its own, as tall as its list and no more, a gap round it: the whole column as one pane of glass
-    // ran on empty to the panel's foot (the owner, 2026-11-18: "layout này là bạn làm có chủ đích hay sao").
+    // ran on empty to the panel's foot.
     let nav_col = if crate::theme::glass_blocks() {
         div()
             .h_full()
@@ -1290,8 +1289,7 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         true,
     )];
     // Bloxkeep itself, by name and first among the launchers: it starts Roblox's client with no other program between
-    // (the same choice that read "Roblox directly (no launcher)"; the owner, 2026-11-18: "trong đây vẫn chưa có
-    // bloxkeep à").
+    // (the same choice that read "Roblox directly (no launcher)").
     options.push(("direct".into(), root.tr("launch.direct"), has("direct")));
     for (k, n) in [("bloxstrap", "Bloxstrap"), ("fishstrap", "Fishstrap"), ("voidstrap", "Voidstrap")] {
         options.push((k.into(), n.into(), has(k)));
@@ -1472,6 +1470,8 @@ fn perf(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         (1536, crate::lang::cur().mb(1536.), false),
         (2048, crate::lang::cur().mb(2048.), false),
     ];
+    let cpu = st.get("cpuLimit").and_then(Value::as_i64).unwrap_or(0);
+    let cpus: Vec<(i64, String, bool)> = [0, 1, 2, 3, 5, 10, 15, 20, 30, 50].into_iter().map(|n| (n, if n == 0 { root.tr("set.ramLimitOff") } else { format!("{n} %") }, false)).collect();
     let heavy = st.get("restartAboveMb").and_then(Value::as_i64).unwrap_or(0);
     let mut heavies: Vec<(i64, String, bool)> = vec![(0, root.tr("set.heavyOff"), false)];
     for g in [3, 4, 6, 8] {
@@ -1483,14 +1483,23 @@ fn perf(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     } else {
         root.tr("set.coresDescOne")
     };
-    let memory = vec![
+    let mut memory = vec![
         row(root.tr("set.memWarn"), Some(root.tr("set.memWarnDesc")), switch("s-memwarn", flag(st, "memoryWarnings"), cx, |r, on, cx| set(r, json!({ "memoryWarnings": on }), cx))),
         row(root.tr("set.trim"), Some(root.tr("set.trimDesc")), switch("s-trim", flag(st, "trimBackground"), cx, |r, on, cx| set(r, json!({ "trimBackground": on }), cx))),
         row(root.tr("ram.clean"), Some(root.tr("ram.cleanDesc")), Button::new("s-clean-ram", root.tr("ram.open")).icon("shield").small().on_click(cx.listener(|r, _, w, cx| crate::clean_ram::open(r, w, cx)))),
         row_below(root.tr("set.ramLimit"), Some(root.tr("set.ramLimitDesc")), chips(root, cx, "s-ram", rams, &ram, |r, v, cx| set(r, json!({ "ramLimitMb": v }), cx))),
-        row_below(root.tr("set.heavy"), Some(root.tr("set.heavyDesc")), chips(root, cx, "s-heavy", heavies, &heavy, |r, v, cx| set(r, json!({ "restartAboveMb": v }), cx))),
-        row(root.tr("set.cores"), Some(cores_desc), switch("s-cores", flag(st, "splitCores"), cx, |r, on, cx| set(r, json!({ "splitCores": on }), cx))),
+        row_below(root.tr("set.cpuLimit"), Some(root.tr("set.cpuLimitDesc")), chips(root, cx, "s-cpu", cpus, &cpu, |r, v, cx| set(r, json!({ "cpuLimit": v }), cx))),
     ];
+    // Only with a limit picked (RAM or CPU: the switch covers both): with none, there is nothing to put on open windows.
+    if ram != 0 || cpu != 0 {
+        memory.push(row(
+            root.tr("set.ramLimitOpen"),
+            Some(root.tr("set.ramLimitOpenDesc")),
+            switch("s-ram-open", flag(st, "ramLimitOpen"), cx, |r, on, cx| set(r, json!({ "ramLimitOpen": on }), cx)),
+        ));
+    }
+    memory.push(row_below(root.tr("set.heavy"), Some(root.tr("set.heavyDesc")), chips(root, cx, "s-heavy", heavies, &heavy, |r, v, cx| set(r, json!({ "restartAboveMb": v }), cx))));
+    memory.push(row(root.tr("set.cores"), Some(cores_desc), switch("s-cores", flag(st, "splitCores"), cx, |r, on, cx| set(r, json!({ "splitCores": on }), cx))));
     vec![roblox::config(root, cx), group(Some(root.tr("set.g.keep")), keep), group(Some(root.tr("set.g.memory")), memory)]
 }
 

@@ -860,7 +860,7 @@ fn jump(r: &mut Root, at: usize) {
 
 // ---- Drawing ----
 // The Wiki part of a game is drawn as a wiki is, not in the app's panels (the old page's app.css ".ws", read again
-// 2026-11-15 after the owner's "giao diện wiki đã đúng với bản C# cũ chưa": it was not, it had become the app's own
+// later: it was not, it had become the app's own
 // chips and blocks): a sheet of its own in the game's colour, its name and search on a head bar, its parts as words
 // with a rule under the one shown, serif headings over a rule, links in the game's colour, tables with a line on
 // every side of every cell, an item as an article with its box of facts.

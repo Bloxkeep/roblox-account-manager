@@ -222,8 +222,8 @@ pub fn is_vng_client(path: &str) -> bool {
     crate::core::roblox_api::contains_ci(path, r"\RobloxPCVNG\")
 }
 
-/// Roblox VNG's newest client: the "vng" option, and Default's and "direct"'s last resort when no other Roblox
-/// is installed (never ahead of one; the owner's rule, 2026-10-28). It opens global accounts too (seen 2026-10-19).
+/// Roblox VNG's newest client: the "vng" option, and Default's and "direct"'s last resort when no other Roblox is
+/// installed (never ahead of one). It opens global accounts too (seen 2026-10-19).
 pub fn find_vng_client() -> Option<String> {
     newest(clients_in(Some(&combine(&local(), "RobloxPCVNG"))))
 }
@@ -385,9 +385,9 @@ pub fn own_build_broken() -> bool {
     false
 }
 
-/// Whether a client behind Roblox's newest build gets updated when it opens: Roblox's own install runs its updater
-/// (the owner's logs, 2026-10-30), a launcher updates its copy first. Started by itself, a client in a launcher's folder
-/// finds no updater ("Updater not found. Skipping update") and goes on into the game on the old build.
+/// Whether a client behind Roblox's newest build gets updated when it opens: Roblox's own install runs its updater, a
+/// launcher updates its copy first. Started by itself, a client in a launcher's folder finds no updater ("Updater not
+/// found. Skipping update") and goes on into the game on the old build.
 pub fn updates_on_open(exe: Option<&str>) -> bool {
     match exe {
         None => true,
@@ -560,9 +560,81 @@ pub fn find_official_client() -> Option<String> {
     newest(all)
 }
 
+/// A Roblox client seen running on this PC (its file), kept across runs: what opens Roblox when the links, the
+/// folders known here and the Store have none. A person's Roblox ran, opened another way, while each launch here said
+/// "Roblox isn't installed". Not Bloxkeep's own copies of a build, Roblox VNG's (never ahead of another) nor the
+/// Store's (it starts inside its package: its own option).
+pub fn note_running(exe: &str) {
+    if !eq_ci(&file_name(exe), "RobloxPlayerBeta.exe") || is_vng_client(exe) || is_store_client(exe) || under(exe, &kept_root()) || under(exe, &mods_root()) {
+        return;
+    }
+    {
+        let mut prefs = crate::core::prefs::lock();
+        if prefs.seen_roblox.as_deref().is_some_and(|seen| eq_ci(seen, exe)) {
+            return;
+        }
+        prefs.seen_roblox = Some(exe.to_string());
+    }
+    crate::core::prefs::save();
+}
+
+/// The client seen running, while its file is there; after a Roblox update, the newest beside it (its build folder
+/// goes with the update).
+pub fn seen_client() -> Option<String> {
+    let seen = crate::core::prefs::lock().seen_roblox.clone()?;
+    if file_exists(&seen) && !is_broken(&seen) {
+        return Some(seen);
+    }
+    let root = dir_name(&seen).and_then(|build| dir_name(&build)).and_then(|versions| dir_name(&versions));
+    newest(clients_in(root.as_deref()))
+}
+
+/// What a launch found of Roblox on this PC, for error.log when it found nothing to open: names and counts only, never
+/// a path (it holds the Windows user's name).
+pub fn probe_report() -> String {
+    let links = match registry::classes_root(PROTOCOL_COMMAND_KEY) {
+        None => "no roblox-player link handler".to_string(),
+        Some(_) => match protocol_handler_path() {
+            None => "a roblox-player link handler naming no program".to_string(),
+            Some(handler) => format!(
+                "roblox-player links open {} ({})",
+                file_name(&handler),
+                if !file_exists(&handler) {
+                    "its file gone"
+                } else if is_vng_client(&handler) {
+                    "Roblox VNG's"
+                } else if is_broken(&handler) {
+                    "missing its DLL"
+                } else {
+                    "there"
+                }
+            ),
+        },
+    };
+    let mut launchers: Vec<String> = KNOWN_BOOTSTRAPPERS.iter().filter(|name| find_bootstrapper(name).is_some()).map(|name| name.to_string()).collect();
+    launchers.extend(find_other_bootstrappers());
+    // (Read on its own line: the lock is let go before seen_client takes it again.)
+    let seen_before = crate::core::prefs::lock().seen_roblox.is_some();
+    format!(
+        "{links}; usable clients: {} in Roblox's own folder, {} in Program Files (x86), {} in Roblox VNG's; launchers: {}; the Microsoft Store's Roblox: {}; a client seen running before: {}",
+        clients_in(Some(&combine(&local(), "Roblox"))).len(),
+        clients_in(Some(&combine(&program_files_x86(), "Roblox"))).len(),
+        clients_in(Some(&combine(&local(), "RobloxPCVNG"))).len(),
+        if launchers.is_empty() { "none".to_string() } else { launchers.join(", ") },
+        if store_edition_installed() { "installed" } else { "not found" },
+        match (seen_before, seen_client().is_some()) {
+            (false, _) => "no",
+            (true, true) => "yes, still there",
+            (true, false) => "yes, gone now",
+        }
+    )
+}
+
 /// Newest client from any install, bootstrappers included.
 pub fn find_any_client() -> Option<String> {
     let mut clients = clients_in(Some(&combine(&local(), "Roblox")));
+    // (Roblox installed for every user: the links' handler may be gone while its clients are there.)
+    clients.extend(clients_in(Some(&combine(&program_files_x86(), "Roblox"))));
     let names: Vec<String> = KNOWN_BOOTSTRAPPERS.iter().map(|s| s.to_string()).chain(find_other_bootstrappers()).collect();
     for name in names {
         if let Some(exe) = find_bootstrapper(&name) {
@@ -653,9 +725,9 @@ pub fn client_for(launch_via: &str, custom_launcher: &str) -> Option<String> {
 
 /// What updates the client this option starts: the Bloxstrap-style launcher whose copy it is, which with "-player
 /// -nolaunch" installs the newest Roblox without opening it (Bloxstrap 2.11.4 and Fishstrap source, 2026-10-17), or for
-/// Roblox's own copy its installer beside the client (`OWN_INSTALLER`), which installs the newest build and
-/// then opens the Roblox app (the owner's PC, 2026-11-06: no switch it keeps stops that, so the app's window is closed
-/// after). None for the Store edition, Roblox VNG and a hand-picked launcher.
+/// Roblox's own copy its installer beside the client (`OWN_INSTALLER`), which installs the newest build and then opens
+/// the Roblox app (a real PC: no switch it keeps stops that, so the app's window is closed after). None for the Store
+/// edition, Roblox VNG and a hand-picked launcher.
 pub fn updater_for(launch_via: &str, custom_launcher: &str) -> Option<String> {
     if matches!(launch_via, "custom" | "store" | "vng") {
         return None;
@@ -713,11 +785,11 @@ pub fn kept_root() -> String {
 const CLIENT_SETTINGS: &str = "ClientSettings";
 
 /// A copy of Roblox's own build `exe` is in, without its updater: started from there, Roblox opens on that build instead of
-/// updating, which would close every Roblox window open. Roblox looks for the updater beside itself only (the owner's logs,
-/// 2026-11-13: "Checking if updater exists at …\version-…\RobloxPlayerInstaller.exe"), and without it says "Updater not
-/// found. Skipping update" and plays on, as a launcher's copy does. Files are hard links where they can be (no space
-/// taken, even after Roblox deletes its old build), its Fast Flags (ClientSettings) copied fresh each time. A launcher's
-/// copy (no updater beside it) is started as it is.
+/// updating, which would close every Roblox window open. Roblox looks for the updater beside itself only (real logs,:
+/// "Checking if updater exists at …\version-…\RobloxPlayerInstaller.exe"), and without it says "Updater not found. Skipping
+/// update" and plays on, as a launcher's copy does. Files are hard links where they can be (no space taken, even after
+/// Roblox deletes its old build), its Fast Flags (ClientSettings) copied fresh each time. A launcher's copy (no updater
+/// beside it) is started as it is.
 pub fn kept_copy(exe: &str) -> std::io::Result<String> {
     if !is_roblox_own(exe) {
         return Ok(exe.to_string());
@@ -920,33 +992,38 @@ pub fn find_store_client() -> Option<String> {
     let mut buffer = vec![0u16; length as usize];
     // SAFETY: `names` holds `count` pointers and `buffer` `length` characters, as the first call asked.
     let r = unsafe { GetPackagesByPackageFamily(family.as_ptr(), &mut count, names.as_mut_ptr(), &mut length, buffer.as_mut_ptr()) };
-    if r != 0 || count == 0 || names[0].is_null() {
+    if r != 0 || count == 0 {
         return None;
     }
-    // SAFETY: names[0] points at a NUL-terminated string inside `buffer`.
-    let full_name: Vec<u16> = unsafe {
-        let start = names[0];
-        let mut len = 0;
-        while *start.add(len) != 0 {
-            len += 1;
+    // Each package of the family (an update under way leaves two): the first that holds the client.
+    for &name in names.iter().take(count as usize).filter(|name| !name.is_null()) {
+        // SAFETY: `name` points at a NUL-terminated string inside `buffer`.
+        let full_name: Vec<u16> = unsafe {
+            let mut len = 0;
+            while *name.add(len) != 0 {
+                len += 1;
+            }
+            std::slice::from_raw_parts(name, len + 1).to_vec()
+        };
+        if full_name.len() <= 1 {
+            continue;
         }
-        std::slice::from_raw_parts(start, len + 1).to_vec()
-    };
-    if full_name.len() <= 1 {
-        return None;
+        let mut size = 0u32;
+        // SAFETY: a null path asks only the size.
+        if unsafe { GetPackagePathByFullName(full_name.as_ptr(), &mut size, std::ptr::null_mut()) } != ERROR_INSUFFICIENT_BUFFER || size == 0 {
+            continue;
+        }
+        let mut path = vec![0u16; size as usize];
+        // SAFETY: `path` holds `size` characters.
+        if unsafe { GetPackagePathByFullName(full_name.as_ptr(), &mut size, path.as_mut_ptr()) } != 0 {
+            continue;
+        }
+        let exe = combine(&String::from_utf16_lossy(&path[..(size as usize).saturating_sub(1)]), "RobloxPlayerBeta.exe");
+        if file_exists(&exe) {
+            return Some(exe);
+        }
     }
-    let mut size = 0u32;
-    // SAFETY: a null path asks only the size.
-    if unsafe { GetPackagePathByFullName(full_name.as_ptr(), &mut size, std::ptr::null_mut()) } != ERROR_INSUFFICIENT_BUFFER || size == 0 {
-        return None;
-    }
-    let mut path = vec![0u16; size as usize];
-    // SAFETY: `path` holds `size` characters.
-    if unsafe { GetPackagePathByFullName(full_name.as_ptr(), &mut size, path.as_mut_ptr()) } != 0 {
-        return None;
-    }
-    let exe = combine(&String::from_utf16_lossy(&path[..(size as usize).saturating_sub(1)]), "RobloxPlayerBeta.exe");
-    file_exists(&exe).then_some(exe)
+    None
 }
 
 pub fn store_edition_installed() -> bool {

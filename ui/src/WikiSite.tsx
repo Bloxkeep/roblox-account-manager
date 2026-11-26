@@ -1,9 +1,8 @@
-// A game's whole wiki inside its Wiki part (GamesView.tsx), read from this PC (AppController.Wiki.cs, WikiNet.cs): any
-// wiki on Fandom or wiki.gg, so a game needs nothing of its own here, only its wiki, named by Bloxkeep's bot (wiki.js
-// POPULAR_GAMES; never looked for or pasted by the user, the owner's call on 2026-11-06). Every article reads here, drawn as a wiki is (app.css .ws) in the game's colour; its
-// links open its other pages here; the whole wiki is searched as it is typed. What the wiki itself can't do sits on top:
-// each kind of thing it has a box of facts for (weapons, pets, fish…) as a table to filter, sort and compare (WikiView.tsx),
-// the items most like the one open, and pages saved and seen lately without signing in anywhere.
+// A game's whole wiki inside its Wiki part (GamesView.tsx), read from this PC (AppController.Wiki.cs, WikiNet.cs): any wiki on Fandom or wiki.gg, so a game needs nothing of
+// its own here, only its wiki, named by Bloxkeep's bot (wiki.js POPULAR_GAMES; never looked for or pasted by the user). Every article reads here, drawn as a wiki is (app.css
+// .ws) in the game's colour; its links open its other pages here; the whole wiki is searched as it is typed. What the wiki itself can't do sits on top: each kind of thing it
+// has a box of facts for (weapons, pets, fish…) as a table to filter, sort and compare (WikiView.tsx), the items most like the one open, and pages saved and seen lately
+// without signing in anywhere.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon, useAppState, useHost } from './host';

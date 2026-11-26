@@ -544,7 +544,7 @@ impl FormCore {
         }
         *self.selected.borrow_mut() = Some(tab.clone());
         // The chosen page shown over the one before, which is hidden only a moment later: hidden first, the window's
-        // empty ground showed between the two (the owner, 2026-11-18: "nhấp nháy" on every switch).
+        // empty ground showed between the two (on every switch).
         tab.control().set_visible(true);
         tab.control().bring_to_front();
         let me = self.clone();

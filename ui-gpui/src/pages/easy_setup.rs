@@ -1,8 +1,7 @@
-// Easy setup (owner, 2026-11-17, after another manager's "Easy setup" box; "tưởng nó sẽ tự tinh chỉnh cấu hình"): this PC
-// (CPU, RAM, GPU, what one Roblox window takes here and about how many fit, core/capacity.rs, measured never guessed),
-// how many accounts the person wants at once, and the settings tuned for that number (plan): the mode, the leanest
-// drawing, the gap between windows opening, reopening a window whose memory grows. Only what changes is listed and
-// sent. Opened from Settings › Roblox.
+// Easy setup (after another manager's "Easy setup" box): this PC (CPU, RAM, GPU, what one Roblox window takes here and
+// about how many fit, core/capacity.rs, measured never guessed), how many accounts the person wants at once, and the
+// settings tuned for that number (plan): the mode, the leanest drawing, the gap between windows opening, reopening a
+// window whose memory grows. Only what changes is listed and sent. Opened from Settings › Roblox.
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::dialog::DialogEntrance;
 use gpui_kit::{prelude::*, *};
@@ -101,7 +100,7 @@ struct Plan {
     multi_off: bool,
 }
 
-/// What one Roblox window takes before any was measured on this PC: the owner's, measured (capacity.json, 2026-11-19:
+/// What one Roblox window takes before any was measured on this PC: as measured on a real one (capacity.json:
 /// 1166 MB each), rounded down.
 const FIRST_EACH_MB: f64 = 1150.;
 
@@ -127,8 +126,8 @@ fn fit_now(r: &Root, cx: &App) -> Option<i64> {
 }
 
 /// The most the "how many at once" pickers go to: as many windows as this PC's whole RAM could hold with everything
-/// else closed (60 at most). They went to 60 on any PC: 57 at once on a 32 GB laptop took no notice (the owner,
-/// 2026-11-19: "này nó thích để 1 tỷ cũng được à"). Past what fits now, the plan says so (`over`).
+/// else closed (60 at most). They went to 60 on any PC: 57 at once on a 32 GB laptop took no notice. Past what fits
+/// now, the plan says so (`over`).
 pub fn most(r: &Root, cx: &App) -> i64 {
     match r.metrics(cx).get("systemMb").and_then(Value::as_f64).filter(|t| *t > 0.) {
         Some(total) => (((total - kept_mb(total)) / each_mb(r, cx)).floor() as i64).clamp(1, 60),

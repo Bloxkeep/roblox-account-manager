@@ -130,7 +130,7 @@ pub fn search(r: &mut Root, cx: &mut Context<Root>) {
     cx.notify();
 }
 
-/// A mod's own page, inside Bloxkeep (the owner, 2026-11-15: a click on a mod should show its page, not only a link out).
+/// A mod's own page, inside Bloxkeep (a click on a mod should show its page, not only a link out).
 fn open_mod(r: &mut Root, m: Listed, cx: &mut Context<Root>) {
     let id = m.id;
     r.mods.open = Some(m);
@@ -291,7 +291,7 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         .child(div().w(px(if width < 900. { 200. } else { 260. })).min_w(px(180.)).flex_shrink(1.).child(field(&root.mods_q, Some("search"))));
 
     // One row: the kinds as chips, "Installed" last among them (it is another place to look, not a kind), and the
-    // sort folded into one menu at the right (three rows of choices read as clutter, the owner, 2026-11-14).
+    // sort folded into one menu at the right (three rows of choices read as clutter).
     let n = m.have.len();
     fn pick_kind(k: i64, cx: &mut Context<Root>) -> impl Fn(&ClickEvent, &mut Window, &mut App) + 'static {
         cx.listener(move |r: &mut Root, _: &ClickEvent, _: &mut Window, cx: &mut Context<Root>| {

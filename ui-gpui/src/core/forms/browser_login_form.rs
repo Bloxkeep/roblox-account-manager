@@ -106,7 +106,7 @@ impl BrowserLoginForm {
             let _ = reply.send(answer);
         }
         // The app is usable again however the window went: it was disabled while the window was up, and a window
-        // whose thread failed never gave it back (the owner, 2026-11-13: "add account with browser breaks the app").
+        // whose thread failed never gave it back.
         if owner != 0 {
             // SAFETY: plain call; enabling an enabled window does nothing.
             unsafe { EnableWindow(owner as HWND, 1) };
@@ -255,8 +255,8 @@ impl LoginWindow {
         });
         // The window keeps its own state for as long as Windows keeps the window (the handler goes at WM_NCDESTROY).
         // Held only by the tasks that start it, the state went as soon as the browser was up: the controller took the
-        // window for closed, and an empty frame stayed on screen that nothing answered (the owner, 2026-11-15: "browser
-        // trắng, không hiển thị gì"; error.log said "closed" in the second it opened).
+        // window for closed, and an empty frame stayed on screen that nothing answered (error.log said "closed" in the
+        // second it opened).
         host::set_handler(hwnd, {
             let me = me.clone();
             move |h: HWND, msg: u32, w: WPARAM, l: LPARAM| me.on_message(h, msg, w, l)

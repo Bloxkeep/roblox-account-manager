@@ -1,8 +1,8 @@
 // The Games tab: the games Bloxkeep's bot has news or a price list for and the popular ones it names (wiki.js
 // POPULAR_GAMES), each with its wiki named by the bot, as cards with the game's own picture and colour
 // (AppController.Wiki.cs, from its Roblox page): the ones this PC's accounts played (Statistics' stays) or follow first, then
-// the popular ones. A game is here only with a wiki or news ready: the user never looks for a wiki or pastes one (the
-// owner's call on 2026-11-06), and a game played here that the bot doesn't name isn't shown. Opened, a game has its News,
+// the popular ones. A game is here only with a wiki or news ready: the user never looks for a wiki or pastes one,
+// and a game played here that the bot doesn't name isn't shown. Opened, a game has its News,
 // its whole Wiki (WikiSite.tsx) and its Prices, and a switch to any other game without going back.
 import { RadarStrip, playingOf, useCommunity, type RadarLine } from './Community';
 import { useEffect, useMemo, useRef, useState } from 'react';

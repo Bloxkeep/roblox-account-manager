@@ -134,7 +134,7 @@ pub fn is_beta(version: Option<&str>) -> bool {
 }
 
 /// An update that comes in quietly, without "Restart to update": a quiet fix, or the next beta of the version a beta
-/// copy is on (the owner's wish, 2026-10-21: "cập nhật ngầm"), whose notes don't show either (`since`).
+/// copy is on, whose notes don't show either (`since`).
 pub fn is_quiet_update(next: Option<&str>, current: Option<&str>) -> bool {
     is_quiet_fix(next) || (is_beta(current) && is_beta(next) && parse(next) == parse(current))
 }

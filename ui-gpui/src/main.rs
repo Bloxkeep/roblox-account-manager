@@ -272,8 +272,8 @@ fn run_ui(link: Option<(link::Link, futures::channel::mpsc::UnboundedReceiver<li
     gpui_kit::application().with_assets(assets::FsAssets(assets.clone())).run(move |cx| {
         gpui_kit::init(cx);
         // Motion is Bloxkeep's own, as the web page's was. GPUI Base reads Windows' "Animation effects" switch at init
-        // and, with it off, GPUI draws every animation and spring already finished: the owner's PC has it off, so
-        // nothing moved in the real app (found 2026-11-11). The app takes the flag over here; Base leaves it alone after.
+        // and, with it off, GPUI draws every animation and spring already finished: a real PC has it off, so nothing
+        // moved in the real app (found 2026-11-11). The app takes the flag over here; Base leaves it alone after.
         cx.set_reduce_motion(false);
         crate::theme::dress(cx);
         images::init(cx);
@@ -316,7 +316,7 @@ fn run_ui(link: Option<(link::Link, futures::channel::mpsc::UnboundedReceiver<li
             window_bounds: Some(WindowBounds::Windowed(Bounds { origin: point(px(120.), px(60.)), size: size(px(w), px(h)) })),
             // Windows' own title bar hidden (appears_transparent): the app's top bar is the title bar, with its own
             // buttons and moving; GPUI keeps the edges for resizing. (A native caption over it gave two title bars,
-            // owner's screenshot 2026-11-12.)
+            // a screenshot.)
             titlebar: if frame { Some(TitlebarOptions { title: Some("Bloxkeep".into()), appears_transparent: true, ..Default::default() }) } else { None },
             focus: shown,
             show: shown,
@@ -346,8 +346,7 @@ fn run_ui(link: Option<(link::Link, futures::channel::mpsc::UnboundedReceiver<li
         // The main window closed: Bloxkeep ends, whatever else is still made (the tray's menu and panel, the mini
         // window, an overlay: GPUI windows since 2026-11-19, put away hidden). GPUI on Windows ends only when its last
         // window closes, so with one of those hidden the process stayed on after Quit, still holding the
-        // single-instance mutex: every start after just asked it to come forward, and nothing came (the owner,
-        // 2026-11-19 17:10 and 18:46: "bloxkeep mở không lên nữa").
+        // single-instance mutex: every start after just asked it to come forward, and nothing came.
         let main_id = main.0.window_id();
         cx.on_window_closed(move |cx, id| {
             if id == main_id {

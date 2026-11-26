@@ -238,8 +238,8 @@ pub fn keep_live(file: &str) {
     }
     // Asked for past the right edge of every screen from the start (Wallpaper Engine's own -x and -y), so the window
     // is never on a screen: found there and moved away up to a quarter second later, it showed for a moment each time
-    // the following was turned on (the owner, 2026-11-18: a "terminal" flashing). Should Wallpaper Engine make no
-    // window for a place off the screens, it is asked as before, and the window looked for often, to be moved soon.
+    // the following was turned on (a "terminal" flashing). Should Wallpaper Engine make no window for a place off the
+    // screens, it is asked as before, and the window looked for often, to be moved soon.
     let ask = |off_screen: bool| -> Option<isize> {
         let mut command = std::process::Command::new(&exe);
         command.args(["-control", "openWallpaper", "-file"]).arg(&project).args(["-playInWindow", POP_OUT, "-width"]).arg(pw.to_string()).arg("-height").arg(ph.to_string());
@@ -279,7 +279,7 @@ pub fn keep_live(file: &str) {
 }
 
 /// A still of the wallpaper as it plays, for the custom theme's picture in place of its preview (a scene's or web
-/// wallpaper's preview is a small square, 768×768 for the owner's: the panels' frosted copy of it lay at another size
+/// wallpaper's preview is a small square, 768×768 on a real one: the panels' frosted copy of it lay at another size
 /// and place than the live wallpaper around them, and it showed blown up whenever Wallpaper Engine was closed). Once
 /// per wallpaper; a video wallpaper's own file is already the picture.
 #[cfg(all(windows, feature = "core"))]
@@ -449,7 +449,7 @@ pub fn is_still(media: &Path) -> bool {
 /// `kept`: the wallpaper whose own still is the theme's picture already, from a run before. At a start (`last` None)
 /// with that wallpaper still on show nothing is handed over and no second still is taken: every start put the
 /// wallpaper's small preview back over the kept still, and the page showed it blown up and soft until the new still
-/// came seconds later (the owner, 2026-11-18).
+/// came seconds later.
 pub fn check(last: Option<&(SystemTime, String)>, kept: Option<&str>) -> Option<((SystemTime, String), Option<Wall>)> {
     let config = config()?;
     let at = std::fs::metadata(&config).and_then(|m| m.modified()).ok()?;

@@ -174,9 +174,9 @@ fn decode(bytes: &[u8]) -> Option<Pixmap> {
 // ───────────────────────────── text (GDI+'s DrawString / MeasureString) ─────────────────────────────
 
 // The fonts are read for each card and let go after it: fontdue turns every letter of a font into shapes as it reads
-// it, and kept for good they held 400 MB after one summary (the owner's error.log, 2026-11-20: Segoe UI 17 MB, its
-// Semibold 16, Symbol 43, Emoji 56, Microsoft YaHei 142, Malgun Gothic 119, Arial 12). A fallback font is read only
-// when the card has a letter Segoe UI lacks and that font has (asked of the file itself, without reading it whole).
+// it, and kept for good they held 400 MB after one summary (a real error.log: Segoe UI 17 MB, its Semibold 16,
+// Symbol 43, Emoji 56, Microsoft YaHei 142, Malgun Gothic 119, Arial 12). A fallback font is read only when the card
+// has a letter Segoe UI lacks and that font has (asked of the file itself, without reading it whole).
 struct Fonts {
     regular: Font,
     semibold: Font,

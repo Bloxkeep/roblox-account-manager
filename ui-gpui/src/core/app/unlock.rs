@@ -363,6 +363,7 @@ impl App {
         self.stop_macros_for_lock(); // what plays and records stops with the vault
         self.close_panels_for_lock();
         // Nothing looks after the windows while locked (a window opened from the taskbar stayed limited, at low priority).
+        self.lift_cpu_limits();
         self.lift_ram_limits();
         self.memory.auto_ram.borrow_mut().clear();
         self.give_memory_priority_back();
@@ -388,12 +389,20 @@ impl App {
         self.join_player.players.borrow_mut().clear();
         self.controller.avatar_urls.borrow_mut().clear();
         self.state.ended_here.borrow_mut().clear();
+        self.state.ended_recent.borrow_mut().clear();
         self.controller.presence.borrow_mut().clear();
         self.controller.presence_reliable.borrow_mut().clear();
         self.controller.presence_loaded.set(false);
         *self.controller.boot.borrow_mut() = None;
         self.controller.rejoin_queue.borrow_mut().clear();
-        self.server_hop.hopping.borrow_mut().clear(); // their reopening was in that queue
+        self.close_desk.stop_moving_all(); // their reopening was in that queue
+        self.close_desk.held_closed.borrow_mut().clear(); // no launch of the vault's is under way any more
+        // Close, update, reopen stops waiting: the windows it asked to close still close (their records stay), and with no
+        // vault their reopen finds no account, as a locked rejoin does. Roblox's own updater, once started, runs on.
+        if self.roblox_updates.update_reopen_since.take().is_some() {
+            self.roblox_updates.update_reopen_updating.set(false);
+            log::note("Close, update, reopen: called off, Bloxkeep was locked; its windows aren't reopened.");
+        }
         self.controller.offline_strikes.borrow_mut().clear();
         self.reset_discord_queue(); // nothing waits to go to Discord while locked
         *self.controller.last_metrics.borrow_mut() = None;

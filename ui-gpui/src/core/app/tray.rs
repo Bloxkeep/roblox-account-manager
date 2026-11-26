@@ -12,6 +12,7 @@ use serde_json::{Value, json};
 use super::App;
 use super::controller::{MB, error_text};
 use crate::core::base::{Fail, Guid, Res, Stamp};
+use crate::core::close_plan::{Open, Who};
 use crate::core::forms::dialog;
 use crate::core::game_target::GameTarget;
 use crate::core::models::stamp_min;
@@ -83,8 +84,7 @@ fn is_io_exception(fail: &Fail) -> bool {
 }
 
 /// Multi-Roblox turned on while a Roblox client runs: Roblox already holds the name Multi-Roblox needs, so it starts
-/// only once every client is closed (the process check takes it then). Many didn't know (the owner, 2026-11-19: "người
-/// dùng … ko biết là muốn chạy multi là phải tắt hết client roblox đang mở trước"); said as a toast and a Windows
+/// only once every client is closed (the process check takes it then). Many didn't know; said as a toast and a Windows
 /// notification, since someone using only their browser may never look at Bloxkeep.
 pub const MULTI_CLOSE_FIRST: &str = "Roblox is open, so Multi-Roblox can't start yet. Close every Roblox window (and Roblox in the tray): it turns on by itself.";
 
@@ -281,6 +281,12 @@ impl App {
         // Something may have started opening Roblox while the question was open (a rejoin): it goes first.
         if self.opening_roblox() {
             self.warn(&l::t("Wait until Bloxkeep finishes opening Roblox."));
+            return;
+        }
+        // Roblox updating (close_plan.rs O1): the window would be closed by it, or make it give up.
+        if let Open::Refuse(no) = self.may_open(Who::Person, None, Stamp::utc_now()) {
+            log::note(&format!("Tray: New Roblox did nothing ({}).", no.words()));
+            self.warn(&App::open_refused_text(no).unwrap_or_default());
             return;
         }
         let mut acquired = false;

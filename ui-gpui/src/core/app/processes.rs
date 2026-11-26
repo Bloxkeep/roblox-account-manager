@@ -17,6 +17,7 @@ use super::{
 use crate::core::{
     anti_afk,
     base::{Fail, Guid, Res, Stamp},
+    close_plan::{Cause, Then},
     game_target::GameTarget,
     log, multi_instance, prefs,
     roblox_input::RobloxInput,
@@ -86,9 +87,9 @@ pub fn moved_back(at: Stamp, back: Duration) -> Stamp {
 
 /// The game an adopted window is rejoined into: only when its own start asked for a public server (a browser's Play:
 /// PlaceLauncher's RequestGame or RequestGameJob, no private server code) of the place its log says it is in, and no
-/// game was picked in the window since. Roblox's log doesn't say whether a server is private or reserved (none of the
-/// owner's logs did, checked 2026-11-03), so one started on Roblox's home screen, from a private server, or moved to
-/// another place gets none: a drop there isn't rejoined, rather than rejoined into a public server of that place.
+/// game was picked in the window since. Roblox's log doesn't say whether a server is private or reserved (none of a
+/// real logs did, checked), so one started on Roblox's home screen, from a private server, or moved to another place
+/// gets none: a drop there isn't rejoined, rather than rejoined into a public server of that place.
 pub fn public_target_of(launch_url: Option<&str>, state: Option<&ClientState>) -> Option<GameTarget> {
     let launch_url = launch_url.filter(|u| !u.is_empty())?;
     let state = state?;
@@ -140,7 +141,7 @@ impl App {
             && self.controller.launch_cts.borrow().is_none()
             && now >= self.controller.sweep_background_until.get()
             && self.controller.tray_sweep.borrow().is_empty()
-            && self.rejoin.closing_for_rejoin.borrow().is_empty()
+            && !self.close_desk.any()
             && now >= last
             && now.secs_since(last) < secs(IDLE_SCAN_INTERVAL))
     }
@@ -189,36 +190,34 @@ impl App {
 
     /// Settings › Close Roblox after leaving a game: a window whose log says its player just left its game by choice
     /// (Leave in Roblox's menu: "left", not a drop, a kick or a sign-out) is closed, so no Roblox stays open on its home
-    /// screen (the owner, 2026-11-20: "thoát game bình thường thì ko có mở client roblox"). Not one Bloxkeep is moving
-    /// itself (a launch or rejoin of the account under way, its own close for a rejoin), one opened on the home screen
-    /// that never joined, nor a leave from before the last few minutes (one already sitting there at a start).
+    /// screen. Not one Bloxkeep is moving itself (a launch or rejoin of the account under way, its own close for a
+    /// rejoin), one opened on the home screen that never joined, nor a leave from before the last few minutes (one
+    /// already sitting there at a start). A window already closing (this close's own record among them) isn't asked
+    /// again while it goes; the record leaves with its process, so a new window under a reused process id is a window
+    /// like any other. A close given up on (close_desk_tick, after 60 s) may be asked again while the leave is under
+    /// 180 s old: three asks at most.
     pub(crate) fn close_after_leave(&self, now: Stamp) {
         if !vault_now(self).is_some_and(|_| self.vault(|d| d.settings.close_after_leave).unwrap_or(false)) {
             return;
         }
-        thread_local! {
-            /// The windows closed this way (by process id), so one isn't closed again while it goes.
-            static DONE: RefCell<HashSet<i32>> = RefCell::new(HashSet::new());
-        }
         let busy: HashSet<Guid> = pending(self).iter().map(|p| p.account_id).chain(self.launching.late.borrow().iter().map(|p| p.account_id)).chain(self.controller.rejoin_queue.borrow().iter().map(|r| r.account_id)).collect();
         for (id, run) in running(self) {
             let pid = run.0;
-            if busy.contains(&id) || self.rejoin.closing_for_rejoin.borrow().contains(&pid) || DONE.with(|d| d.borrow().contains(&pid)) {
+            if busy.contains(&id) || self.close_desk.closing_of(pid).is_some() {
                 continue;
             }
             let Some(log) = log_of(self, pid) else { continue };
             if log.status != "left" || log.never_joined || now.secs_since(log.at) > 180.0 {
                 continue;
             }
-            DONE.with(|d| {
-                let mut d = d.borrow_mut();
-                if d.len() > 500 {
-                    d.clear();
-                }
-                d.insert(pid);
+            // Stays closed, as the person's own Close would leave it (no rejoin); the desk says once why one waits.
+            let place = log.place_id.unwrap_or(0);
+            let asked = self.ask_close_with(Some(id), pid, Cause::Leave, Then::StayClosed, false, || {
+                log::note(&format!("Close after leaving: a window left its game (place {place}), closed."));
             });
-            log::note(&format!("Close after leaving: a window left its game (place {}), closed.", log.place_id.unwrap_or(0)));
-            self.close_accounts(&[id], false);
+            if asked.closing() {
+                self.controller.rejoins_in_a_row.borrow_mut().remove(&id); // as Close: a window opened later counts its drops from one
+            }
         }
     }
 
@@ -237,6 +236,7 @@ impl App {
         self.relaunch.started.set(moved_back(self.relaunch.started.get(), back));
         c.last_session_start.set(moved_back(c.last_session_start.get(), back));
         c.roblox_settings_written_at.set(moved_back(c.roblox_settings_written_at.get(), back));
+        self.close_desk.move_back(back);
         let mut launches = pending(self);
         launches.extend(self.launching.late.borrow().iter().cloned());
         launches.extend(running(self).into_iter().map(|(_, r)| r.1));
@@ -334,19 +334,12 @@ impl App {
                 continue;
             }
             self.controller.running.borrow_mut().shift_remove(&id);
-            // A scheduled stop closing it is done: another preset with this account opened later doesn't wait 20 s for it
-            // (2026-10-30 review: only the same preset's next run cleared it).
-            let stopping = self.schedule.stop_closing.borrow_mut().remove(&id);
             self.persist_soon(); // the open clients on disk (see persist)
             // Read before the log watcher drops the pid below, with the log's last lines (a leave logged right before quitting).
             let mut log = self.ended_state(info.0);
             // Roblox's own words on why it ended (roblox_words.rs), unless Bloxkeep closed it: the person's Close, a
             // schedule's stop, a restart, or a rejoin of a drop it already wrote the reason of.
-            if !stopping
-                && !self.controller.user_closed.borrow().contains(&id)
-                && !self.presets.restarts.borrow().contains_key(&id)
-                && !self.rejoin.closing_for_rejoin.borrow().contains(&info.0)
-            {
+            if self.close_desk.closing_of(info.0).is_none() {
                 let last = log.as_ref().map(|l| match l.reason {
                     Some(code) => format!("{}, code {code}", l.status),
                     None => l.status.clone(),
@@ -360,19 +353,17 @@ impl App {
             // order can be that: its log says it shut down, or it left its notification-area copy behind.
             let in_order = self.controller.logs.borrow().closed_in_order_at(info.0).is_some() || children_of(info.0).iter().any(|c| trays.contains(c));
             let closed_by_roblox = self.check_closed_by_roblox(id, info.0, info.1.started_at.get(), now, in_order, &children_of);
+            // What follows its end, once (its close's record goes): closed for good, a rejoin, a reopen, or nobody's close.
+            let end = self.close_ended(id, info.0, log.as_ref());
             // No log, but a notification-area copy left behind: Roblox starts that only when its window is closed (X or
             // Bloxkeep's close), never on a drop or crash. So a leave by choice, not a drop to rejoin.
-            if log.is_none()
-                && !closed_by_roblox
-                && !self.rejoin.closing_for_rejoin.borrow().contains(&info.0)
-                && children_of(info.0).iter().any(|c| trays.contains(c))
-            {
+            if log.is_none() && !closed_by_roblox && !end.own() && children_of(info.0).iter().any(|c| trays.contains(c)) {
                 let t = info.1.target.as_ref();
                 log = Some(ClientState::new("left", t.map(|t| t.place_id), t.and_then(|t| t.job_id.clone()), None, now));
             }
             let ended_job = log.as_ref().and_then(|l| l.job_id.clone()).or(info.1.target.as_ref().and_then(|t| t.job_id.clone()));
             let ended_place = log.as_ref().and_then(|l| l.place_id).or(info.1.target.as_ref().map(|t| t.place_id));
-            self.state.ended_here.borrow_mut().insert(id, (ended_job, ended_place, now));
+            self.note_ended_here(id, ended_job, ended_place, now);
             // Hidden: the window auto-rejoin opens for it is hidden too, once in its game (rejoin_from_logs).
             if roblox_processes::forget_hidden(info.0) {
                 self.rejoin.hide_when_in.borrow_mut().insert(id);
@@ -386,9 +377,10 @@ impl App {
             if log.is_some() {
                 self.controller.tray_sweep.borrow_mut().insert(info.0, now.plus_secs(secs(TRAY_SWEEP)));
             }
-            // Roblox's updater started since the launch is one too: an outdated client hands the launch to it.
+            // Roblox's updater started since the launch is one too: an outdated client hands the launch to it. A window
+            // Bloxkeep or the person closed hands nothing over: its end (a reopen, a rejoin, closed for good) is kept.
             let hand_over = now.secs_since(info.1.started_at.get()) < secs(HAND_OVER_WINDOW)
-                && !self.controller.user_closed.borrow().contains(&id)
+                && !end.asked()
                 && !closed_by_roblox
                 && (pids.iter().any(|p| {
                     !info.1.before.contains(p) && !claimed_now.contains(p) && !tray_copies.contains(p) && may_be_launch_of(tracker_of(*p).as_deref(), &info.1)
@@ -400,12 +392,9 @@ impl App {
             } else {
                 // Ended on its own (no leave, disconnect or sign-out in its log, not closed by anyone): what it left behind
                 // goes to error.log, off this thread. A disconnect is skipped: a server's shutdown ends many at once.
-                if !stopping
+                if !end.asked()
                     && !in_order
                     && !closed_by_roblox
-                    && !self.controller.user_closed.borrow().contains(&id)
-                    && !self.presets.restarts.borrow().contains_key(&id)
-                    && !self.rejoin.closing_for_rejoin.borrow().contains(&info.0)
                     && !log.as_ref().is_some_and(|l| matches!(l.status.as_str(), "left" | "disconnected" | "signedout"))
                 {
                     let pid = info.0;
@@ -419,7 +408,7 @@ impl App {
                         ));
                     });
                 }
-                self.on_session_ended(id, &info.1, log);
+                self.on_session_ended(id, &info.1, log, end);
             }
             changed = true;
         }
@@ -430,6 +419,7 @@ impl App {
         {
             let still = pending(self);
             self.controller.pending_seen_alive.borrow_mut().retain(|l, _| has_launch(&still, &l.0));
+            self.controller.pending_seen_pid.borrow_mut().retain(|l, _| has_launch(&still, &l.0));
         }
 
         // The tray copy left by a closed client: ended while windowless, never one a launch could be waiting for.
@@ -460,9 +450,9 @@ impl App {
         if scan {
             self.processes.last_scan_found_none.set(pids.is_empty());
             *self.processes.last_players.borrow_mut() = Some((players.clone(), now)); // the monitor tab's tiles use it (monitor_clients)
+            roblox_processes::note_client_files(&players);
         }
 
-        self.rejoin.closing_for_rejoin.borrow_mut().retain(|pid| pids.contains(pid));
         // From here on each job on its own (step): one that throws (bad data in one session or macro) would otherwise
         // stop the save, auto-rejoin, schedules and auto-lock for as long as it kept throwing (audit R1).
         // Once a client has started (its window is up), the file goes back to the person's own settings.
@@ -542,21 +532,10 @@ impl App {
             self.run_anti_afk(now, &windows);
             Ok(())
         });
-        self.step("MinimiseAfkWindows(windows)", || {
-            self.minimise_afk_windows(now, &windows);
-            Ok(())
-        });
-        // Before Maximise: a rejoin going back isn't maximised.
-        self.step("KeepRejoinPlaces(now, windows)", || {
-            self.keep_rejoin_places(now, &windows);
-            Ok(())
-        });
-        self.step("MaximiseNewWindows(now, windows)", || {
-            self.maximise_new_windows(now, &windows);
-            Ok(())
-        });
-        self.step("KeepWindowSizes(now, windows)", || {
-            self.keep_window_sizes(now, &windows);
+        // "When a window joins a game", rejoin places, Settings' Maximise and window sizes: one pass of the window desk,
+        // which decides each window once and alone moves it (window_desk.rs).
+        self.step("WindowDesk(now, windows)", || {
+            self.window_desk(now, &windows);
             Ok(())
         });
         self.step("TickMacros(now)", || {
@@ -623,7 +602,7 @@ impl App {
         let active = !pids.is_empty() || pending_count(self) > 0 || !self.controller.rejoin_queue.borrow().is_empty() || now < self.controller.sweep_background_until.get();
         // While a window is awaited (a launch, a rejoin) the check comes every half second, whatever else: the next
         // account of a launch starts when the one before has its window, and that window was noticed up to 1.5 s late,
-        // 5 s with Bloxkeep's own window minimised (the owner, 2026-11-18: opening Roblox "cảm giác hơi lâu").
+        // 5 s with Bloxkeep's own window minimised.
         let awaited = pending_count(self) > 0 || !self.controller.rejoin_queue.borrow().is_empty();
         let interval: u64 = if awaited {
             500
@@ -720,6 +699,11 @@ impl App {
             }
             Ok(())
         });
+        // Also while locked: a close asked before the lock is still forced and given up in time.
+        self.step("CloseDeskTick(now)", || {
+            self.close_desk_tick(now, &pids);
+            Ok(())
+        });
         if vault_now(self).is_none() {
             return;
         }
@@ -798,7 +782,7 @@ impl App {
 
     /// Its log says it handed its launch to Roblox's updater, or isn't followed (a client that quits within two seconds
     /// may go before its log is found). One updating in the background went on into its game: the updater opens nothing
-    /// for it, so its end is its own, whatever else is updating (the owner's logs, 2026-10-30).
+    /// for it, so its end is its own, whatever else is updating.
     pub(crate) fn may_have_handed_to_updater(&self, pid: i32) -> bool {
         let logs = self.controller.logs.borrow();
         !logs.follows(pid) || logs.update_hand_off_at(pid).is_some()
@@ -989,32 +973,6 @@ impl App {
         self.processes.metrics_sent_at.set(now);
         self.post(&format!("{{\"type\":\"event\",\"name\":\"metrics\",\"data\":{json}}}"));
         Ok(())
-    }
-
-    /// A window leaving full screen comes back at the size it had. A window shown unseen for a moment is left out.
-    fn keep_window_sizes(&self, now: Stamp, windows: &HashMap<i32, Vec<isize>>) {
-        let alive: Vec<i32> = windows.keys().copied().collect();
-        self.processes.window_sizes.borrow_mut().forget(&alive);
-        if self.windows_in_turn() {
-            return;
-        }
-        for (pid, list) in windows {
-            let window = roblox_processes::main_window_of(list);
-            if window != 0
-                && let Some(rect) = roblox_processes::window_rect(window)
-            {
-                let back = self.processes.window_sizes.borrow_mut().look(
-                    *pid,
-                    rect,
-                    roblox_processes::is_fullscreen(window, rect),
-                    roblox_processes::is_plain_window(window),
-                    now,
-                );
-                if let Some(back) = back {
-                    roblox_processes::place_window(window, back);
-                }
-            }
-        }
     }
 
     /// A window opened outside Bloxkeep (from Roblox's own app, a browser's Play) that joined a game signed in as one of the

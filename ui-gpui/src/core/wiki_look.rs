@@ -1,9 +1,9 @@
 // WikiLook.cs: how each game looks in the Wiki tab.
-//! Each game's look in the Wiki tab (WikiLookInfo), from the Roblox place the bot names for it. The pictures
-//! come back as soon as Roblox gives their addresses; the colour, which needs each icon downloaded, is worked out after
-//! (the tab asks again a moment later). All of it is kept on disk for a week, so the tab opens with its pictures at once
-//! (2026-11-06: the owner found them "super slow", every game's icon downloaded before any picture showed, each app start).
-//! Nothing when Roblox doesn't answer: the tab then shows the game in the app's own colours, and it is asked again later.
+//! Each game's look in the Wiki tab (WikiLookInfo), from the Roblox place the bot names for it. The pictures come back as
+//! soon as Roblox gives their addresses; the colour, which needs each icon downloaded, is worked out after (the tab asks
+//! again a moment later). All of it is kept on disk for a week, so the tab opens with its pictures at once (a user found
+//! them "super slow", every game's icon downloaded before any picture showed, each app start). Nothing when Roblox doesn't
+//! answer: the tab then shows the game in the app's own colours, and it is asked again later.
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{LazyLock, Mutex};

@@ -1,9 +1,9 @@
-//! The main window's entrance on start (owner, 2026-11-08: the window itself should come onto the screen with an
-//! effect, not just appear). A see-through stand-in, drawn as the window will look (its colour, corners, start logo),
-//! grows from the middle to its full size with a little overshoot while fading in. Then the real window, waiting
-//! invisible just above it, fades in over it (only its title text and buttons differ) and the stand-in goes
+//! The main window's entrance on start (the window itself should come onto the screen with an effect, not just
+//! appear). A see-through stand-in, drawn as the window will look (its colour, corners, start logo), grows from the
+//! middle to its full size with a little overshoot while fading in. Then the real window, waiting invisible just
+//! above it, fades in over it (only its title text and buttons differ) and the stand-in goes
 //! (ShellForm.OpenWindowAsync). A stand-in because a real window can fade but not scale, and Windows' own opening
-//! animation is off on many PCs (the owner's too). Clicks go through it to the real window.
+//! animation is off on many PCs (a user's too). Clicks go through it to the real window.
 use std::{ffi::c_void, time::Duration};
 
 use windows_sys::Win32::{

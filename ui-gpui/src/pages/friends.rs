@@ -240,8 +240,7 @@ fn tag_rows(root: &Root, user: i64, from_face: bool, close: fn(&mut Root), cx: &
             .on_click(cx.listener(move |r, _, window, cx| {
                 close(r);
                 // The labels' box is on Friends, under its Labels button: opened from a friend's face on the Roblox
-                // home (the same menu), nothing showed (the owner, 2026-11-15: "new label không hoạt động"). That
-                // page comes first, then its box, open for this friend.
+                // home (the same menu), nothing showed. That page comes first, then its box, open for this friend.
                 r.games.open = None;
                 r.games.view = crate::pages::games::View::Friends;
                 r.friends.tags_open = true;
@@ -954,7 +953,7 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                 }
                 if !any {
                     // (In the middle of the page, as every page's "nothing here": tucked at the top left it read as
-                    // left over, the owner's word for Accounts' own, 2026-11-17.)
+                    // left over.)
                     rows = rows.child(empty_note(root.tr(if l.is_empty() { "fr.none" } else { "fr.noneHere" })).w_full().py(px(96.)));
                 }
                 crate::scrolled::body("fr-body", rows).into_any_element()

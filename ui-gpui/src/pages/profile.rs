@@ -134,7 +134,7 @@ struct ItemView {
     robux: Option<i64>,
     owners: Option<Vec<i64>>,
     /// Whether the account whose tab is shown owns it (None while asked): asked alone and first, so Buy needn't wait
-    /// for every account's answer (the owner waited seconds on "Get for free" with 8 accounts, 2026-11-12).
+    /// for every account's answer (a user waited seconds on "Get for free" with 8 accounts).
     mine: Option<bool>,
     armed: bool,
     busy: bool,
@@ -1706,8 +1706,8 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
         .items_center()
         .gap(px(10.))
         .child(crate::pages::games::brand(root))
-        // Back, beside the logo while a person's page or a community's is over the profile (the owner's mock-up,
-        // 2026-11-15: it was a row of its own under the header, pushing the page down).
+        // Back, beside the logo while a person's page or a community's is over the profile (a user's mock-up,:
+        // it was a row of its own under the header, pushing the page down).
         .when(pf.person.is_some() || over.is_some(), |d| {
             d.child(Button::new("pf-back", root.tr("wiki.back")).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {
                 // (The community first: it may have been opened from the person's page.)
@@ -1881,7 +1881,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
     // some 600 px empty between them and the numbers, review 3e.1.)
     let wide_head = inner >= 1100.;
     // (Two by two, beside the numbers, behind a hairline: spread in one row over the rest of the width they read as
-    // a second header; the owner's mock-up, 2026-11-15.)
+    // a second header; a user's mock-up.)
     let side = wide_head.then(|| {
         div()
             .flex_none()
@@ -1942,11 +1942,11 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
     // (In the header only where the name, the card and the facts all have their room.)
     let song_in_head = own && inner >= 1380.;
     // Their own picture fills the banner; Roblox's game pictures go side by side instead, each near its own size: one
-    // 480×270 cover stretched across the page came out blurred ("banner mờ câm", owner 2026-11-17). The profile's
-    // banner pictures are sharp (768×432) and filled up with the first game's own pictures when they like few.
-    // None is wider than its own 16:9 at the banner's height: one picture alone was still blown up across the whole
-    // page (owner, 2026-11-19, a 768 one 1.6× over 1220 px), so too few sit at the right at their size and the
-    // ground shows at the left. Each is swapped for the picture as uploaded (1024×576) once that is fetched.
+    // 480×270 cover stretched across the page came out blurred. The profile's banner pictures are sharp (768×432) and
+    // filled up with the first game's own pictures when they like few. None is wider than its own 16:9 at the
+    // banner's height: one picture alone was still blown up across the whole page (a 768 one 1.6× over 1220 px), so
+    // too few sit at the right at their size and the ground shows at the left. Each is swapped for the picture as
+    // uploaded (1024×576) once that is fetched.
     let tiles: Vec<(String, i64)> = if local_banner.as_deref().is_some_and(|path| std::path::Path::new(path).is_file()) {
         Vec::new()
     } else {
@@ -1997,7 +1997,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
         .font_weight(FontWeight::BOLD)
         .line_height(px(36.))
         // (Names hidden, Settings › Appearance: the account's own profile goes by its first letter too, and without
-        // its @name: only the names in the app's own list were shortened, the owner 2026-11-18.)
+        // its @name: only the names in the app's own list were shortened.)
         .truncate().child(if own && root.hides_names() { crate::val::first_only(&p.display) } else { p.display.clone() });
     // Their "About", its first line, under their name (Roblox has no status any more; this is theirs).
     let about = p.about.lines().map(str::trim).find(|l| !l.is_empty()).map(str::to_string);
@@ -2294,9 +2294,9 @@ fn ring_box(id: &'static str, banner_h: f32, avatar_size: f32, front: bool, at: 
         .into_any_element()
 }
 
-/// The decorations' button on the banner and its panel (the owner's approved mock-up, 2026-11-19): the banner's theme
-/// (each one playing in its tile), the ring round the picture, and following the season. A theme picked brings its
-/// ring; a pick by hand stops following the season.
+/// The decorations' button on the banner and its panel (a user's approved mock-up): the banner's theme (each one
+/// playing in its tile), the ring round the picture, and following the season. A theme picked brings its ring; a pick
+/// by hand stops following the season.
 fn deco_button(root: &Root, user: i64, open: bool, cx: &mut Context<Root>) -> AnyElement {
     let picked = deco::pick(user);
     let title = |key: &str| div().text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(MUTED)).mb(px(8.)).child(root.tr(key));

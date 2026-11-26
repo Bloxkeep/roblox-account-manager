@@ -51,9 +51,8 @@ pub async fn run(c: &mut Checks, dir: &str) {
     );
 
     // What is installed (Roblox, its launchers): read again on a worker a little before the cached read runs out, taken
-    // in at a later tick, never read on the core's thread by the tick while a read is cached (2026-10-29: 0.9 s of one
-    // check on the owner's PC).
-    // Waits for the worker's read (Task.Wait) without losing it: the read is put back in a fresh channel.
+    // in at a later tick, never read on the core's thread by the tick while a read is cached (0.9 s of one check on a
+    // real PC). Waits for the worker's read (Task.Wait) without losing it: the read is put back in a fresh channel.
     let wait_for_read = || {
         let rx = app.roblox_updates.installs_reading.borrow_mut().take();
         if let Some(rx) = rx {

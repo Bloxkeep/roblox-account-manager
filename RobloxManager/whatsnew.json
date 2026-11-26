@@ -1,5 +1,57 @@
 [
   {
+    "version": "1.1.6",
+    "date": "2026-11-27",
+    "new": {
+      "en": [
+        "A CPU limit for resting Roblox windows.",
+        "The RAM and CPU limits can cover open windows too.",
+        "Clean RAM can run on a timer."
+      ],
+      "vi": [
+        "Giới hạn CPU cho cửa sổ Roblox đang nghỉ.",
+        "Giới hạn RAM và CPU áp được cả cho cửa sổ đang mở.",
+        "Dọn RAM tự chạy theo giờ."
+      ]
+    },
+    "improved": {
+      "en": [
+        "When opening many accounts, each waits until the one before it is in its game.",
+        "Windows minimize once the game has loaded.",
+        "Anti-AFK reads Roblox's own idle signal.",
+        "The RAM limit starts sooner after joining.",
+        "Rejoin tries again when Roblox keeps closing as it starts.",
+        "Close, switch server and rejoin are more reliable."
+      ],
+      "vi": [
+        "Mở nhiều tài khoản: mỗi tài khoản đợi tài khoản trước vào game xong.",
+        "Cửa sổ thu nhỏ sau khi game đã tải xong.",
+        "Chống AFK đọc tín hiệu treo máy của chính Roblox.",
+        "Giới hạn RAM bắt đầu sớm hơn sau khi vào game.",
+        "Vào lại tự thử tiếp khi Roblox cứ tắt lúc mở.",
+        "Đóng, đổi server và vào lại ổn định hơn."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Roblox sometimes closed a window saying the account joined from another device.",
+        "Private servers: some were missing and accounts showed several times.",
+        "The power button sat against the edge of the status bar.",
+        "A banned account held up the others.",
+        "Game code rewards showed HTML tags.",
+        "Communities' list had no scroll bar."
+      ],
+      "vi": [
+        "Roblox đôi khi đóng cửa sổ, báo tài khoản đã vào từ thiết bị khác.",
+        "Server riêng: thiếu server, tên tài khoản bị lặp.",
+        "Nút tắt dính sát mép thanh trạng thái.",
+        "Một tài khoản bị khóa làm kẹt các tài khoản khác.",
+        "Phần thưởng của code game hiện ra thẻ HTML.",
+        "Danh sách Cộng đồng không có thanh cuộn."
+      ]
+    }
+  },
+  {
     "version": "1.1.5",
     "date": "2026-11-25",
     "highlights": [

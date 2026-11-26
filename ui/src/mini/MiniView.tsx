@@ -89,8 +89,8 @@ export function MiniView({ data, on }: { data: MiniData; on: MiniOn }) {
   }, [closing, data.clients]);
 
   // Opened or brought up (Open, the hotkey), Windows hands the window the keyboard and the browser gives it to the first
-  // button, the ✕, drawn with its focus ring (owner, 2026-11-07: "sometimes" = when it was activated): back to the
-  // card, as the tray does, unless a key was pressed since it came (Tab then reaches the ✕).
+  // button, the ✕, drawn with its focus ring (= when it was activated): back to the card, as the tray does, unless a key
+  // was pressed since it came (Tab then reaches the ✕).
   useEffect(() => {
     let keyed = false;
     const key = () => { keyed = true; };

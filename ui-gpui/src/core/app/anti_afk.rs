@@ -30,6 +30,11 @@ pub const MAX_NUDGE_RETRY: Duration = Duration::from_secs(15 * 60);
 /// How often the nudge's "keep going" answer is read again on the core's thread while a nudge runs.
 // PORT: the C# lambda read the App from the nudge's own thread; here the core refreshes a flag the nudge reads.
 const KEEP_GOING_EVERY: Duration = Duration::from_millis(100);
+/// How long a nudged window's log is watched for Roblox's own word that the key reached it (logs are read every 0.5
+/// to 5 s).
+const TAKEN_WAIT: Duration = Duration::from_secs(12);
+/// A window whose key Roblox didn't take is tried again this soon (it has ten minutes before the kick).
+const NOT_TAKEN_RETRY: Duration = Duration::from_secs(30);
 
 /// Why anti-AFK last held back from a due window: said if Roblox kicks it for idling anyway.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -77,6 +82,10 @@ pub struct AntiAfkState {
     /// What error.log was last told of held windows and a bot check: each logged once until it changes.
     pub afk_held_logged: RefCell<Option<String>>,
     pub afk_bot_check_logged: Cell<bool>,
+    /// Windows whose key Roblox once didn't take: held in front longer for theirs (anti_afk::nudge_held).
+    pub held_longer: RefCell<HashSet<i32>>,
+    /// Keys in a row Roblox didn't take, by window: the wait before the next try doubles.
+    pub not_taken: RefCell<HashMap<i32, i32>>,
 }
 
 fn hh_mm_ss(at: Stamp) -> String {
@@ -94,6 +103,8 @@ impl App {
         st.nudge_misses.borrow_mut().retain(|pid, _| windows.contains_key(pid));
         st.afk_held.borrow_mut().retain(|pid, _| windows.contains_key(pid));
         st.idle_kick_reported.borrow_mut().retain(|pid| windows.contains_key(pid));
+        st.held_longer.borrow_mut().retain(|pid| windows.contains_key(pid));
+        st.not_taken.borrow_mut().retain(|pid, _| windows.contains_key(pid));
         // A nudge cut short (Bloxkeep closed in the middle of one) left its window unseen and click-through. Not while a
         // window is being nudged or pictured (/pc screenshot): it is unseen on purpose then.
         if !self.controller.nudging.get() && !self.remote.picturing.get() && !input_turn::busy() {
@@ -160,7 +171,8 @@ impl App {
         }
         *st.afk_held_logged.borrow_mut() = Some(held);
         if !due.is_empty() {
-            let clients: Vec<(i32, isize)> = due.iter().map(|pid| (*pid, windows[pid][0])).collect();
+            // The process's main window (the one titled "Roblox…"), as every other part that lends a window takes it.
+            let clients: Vec<(i32, isize)> = due.iter().map(|pid| (*pid, roblox_processes::main_window_of(&windows[pid]))).collect();
             let app = self.clone();
             // C#: `_ = NudgeAsync(...)`.
             rt::spawn(async move { app.nudge(clients).await });
@@ -184,11 +196,17 @@ impl App {
         let every = self.afk_every();
         let due = |pid: i32, after: Duration| -> bool {
             windows.get(&pid).is_some_and(|w| !w.is_empty())
+                // A window Bloxkeep is closing is on its way out: a nudge would only bring it to the front.
+                && self.close_desk.closing_of(pid).is_none()
                 && self.controller.logs.borrow().state_of(pid).is_none_or(|s| s.status == "ingame")
                 && !self.on_home_screen(pid)
-                && now.secs_since(self.last_input(pid)) >= secs(after)
+                // Roblox's own idle mark comes ten minutes before its kick: due then whatever the timer says.
+                && (now.secs_since(self.last_input(pid)) >= secs(after) || self.controller.logs.borrow().roblox_idle_since(pid).is_some())
         };
         let waiting = |pid: i32| -> bool { st.nudge_retry_at.borrow().get(&pid).is_some_and(|retry| now < *retry) };
+        // Held back is said only of windows due now: one nudged meanwhile (by a round, a macro, the person), out of its
+        // game or with anti-AFK off for it waits for nothing, and kept here it was still named in the log's line.
+        st.afk_held.borrow_mut().retain(|pid, _| on.contains(pid) && due(*pid, every));
         // Locked: no window can come to the front (a minimised one would be restored and minimised for nothing).
         if locked {
             for &pid in on.iter().filter(|pid| due(**pid, every)) {
@@ -264,8 +282,8 @@ impl App {
     }
 
     /// A window Bloxkeep opened on Roblox's home screen that has been in no game since. Roblox kicks nobody from its
-    /// home screen, so it is never nudged: the owner's sat there minimised and was brought up every 12 minutes (their
-    /// log, 2026-11-18: "tôi có đang ở trong game đâu mà anti afk vẫn chạy"). A window whose log isn't known for another
+    /// home screen, so it is never nudged: one sat there minimised and was brought up every 12 minutes (a real
+    /// log). A window whose log isn't known for another
     /// reason (open before Bloxkeep started) still counts as in a game, as before.
     fn on_home_screen(&self, pid: i32) -> bool {
         self.controller.running.borrow().values().any(|(of, launch)| *of == pid && launch.home_screen && launch.target.is_none())
@@ -292,8 +310,10 @@ impl App {
 
     pub async fn nudge(self: &Rc<Self>, clients: Vec<(i32, isize)>) {
         // Cleared when this ends, also by a panic: a stuck flag would hold back every window timer for good.
-        let _nudging = crate::core::base::Busy::set(&self.controller.nudging);
+        let nudging = crate::core::base::Busy::set(&self.controller.nudging);
         let mut turn: Option<input_turn::Lease> = None;
+        let mut confirm: Vec<i32> = Vec::new();
+        let mut sent_at_all = Stamp::utc_now();
         // try
         'run: {
             // In turn with macros and /pc screenshot (input_turn.rs). A window a macro played into meanwhile has had its input.
@@ -346,10 +366,15 @@ impl App {
                 });
             }
             let handles: Vec<isize> = clients.iter().map(|c| c.1).collect();
+            let longer: Vec<isize> = clients.iter().filter(|c| self.anti_afk.held_longer.borrow().contains(&c.0)).map(|c| c.1).collect();
+            // Roblox marked these idle: its log tells whether the key reached them.
+            let idle: HashSet<i32> = clients.iter().map(|c| c.0).filter(|pid| self.controller.logs.borrow().roblox_idle_since(*pid).is_some()).collect();
+            let sent_at = Stamp::utc_now();
+            sent_at_all = sent_at;
             let reached = {
                 let keep = keep.clone();
                 let key = self.vault(|d| d.settings.anti_afk_key.clone()).unwrap_or_default();
-                rt::blocking(move || anti_afk::nudge(&handles, &|| keep.load(Ordering::SeqCst), Some(&|_| anti_afk::press_named(&key)))).await
+                rt::blocking(move || anti_afk::nudge_held(&handles, &longer, &|| keep.load(Ordering::SeqCst), Some(&|_| anti_afk::press_named(&key)))).await
             };
             drop(finish);
             for (pid, window) in &clients {
@@ -359,6 +384,11 @@ impl App {
                     self.anti_afk.nudge_retry_at.borrow_mut().remove(&pid);
                     self.anti_afk.nudge_misses.borrow_mut().remove(&pid);
                     self.anti_afk.afk_held.borrow_mut().shift_remove(&pid);
+                    if idle.contains(&pid) {
+                        // Not due again while its log is read for the answer (check_taken).
+                        self.anti_afk.nudge_retry_at.borrow_mut().insert(pid, Stamp::utc_now().plus_secs(secs(TAKEN_WAIT) + 5.0));
+                        confirm.push(pid);
+                    }
                 } else {
                     // Not reached: the person came back meanwhile, or Windows kept it in the background.
                     let why = if anti_afk::idle_time() < USER_IDLE_NEEDED {
@@ -385,6 +415,63 @@ impl App {
         // finally
         if let Some(lease) = turn {
             lease.dispose();
+        }
+        drop(nudging);
+        if !confirm.is_empty() {
+            self.check_taken(confirm, sent_at_all).await;
+        }
+    }
+
+    /// Roblox's log tells whether the key reached each window it had marked idle (roblox_log_watcher's SESSION_MARK). One
+    /// it didn't reach is tried again soon and held in front longer from then on: a "done" only meant the key was sent,
+    /// and a window minimised again before Roblox read it was kicked ten minutes later.
+    async fn check_taken(self: &Rc<Self>, mut waiting: Vec<i32>, sent_at: Stamp) {
+        let since = sent_at.plus_secs(-1.0);
+        let mut taken: Vec<i32> = Vec::new();
+        let until = Stamp::utc_now().plus_secs(secs(TAKEN_WAIT));
+        while !waiting.is_empty() && Stamp::utc_now() < until && !self.controller.disposed.get() {
+            rt::sleep(Duration::from_millis(500)).await;
+            let logs = self.controller.logs.borrow();
+            waiting.retain(|pid| {
+                let woke = logs.roblox_woke_at(*pid).is_some_and(|at| at >= since) || logs.roblox_idle_since(*pid).is_none();
+                if woke {
+                    taken.push(*pid);
+                }
+                !woke && logs.follows(*pid)
+            });
+        }
+        for &pid in &taken {
+            self.anti_afk.nudge_retry_at.borrow_mut().remove(&pid);
+            self.anti_afk.not_taken.borrow_mut().remove(&pid);
+        }
+        if !taken.is_empty() {
+            log::note(&format!(
+                "Anti-AFK: Roblox took the key (its log says active again): pids {}.",
+                taken.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(", ")
+            ));
+        }
+        for pid in waiting {
+            let st = &self.anti_afk;
+            let misses = {
+                let mut all = st.not_taken.borrow_mut();
+                let n = all.get(&pid).copied().unwrap_or(0) + 1;
+                all.insert(pid, n);
+                n
+            };
+            let longer = st.held_longer.borrow_mut().insert(pid);
+            // Its last real input is from before: the timer counts from there again.
+            if let Some(idle) = self.controller.logs.borrow().roblox_idle_since(pid) {
+                st.last_input.borrow_mut().insert(pid, idle.plus_secs(-600.0));
+            }
+            // 30 s, doubling to 4 min.
+            let wait = secs(NOT_TAKEN_RETRY) * f64::from(1u32 << (misses - 1).clamp(0, 3) as u32);
+            let retry = Stamp::utc_now().plus_secs(wait);
+            st.nudge_retry_at.borrow_mut().insert(pid, retry);
+            log::note(&format!(
+                "Anti-AFK: Roblox didn't take the key in window {pid} (its log still says idle, miss {misses}); tried again at {}{}.",
+                hh_mm_ss(retry),
+                if longer { ", held in front longer from now on" } else { "" }
+            ));
         }
     }
 

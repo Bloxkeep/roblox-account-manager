@@ -9,7 +9,13 @@ use std::{
     time::Duration,
 };
 
-use super::{app::App, input_turn, log, monitor_frames, roblox_processes as players, rt, win_kit::Picture, window_shot};
+use super::{
+    app::App,
+    input_turn, log, monitor_frames, roblox_processes as players, rt,
+    win_kit::Picture,
+    window_loan::{self, How, Loan},
+    window_shot,
+};
 
 const PORT: u16 = 8790;
 const ROSTER_PORT: u16 = 8793;
@@ -22,21 +28,22 @@ static NEXT_COMMAND: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32
 /// How long the page's command is waited for before it is answered "working" (its outcome comes with the list).
 const COMMAND_WAIT: Duration = Duration::from_millis(1500);
 const DONE_KEPT: Duration = Duration::from_secs(5 * 60);
+/// Bloxkeep closing: how long the viewed window put back down is waited for (each of the two asks).
+const SHUTDOWN_WAIT: Duration = Duration::from_millis(300);
 static ACTIVE: Mutex<Option<Target>> = Mutex::new(None);
 
-#[derive(Clone, Copy)]
 struct Target {
     pid: i32,
-    hwnd: isize,
-    opened: bool,
-    /// Where it stood before it was made big for a sharper view ("Sharper" on the viewer's page); None when it wasn't.
-    before: Option<super::win_kit::Rect>,
+    /// The window, lent for as long as the view is open (window_loan.rs): the app's window rules leave it alone, and it
+    /// goes back as it was (minimised again, its place back) when the view ends. None when it couldn't be lent (gone,
+    /// not answering).
+    loan: Option<Loan>,
 }
 
-/// The window of `pid` is made big for a sharper view just now: where it stands isn't its own place (not to be
-/// remembered as the account's, rejoin_place.rs).
+/// The window of `pid` is made big for a sharper view just now ("Sharper" on the viewer's page): where it stands isn't
+/// its own place (not to be remembered as the account's, rejoin_place.rs).
 pub fn sharp(pid: i32) -> bool {
-    ACTIVE.lock().unwrap_or_else(|e| e.into_inner()).is_some_and(|target| target.pid == pid && target.before.is_some())
+    ACTIVE.lock().unwrap_or_else(|e| e.into_inner()).as_ref().is_some_and(|target| target.pid == pid && target.loan.as_ref().is_some_and(|l| l.moved()))
 }
 
 /// A macro plays or is being recorded: it presses by position, so no window is resized under it.
@@ -48,9 +55,9 @@ fn macros_busy() -> bool {
     rx.recv_timeout(Duration::from_millis(900)).unwrap_or(true)
 }
 
-/// The window over its screen's whole working area, without coming to the front; where it stood before. None when it
-/// is big already (maximised, full screen, or nearly the screen's size).
-fn enlarge(hwnd: isize) -> Option<super::win_kit::Rect> {
+/// Where the window goes for a sharper view: its screen's whole working area. None when it is big already (maximised,
+/// full screen, or nearly the screen's size).
+fn big_place(hwnd: isize) -> Option<super::win_kit::Rect> {
     if !players::is_plain_window(hwnd) {
         return None;
     }
@@ -59,12 +66,11 @@ fn enlarge(hwnd: isize) -> Option<super::win_kit::Rect> {
     if before.width * 10 >= area.width * 9 && before.height * 10 >= area.height * 9 {
         return None;
     }
-    players::place_window(hwnd, area);
-    Some(before)
+    Some(area)
 }
 
 pub fn watching(pid: i32) -> bool {
-    ACTIVE.lock().unwrap_or_else(|e| e.into_inner()).is_some_and(|target| target.pid == pid)
+    ACTIVE.lock().unwrap_or_else(|e| e.into_inner()).as_ref().is_some_and(|target| target.pid == pid)
 }
 
 pub(super) fn start() {
@@ -273,17 +279,18 @@ fn serve(mut stream: TcpStream, key: &str, live: &AtomicBool) -> io::Result<()> 
     let (Ok(pid_number), Some(hwnd)) = (pid.parse(), monitor_frames::window(pid, created)) else {
         return send(&mut stream, b"window");
     };
-    let target = Target { pid: pid_number, hwnd, opened: players::is_minimised(hwnd), before: None };
+    let target_pid = pid_number;
     {
         let mut current = ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
         if current.is_some() {
             return send(&mut stream, b"busy");
         }
-        *current = Some(target);
+        *current = Some(Target { pid: pid_number, loan: None });
     }
     let stop = Stop;
-    if target.opened {
-        players::restore_quietly(hwnd);
+    // Lent from here until the view ends; a minimised window is opened in view without taking the keyboard.
+    let mut loan = window_loan::borrow(hwnd, How::VIEW);
+    if loan.as_ref().is_some_and(|l| l.was().minimised) {
         for _ in 0..10 {
             if !players::is_minimised(hwnd) {
                 break;
@@ -291,17 +298,19 @@ fn serve(mut stream: TcpStream, key: &str, live: &AtomicBool) -> io::Result<()> 
             std::thread::sleep(Duration::from_millis(30));
         }
     }
-    if sharp && !players::is_minimised(hwnd) {
-        let before = enlarge(hwnd);
-        if before.is_some() {
-            log::note(&format!("Live view: Roblox window {} made big for a sharper view; put back when the view ends.", target.pid));
-        }
-        if let Some(current) = ACTIVE.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
-            current.before = before;
-        }
+    if sharp
+        && !players::is_minimised(hwnd)
+        && let Some(l) = loan.as_mut()
+        && let Some(area) = big_place(hwnd)
+    {
+        l.move_to(area);
+        log::note(&format!("Live view: Roblox window {target_pid} made big for a sharper view; put back when the view ends."));
+    }
+    if let Some(current) = ACTIVE.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+        current.loan = loan;
     }
     drop(turn);
-    if players::is_minimised(hwnd) || !players::still_of(hwnd, target.pid) {
+    if players::is_minimised(hwnd) || !players::still_of(hwnd, target_pid) {
         return send(&mut stream, b"window");
     }
     if direct {
@@ -312,7 +321,7 @@ fn serve(mut stream: TcpStream, key: &str, live: &AtomicBool) -> io::Result<()> 
     loop {
         let command = receive(&mut reader)?;
         let recognised = if direct { command == "check" } else { matches!(command.as_str(), "frame" | "bmp") };
-        if !recognised || !players::still_of(hwnd, target.pid) {
+        if !recognised || !players::still_of(hwnd, target_pid) {
             break;
         }
         // Skip the brief focus/opacity changes of AFK or a macro. Capture itself only reads pixels.
@@ -382,23 +391,19 @@ fn send_bitmap(stream: &mut TcpStream, picture: Option<Picture>) -> io::Result<(
 struct Stop;
 impl Drop for Stop {
     fn drop(&mut self) {
-        input_turn::run_when_free("live-close", put_back);
+        input_turn::run_when_free("live-close", || put_back(window_loan::WAIT));
     }
 }
 
-fn put_back() {
+/// The viewed window given back (window_loan::back): its place back while it is still the plain window it was made
+/// (maximised or made full screen by hand since, that is the person's own doing and stays), minimised again when the
+/// view opened it, unless the person has it in front now.
+fn put_back(wait: Duration) {
     let target = ACTIVE.lock().unwrap_or_else(|e| e.into_inner()).take();
-    if let Some(target) = target {
-        if players::still_of(target.hwnd, target.pid) && !players::is_hidden(target.hwnd) {
-            // (Only while it is still the plain window it was made: maximised or made full screen by hand since, it
-            // is the person's own doing and stays.)
-            if let Some(before) = target.before.filter(|_| players::is_plain_window(target.hwnd)) {
-                players::place_window(target.hwnd, before);
-                log::note(&format!("Live view: Roblox window {} put back where it stood.", target.pid));
-            }
-            if target.opened {
-                players::minimise(target.hwnd);
-            }
+    if let Some(Target { pid, loan: Some(loan) }) = target {
+        let back = loan.give_back_with(None, wait);
+        if back.placed_back {
+            log::note(&format!("Live view: Roblox window {pid} put back where it stood."));
         }
     }
 }
@@ -411,7 +416,7 @@ pub(super) fn shutdown() {
             break;
         }
         if let Some(_turn) = input_turn::try_enter("live-shutdown") {
-            put_back();
+            put_back(SHUTDOWN_WAIT);
             break;
         }
         std::thread::sleep(Duration::from_millis(25));

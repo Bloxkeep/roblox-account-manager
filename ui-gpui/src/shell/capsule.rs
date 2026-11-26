@@ -1,7 +1,7 @@
 // The status bar's pills opening up, as Dynamic Island's do (Apple HIG, Live Activities): a click on a pill's empty
 // part (its words and figures, not its buttons) grows it from where it stands into a card with more; a click outside,
-// Esc or the pill again closes it. One open at a time; the card lies over the page, it doesn't push it up. The owner
-// approved the mock-up (artifacts/mock/con-nhong.html) on 2026-11-19: "ok quá đẳng cấp rồi, áp vào app".
+// Esc or the pill again closes it. One open at a time; the card lies over the page, it doesn't push it up. As the
+// mock-up has it (artifacts/mock/con-nhong.html).
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
 use std::time::Instant;
@@ -44,7 +44,7 @@ thread_local! {
     /// The card on screen: the open one, or the one closing.
     static SHOWN: Cell<Option<Pill>> = const { Cell::new(None) };
     /// The pill whose card stands over it, grown past it: that pill is not drawn. Its 14 px corner showed past the
-    /// card's rounder 22 px one (owner, 2026-11-19: "góc bên trái có thụt vào 1 tí").
+    /// card's rounder 22 px one.
     static COVER: Cell<Option<&'static str>> = const { Cell::new(None) };
     /// Each open window's RAM over the last minute, for its sparkline (account id → when last taken, the samples).
     static RAM_HISTORY: RefCell<HashMap<String, (Instant, VecDeque<f32>)>> = RefCell::new(HashMap::new());
@@ -111,6 +111,8 @@ struct Roll {
 }
 
 const ROLL_DUR: f32 = 0.42;
+/// How strong a figure's leading zero is drawn ("06%"): there, but not read.
+const LEAD_ZERO: f32 = 0.28;
 
 /// The figures' own colours, here and on the bar's tags: CPU, RAM, GPU, then a fourth.
 pub(super) const TONES: [u32; 4] = [0x4db8ff, 0xb388ff, 0x3ddc84, 0xffb547];
@@ -131,24 +133,30 @@ pub(super) fn roll(key: &'static str, text: String, h: f32, window: &mut Window)
     });
     let moving = t < ROLL_DUR * 1.6 && old.chars().count() == text.chars().count() && old != text;
     // One box per character, rolling or still: one run of text is laid out a few pixels narrower (its kerning and
-    // sub-pixel places), so going back to it when the roll ended moved everything after the number again (owner's
-    // OBS clip, 2026-11-19: 2–3 px at 0.67 s after each change).
-    // Rolling or still, every character is laid out on one h line, so nothing about the row changes during a roll.
+    // sub-pixel places), so going back to it when the roll ended moved everything after the number again (a clip,:
+    // 2–3 px at 0.67 s after each change). Rolling or still, every character is laid out on one h line, so nothing
+    // about the row changes during a roll.
+    // Leading zeros (a figure padded to two digits, "06") are drawn faint: they hold the room a second digit takes, so
+    // nothing beside the figure moves as it changes, without reading as part of the number.
+    let lead = |s: &str| s.chars().take(s.chars().count().saturating_sub(1)).take_while(|ch| *ch == '0').count();
+    let (lead_new, lead_old) = (lead(&text), lead(&old));
+    let glyph = |ch: char, faint: bool| div().flex_none().when(faint, |d| d.opacity(LEAD_ZERO)).child(ch.to_string());
     let mut row = div().flex().flex_none().line_height(px(h));
     if !moving {
-        for n in text.chars() {
-            row = row.child(div().flex_none().child(n.to_string()));
+        for (i, n) in text.chars().enumerate() {
+            row = row.child(glyph(n, i < lead_new));
         }
         return row;
     }
     window.request_animation_frame();
     let p = apple_spring(t, ROLL_DUR, 0.18);
     let dir = if up { 1. } else { -1. };
-    for (o, n) in old.chars().zip(text.chars()) {
-        if o == n {
-            row = row.child(div().flex_none().child(n.to_string()));
+    for (i, (o, n)) in old.chars().zip(text.chars()).enumerate() {
+        if o == n && (i < lead_new) == (i < lead_old) {
+            row = row.child(glyph(n, i < lead_new));
             continue;
         }
+        let (fn_, fo) = (if i < lead_new { LEAD_ZERO } else { 1. }, if i < lead_old { LEAD_ZERO } else { 1. });
         // The new character stays in place unseen, so the box keeps the still text's size and baseline (the figure row
         // lines the number up with its "%" by baseline: a box whose text moved gave another one, and the whole number
         // sat 4–5 px low until the roll ended); the two that roll are drawn over it.
@@ -158,8 +166,8 @@ pub(super) fn roll(key: &'static str, text: String, h: f32, window: &mut Window)
                 .flex_none()
                 .overflow_hidden()
                 .child(div().opacity(0.).child(n.to_string()))
-                .child(div().absolute().left_0().top(px((1. - p) * h * dir)).opacity(p.clamp(0., 1.)).child(n.to_string()))
-                .child(div().absolute().left_0().top(px(-p * h * dir)).opacity((1. - p).clamp(0., 1.)).child(o.to_string())),
+                .child(div().absolute().left_0().top(px((1. - p) * h * dir)).opacity(p.clamp(0., 1.) * fn_).child(n.to_string()))
+                .child(div().absolute().left_0().top(px(-p * h * dir)).opacity((1. - p).clamp(0., 1.) * fo).child(o.to_string())),
         );
     }
     row
@@ -280,8 +288,8 @@ impl Root {
                             .inset_0()
                             .occlude()
                             .on_mouse_down(MouseButton::Left, cx.listener(|r, e: &MouseDownEvent, _, cx| {
-                                // On another pill: its card at once, this one gone (owner, 2026-11-19: the first click
-                                // only closed the open card, a second one was needed to open the other).
+                                // On another pill: its card at once, this one gone (the first click only closed the
+                                // open card, a second one was needed to open the other).
                                 let other = [Pill::Left, Pill::Music, Pill::Right].into_iter().find(|p| {
                                     Some(*p) != r.pill
                                         && (*p != Pill::Music || r.music.read(cx).0.is_some())
@@ -455,10 +463,10 @@ impl Root {
         });
         let white = |a: f32| hsla(0., 0., 1., a);
         // While it plays, where it is moves on: drawn again as the song's next second starts, while the card is open.
-        // (Once a second from whenever it was drawn, the count turned over anywhere in the second, so one second
-        // showed for longer and the next for less: the owner, 2026-11-24.) A little after the turn, so the count it
-        // reads is past it even with Windows' timers a tick late. Only the card's part is drawn again (shell/parts.rs):
-        // where the song is comes from the clock as it is drawn, nothing of Root's changed.
+        // (Once a second from whenever it was drawn, the count turned over anywhere in the second, so one second showed
+        // for longer and the next for less.) A little after the turn, so the count it reads is past it even with
+        // Windows' timers a tick late. Only the card's part is drawn again (shell/parts.rs): where the song is comes
+        // from the clock as it is drawn, nothing of Root's changed.
         if s.playing && !TICK_ASKED.with(|t| t.replace(true)) {
             let wait = s.at().map_or(1000, |(at, _)| 1000 - at % 1000 + 20);
             cx.spawn(async move |this, cx| {
@@ -633,8 +641,7 @@ impl Root {
             .on_click(cx.listener(|r, _, _, _| r.send("toggleMini", json!({}))));
         // Bloxkeep's version: What's new; an update in and waiting, Update (it restarts the app, asked first).
         let app = tile("pill-app", false)
-            // (Bloxkeep's own logo, tile and all, as logo.svg has it: the small upright blocks read as another face, the owner,
-            // 2026-11-24 "không giống logo bloxkeep".)
+            // (Bloxkeep's own logo, tile and all, as logo.svg has it: the small upright blocks read as another face.)
             .child(div().flex_none().size(px(30.)).child(crate::crisp::mark(30.)))
             .child(big(if version.is_empty() { "Bloxkeep".into() } else { version }))
             .child(sub(if ready { self.tr("bar.update") } else { format!("Bloxkeep · {}", self.tr("pill.news")) }, false, false).when(ready, |d| d.text_color(c(FACE))))

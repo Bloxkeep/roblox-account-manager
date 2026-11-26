@@ -31,9 +31,23 @@ pub struct StateState {
     /// otherwise, the same server (or game, when no server is given) is taken as stale, not "playing elsewhere". Kept in
     /// the vault (NoteOpenSessions) so a restart to update right after, or a lock, doesn't forget them.
     pub ended_here: RefCell<HashMap<Guid, (Option<String>, Option<i64>, Stamp)>>,
+    /// Every client of an account that ended here in the last STALE_PRESENCE, not only the last (`ended_here`): Roblox's
+    /// status can still name an earlier one's server for minutes, so an account played twice in a row and closed read
+    /// as "playing on another device" in the first one's server.
+    pub ended_recent: RefCell<HashMap<Guid, Vec<(Option<String>, Option<i64>, Stamp)>>>,
 }
 
 /// What a client's log line says, as `connection` names it.
+/// Roblox's in-game status names the server (or, with no server id to compare, the game) of a client that ended here.
+pub fn stale_match(p: &Presence, ended_job: Option<&str>, ended_place: Option<i64>) -> bool {
+    if let (Some(job), Some(ended_job)) = (&p.job_id, ended_job) {
+        return job.eq_ignore_ascii_case(ended_job);
+    }
+    // No server id to compare: the same game counts, and so does no game at all (privacy hides it).
+    let place = p.root_place_id.or(p.place_id);
+    place.is_none() || ended_place.is_none() || place == ended_place || p.place_id == ended_place
+}
+
 pub fn log_connection(status: &str) -> &'static str {
     match status {
         "ingame" => "ingame",
@@ -304,8 +318,7 @@ impl App {
                     "oldBuild": self.runs_old_build(a, pid),
                     // The preset that opened it may turn auto-rejoin on or off for this client.
                     "autoRejoin": self.rejoin_on(a, launch.preset_id),
-                    // What Bloxkeep does next with it, and when: the card says so (the owner, 2026-11-15: "ở thẻ cần
-                    // hiển thị sẽ làm gì tiếp theo, ví dụ rejoin thì hiện thời gian đếm ngược").
+                    // What Bloxkeep does next with it, and when: the card says so.
                     "next": self.next_step(a, launch, log.as_ref()),
                 })
             }
@@ -469,22 +482,26 @@ impl App {
         }
     }
 
+    /// A client of the account ended here (its server and game, when known).
+    pub fn note_ended_here(&self, id: Guid, job: Option<String>, place: Option<i64>, at: Stamp) {
+        self.state.ended_here.borrow_mut().insert(id, (job.clone(), place, at));
+        let mut recent = self.state.ended_recent.borrow_mut();
+        let ends = recent.entry(id).or_default();
+        ends.retain(|e| at.secs_since(e.2).abs() < secs(STALE_PRESENCE));
+        ends.push((job, place, at));
+    }
+
+    /// Roblox says the account is in a game, but it is one of its clients that ended here lately (any of them, not
+    /// only the last: Roblox's status lags by minutes).
     pub fn is_stale_in_game(&self, a: &Account, p: &Presence) -> bool {
         if p.r#type != 2 || self.controller.running.borrow().contains_key(&a.id) {
             return false;
         }
-        let Some((ended_job, ended_place, ended_at)) = self.state.ended_here.borrow().get(&a.id).cloned() else {
-            return false;
-        };
-        if Stamp::utc_now().secs_since(ended_at) >= secs(STALE_PRESENCE) {
-            return false;
-        }
-        if let (Some(job), Some(ended_job)) = (&p.job_id, &ended_job) {
-            return job.to_lowercase() == ended_job.to_lowercase();
-        }
-        // No server id to compare: the same game counts, and so does no game at all (privacy hides it).
-        let place = p.root_place_id.or(p.place_id);
-        place.is_none() || ended_place.is_none() || place == ended_place || p.place_id == ended_place
+        let mut ends: Vec<(Option<String>, Option<i64>, Stamp)> = self.state.ended_recent.borrow().get(&a.id).cloned().unwrap_or_default();
+        // The last one is also kept in the vault, so it outlives a restart.
+        ends.extend(self.state.ended_here.borrow().get(&a.id).cloned());
+        let now = Stamp::utc_now();
+        ends.iter().filter(|e| now.secs_since(e.2) < secs(STALE_PRESENCE)).any(|(job, place, _)| stale_match(p, job.as_deref(), *place))
     }
 
     pub fn presence_dto(&self, a: &Account) -> Value {
@@ -542,6 +559,8 @@ impl App {
             "robloxUpdateWhen": s.roblox_update_when,
             "fastFlags": s.fast_flags,
             "ramLimitMb": s.ram_limit_mb,
+            "ramLimitOpen": s.ram_limit_open,
+            "cpuLimit": s.cpu_limit_percent,
             "restartAboveMb": s.restart_above_mb,
             "splitCores": s.split_cores,
             "cores": App::cores_dto(),

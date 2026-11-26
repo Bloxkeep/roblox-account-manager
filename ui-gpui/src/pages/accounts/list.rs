@@ -15,8 +15,8 @@ use crate::{kit::*, shell::Root, theme::*};
 /// The columns after the status: shown when any line has something for them, as wide as they need.
 struct Cols {
     robux: bool,
-    /// A window's frame-rate limit, a column of its own: before the status it pushed the dot and words of a line with
-    /// one off those of a line without (the main account has none), so the lines didn't stand in line (owner, 2026-11-24).
+    /// A window's frame-rate limit, a column of its own: before the status it pushed the dot and words of a line with one
+    /// off those of a line without (the main account has none), so the lines didn't stand in line.
     fps: bool,
     group: f32,
     rejoin: bool,
@@ -62,11 +62,10 @@ fn cols_of(shown: &[&Value], width: f32, sectioned: bool) -> Cols {
     Cols { fps: on[0], pid: on[1], rejoin: on[2], ram: on[3], group: if on[4] { group } else { 0. }, robux: on[5], name, button, gap, sectioned }
 }
 
-/// The accounts as a list. With groups among them, a part a group (the owner, 2026-11-18: "chia ngăn"): its head
-/// (folds it; its name, how many; select all of it), then its own lines; the accounts in no group last. `shown` comes
-/// ordered by group (accounts::shown_accounts). Every part has the same columns.
-/// `from`: the list `shown` was taken from (accounts::shown_accounts), what the columns and the groups' parts are
-/// kept against.
+/// The accounts as a list. With groups among them, a part a group: its head (folds it; its name, how many; select all
+/// of it), then its own lines; the accounts in no group last. `shown` comes ordered by group
+/// (accounts::shown_accounts). Every part has the same columns. `from`: the list `shown` was taken from
+/// (accounts::shown_accounts), what the columns and the groups' parts are kept against.
 pub fn rows(root: &Root, from: &std::rc::Rc<Vec<Value>>, shown: &[&Value], width: f32, cx: &mut Context<Root>) -> Div {
     let laid = laid(from, shown, width);
     let cols = &laid.cols;
@@ -253,7 +252,7 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
         }))
         .on_mouse_down(MouseButton::Right, on_right(a, cx))
         .children(menu::place(root, a, false, cx))
-        // Playing here: a green rail at its edge (4 px, as DESIGN.md's status rails); dropped, a red one.
+        // Playing here: a green rail at its edge (4 px, as every status rail); dropped, a red one.
         .when(local && !stuck, |d| d.child(div().absolute().left_0().top(px(14.)).bottom(px(14.)).w(px(4.)).rounded_r(px(2.)).bg(c(OK))))
         .when(stuck, |d| d.child(div().absolute().left_0().top(px(14.)).bottom(px(14.)).w(px(4.)).rounded_r(px(2.)).bg(c(BAD))))
         // The tick: a small block, solid yellow once picked.
@@ -290,7 +289,7 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
                 .when(compact_group, |d| d.flex_col().gap(px(2.)))
                 .when(!compact_group, |d| d.items_baseline().gap(px(8.)))
                 // The name keeps its room and the @username gives way first: both shrinking, a long username cut the
-                // name to one letter ("C…" on the owner's real list, 2026-11-12).
+                // name to one letter ("C…" on a user's real list).
                 .child(div().flex_shrink_0().max_w(px(cols.name)).truncate().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).child(label(a)))
                 .when(!compact_group && !s(a, "username").is_empty(), |d| d.child(div().min_w_0().flex_shrink(1.).truncate().text_size(px(T_S)).text_color(c(MUTED)).child(format!("@{}", s(a, "username")))))
                 .when(compact_group, |d| d.child(div().flex().min_w_0().items_center().gap(px(5.))

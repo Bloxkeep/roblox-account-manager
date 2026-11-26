@@ -18,7 +18,8 @@ use std::{
 use base64::Engine;
 use serde_json::{Value, json};
 
-use super::App;
+use super::{App, close_desk::Asked};
+use crate::core::close_plan::{Cause, No, Then};
 use super::controller::{JsonKind, has, parse_guid, str_of};
 use super::settings::{open_file_dialog, save_file_dialog};
 use crate::core::base::{Cancel, Fail, Guid, Res, Stamp, new_guid};
@@ -29,7 +30,7 @@ use crate::core::macro_player::{self, IMacroDesk, MacroPlayer, MacroRun, RunRef}
 use crate::core::macro_recorder::{MacroRecorder, Post, macro_recording};
 use crate::core::roblox_input::RawInput;
 use crate::core::win_kit::{Picture, Rect};
-use crate::core::{input_turn, l, log, macro_ocr, macro_vision, multi_instance, roblox_processes, rt, ui, window_shot};
+use crate::core::{input_turn, l, log, macro_ocr, macro_vision, roblox_processes, rt, ui, window_shot};
 
 /// Ctrl+Alt+0 stops every macro and a recording; Ctrl+Alt+1…9 are ids 11…19; F8 (alone) ends a recording.
 pub const HOTKEY_STOP_MACROS: i32 = 10;
@@ -272,7 +273,7 @@ impl App {
             let (pid, launch) = running.get(&account_id)?;
             (*pid, launch.fps_limit)
         };
-        if self.rejoin.closing_for_rejoin.borrow().contains(&pid) {
+        if self.close_desk.own_close(pid) {
             return None;
         }
         let in_game = self.controller.logs.borrow().state_of(pid).is_none_or(|s| s.status == "ingame");
@@ -288,28 +289,40 @@ impl App {
             log::note(&format!("{tag}: refused, {}.", if has { "the window wasn't opened into a game" } else { "no window" }));
             return Some(l::t("Bloxkeep didn't open this window into a game, so it can't rejoin it."));
         };
-        if self.rejoin.closing_for_rejoin.borrow().contains(&pid) {
+        if self.close_desk.own_close(pid) {
             log::note(&format!("{tag}: window {pid} is already closing for a rejoin."));
             return None;
         }
-        match self.find_account(account_id) {
-            Some(account) if account.cookie_valid != Some(false) && account.banned != Some(true) => {}
-            _ => {
+        // Opened again only where it can be: as a restart (close_plan.rs A4).
+        let target = self.restart_target(pid, &launch);
+        let asked = self.ask_close_with(Some(account_id), pid, Cause::Macro, Then::Reopen(target), false, || {
+            log::note(&format!("{tag}: closing window {pid} to open it again into its server."));
+        });
+        match asked {
+            Asked::Closing => None,
+            Asked::Refused(No::AccountGone | No::SignedOut | No::Banned) => {
                 log::note(&format!("{tag}: refused, the account is gone, signed out or banned."));
-                return Some(l::t("This account can't be opened again now."));
+                Some(l::t("This account can't be opened again now."))
+            }
+            Asked::Refused(No::MultiNotReady) => {
+                let count = self.controller.running.borrow().len();
+                log::note(&format!("{tag}: refused, Multi-Roblox is off with {count} windows open."));
+                Some(l::t("Turn on Multi-Roblox to rejoin while other windows are open."))
+            }
+            // Closing already for the person or an update: nothing more to do.
+            Asked::Refused(no @ (No::AlreadyClosing(_) | No::UpdateReopen)) => {
+                log::note(&format!("{tag}: window {pid} not closed, {}.", no.words()));
+                None
+            }
+            Asked::Refused(no) => {
+                log::note(&format!("{tag}: refused, {}.", no.words()));
+                Some(l::t("This account can't be opened again now."))
+            }
+            Asked::Waiting(hold) => {
+                log::note(&format!("{tag}: refused, {}.", hold.words()));
+                Some(l::t("This account can't be opened again now."))
             }
         }
-        let count = self.controller.running.borrow().len();
-        if !multi_instance::armed() && count > 1 {
-            log::note(&format!("{tag}: refused, Multi-Roblox is off with {count} windows open."));
-            return Some(l::t("Turn on Multi-Roblox to rejoin while other windows are open."));
-        }
-        log::note(&format!("{tag}: closing window {pid} to open it again into its server."));
-        let target = self.restart_target(pid, &launch);
-        self.presets.restarts.borrow_mut().insert(account_id, (target, Stamp::utc_now()));
-        self.rejoin.closing_for_rejoin.borrow_mut().insert(pid); // Bloxkeep's own close: neither a drop nor closed by Roblox
-        roblox_processes::close(pid, self.in_game_now(pid));
-        None
     }
 
     /// Runs changed: the page hears it at most every 400 ms (a run's step moves many times a second).

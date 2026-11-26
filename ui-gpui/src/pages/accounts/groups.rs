@@ -1,7 +1,7 @@
 //! Accounts' groups. The Group tool, on the toolbar and on the bar of the selected accounts, opens one box: which
 //! group the page shows, and the group the selected accounts go in (one there is, a new one named there, or none).
 //! A group lives on its accounts: it is made by naming it for the ones selected, and is gone with its last account.
-//! (The owner, 2026-11-18: the group's box stood in ⋮ › Edit… only, "quá khó để biết".)
+//! (The group's box stood in ⋮ › Edit… only.)
 use super::*;
 
 /// The tool on the toolbar, and the one on the selected accounts' bar (each its own box: `Root::acc_drop`).

@@ -383,7 +383,7 @@ impl Tray {
                 t.act(if switchable {
                     json!({ "what": "multi", "on": on })
                 } else if !on && open {
-                    // On asks first: Bloxkeep opens with Multi-Roblox's question (owner 2026-11-19: it only opened).
+                    // On asks first: Bloxkeep opens with Multi-Roblox's question (it only opened).
                     json!({ "what": "multiAsk" })
                 } else {
                     json!({ "what": "open" })

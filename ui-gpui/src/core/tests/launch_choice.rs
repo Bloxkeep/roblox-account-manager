@@ -218,8 +218,8 @@ async fn body(c: &mut Checks, local: &str) {
         (),
     );
 
-    // Roblox releasing a build while windows are open (the owner's question, 2026-11-14): a launch with Roblox open asks
-    // for the live build again unless it was just asked; with none open the 30-minute check is enough.
+    // Roblox releasing a build while windows are open: a launch with Roblox open asks for the live build again unless it
+    // was just asked; with none open the 30-minute check is enough.
     {
         use crate::core::app::roblox_updates::{ask_live_again, not_rolled_out};
         let at = crate::core::base::Stamp::parse("2026-11-14T12:00:00Z").expect("a time");

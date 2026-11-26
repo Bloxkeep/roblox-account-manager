@@ -1,8 +1,8 @@
-// Privacy for one game (owner's concept, 2026-11-17): who can join the account and who sees it online while it plays
-// this game, picked on the game page beside Play. Set just before a launch from Bloxkeep to that game, each account's
-// own settings written down first (prefs "gamePrivacyOn"), and put back once the account has left the game, unless the
-// person changed them on Roblox meanwhile (their change stays). Left over after Bloxkeep or the PC was closed: put back
-// at the next start, once the vault is open. Uses roblox.rs's visibility/set_visibility with each account's sign-in
+// Privacy for one game (a user's concept): who can join the account and who sees it online while it plays this game,
+// picked on the game page beside Play. Set just before a launch from Bloxkeep to that game, each account's own settings
+// written down first (prefs "gamePrivacyOn"), and put back once the account has left the game, unless the person
+// changed them on Roblox meanwhile (their change stays). Left over after Bloxkeep or the PC was closed: put back at the
+// next start, once the vault is open. Uses roblox.rs's visibility/set_visibility with each account's sign-in
 // ("robloxSignIn"), as the Visibility box does.
 use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};

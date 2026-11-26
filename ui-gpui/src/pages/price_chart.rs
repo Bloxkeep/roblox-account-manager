@@ -1,5 +1,5 @@
 // A resold thing's price history on its Marketplace page (pages/profile.rs item_page), laid out as Rolimons' item
-// page has it (the reference the owner's no-self-design rule asks for, looked at 2026-11-21): the figures in tiles
+// page has it (the reference looked at first): the figures in tiles
 // over the chart (RAP, the last day's price, the change over the span shown, how many sold in it), the span as a row
 // of short choices (1M 3M 6M 1Y All), the day's average price as a line with the number sold as bars under it, and
 // the day under the mouse named with its price and sales. Roblox's own data (roblox::resale), no sign-in.
@@ -222,7 +222,7 @@ pub fn view(root: &Root, data: &Resale, width: f32, cx: &mut Context<Root>) -> A
             }
         }));
     // The chart's box is solid: over a theme's picture (Sunset's sun and hills) the line and bars were hard to read
-    // through a see-through ground (the owner, 2026-11-21).
+    // through a see-through ground.
     let panel = div()
         .w_full()
         .p(px(14.))

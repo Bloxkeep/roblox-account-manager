@@ -1,5 +1,5 @@
 // The interface's languages and how each writes numbers, times and dates. English and Vietnamese came first; Spanish,
-// Portuguese (Brazil), Indonesian, French, German and Russian were added on 2026-11-24 (the owner), then Japanese,
+// Portuguese (Brazil), Indonesian, French, German and Russian were added, then Japanese,
 // Korean, Turkish, Polish, Thai and Lao the same day, Filipino and Malay after them. Their words are in
 // assets/lang/<code>.json; the names of days and months and the way times are written follow Roblox's own
 // (RobloxPlayer's content/configs/DateTimeLocaleConfigs: es-mx, pt-br, fr-fr, de-de, ru-ru, ja-jp, ko-kr); Roblox has

@@ -31,8 +31,7 @@ pub(super) fn path(kind: Kind, user: i64) -> Option<String> {
     crate::prefs::get(&kind.key(user)).and_then(|v| v.as_str().map(str::to_string))
 }
 
-/// The profile's songs, a playlist (the owner, 2026-11-25: "lỡ người ta có hẳn 1 playlist thì sao"), and which one is
-/// up. Kept as one path (one song, as before) or a list of them.
+/// The profile's songs, a playlist, and which one is up. Kept as one path (one song, as before) or a list of them.
 pub(super) fn songs(user: i64) -> (Vec<String>, usize) {
     #[cfg(feature = "shot")]
     if let Ok(paths) = std::env::var("BLOXKEEP_SHOT_SONG") {
@@ -677,8 +676,8 @@ fn player_badge(m: &crate::media::Playing, size: f32) -> Div {
     div().absolute().right(px(4.)).bottom(px(4.)).size(px(size)).rounded_full().bg(ca(SHADE, 0.62)).flex().items_center().justify_center().child(icon(m.player.icon(), (size * 0.6).round(), c(m.player.colour())))
 }
 
-/// The card's ground and edge with a song on it, Spotify's or a chosen file's: its picture's own colour (the owner,
-/// 2026-11-18: "màu card phải vibe theo nhạc"); the plain `ground` while the song has no picture.
+/// The card's ground and edge with a song on it, Spotify's or a chosen file's: its picture's own colour; the plain
+/// `ground` while the song has no picture.
 fn song_tones(pic: Option<&str>, ground: u32, cx: &mut Context<Root>) -> (Hsla, Hsla) {
     match pic.and_then(|p| images::tone(p, cx)) {
         // (The picture's hue kept, dark and still coloured: mixed into the charcoal an orange cover went brown.)
@@ -715,11 +714,11 @@ fn spotify_cover(m: &crate::media::Playing, size: f32, cx: &mut Context<Root>) -
     Some(fade_in(img(src).size_full().rounded(px(R_L)).object_fit(ObjectFit::Cover), &key).into_any_element())
 }
 
-/// The profile's song under the header: the card of 21st.dev's MusicPlayerCard (by Dhileep Kumar GM), which the
-/// owner picked on 2026-11-17 ("ăn cắp cái này của họ luôn đi"): a compact card, the cover and the name on top, the
-/// two times over a thin bar, a row of plain controls under it. Ours has one song, so Play alone stands where their
-/// three do, the loudness beside it, and ⋮ where their last icon is. In the app's charcoal, not their black.
-/// art: the picture shown when the song carries none (the profile's banner, else the account's face).
+/// The profile's song under the header: the card of 21st.dev's MusicPlayerCard (by Dhileep Kumar GM), which was
+/// picked for it: a compact card, the cover and the name on top, the two
+/// times over a thin bar, a row of plain controls under it. Ours has one song, so Play alone stands where their
+/// three do, the loudness beside it, and ⋮ where their last icon is. In the app's charcoal, not their black. art:
+/// the picture shown when the song carries none (the profile's banner, else the account's face).
 pub(super) fn card(root: &Root, user: i64, w: f32, ground: u32, art: Option<String>, cx: &mut Context<Root>) -> Div {
     const PIC: f32 = 64.;
     let shell = div().w(px(w)).flex_none().max_w_full().rounded(px(24.)).bg(c(ground)).border_1().border_color(c(LINE)).p(px(18.)).flex().flex_col();
@@ -785,9 +784,9 @@ pub(super) fn card(root: &Root, user: i64, w: f32, ground: u32, art: Option<Stri
             .child(more(root, user, 34., false, cx)))
 }
 
-/// The profile's song as a row across the page under the header, where the page is too narrow for the card in the
-/// header (the owner's pick of the two, 2026-11-17: "head"). Laid as the Roblox profile add-on the owner showed has it: the cover at the left, a small "PROFILE SONG" tag over the name,
-/// and at the right the time played, a short bar, the length, the loudness, ⋮ and the big round Play.
+/// The profile's song as a row across the page under the header, where the page is too narrow for the card in the header (of the two: "head"). Laid as the Roblox profile add-on the
+/// owner showed has it: the cover at the left, a small "PROFILE SONG" tag over the name, and at the right the time played, a short bar, the length, the loudness, ⋮ and the big round
+/// Play.
 pub(super) fn row(root: &Root, user: i64, inner: f32, art: Option<String>, cx: &mut Context<Root>) -> Div {
     const PIC: f32 = 64.;
     let tag = div().flex_none().h(px(20.)).px(px(8.)).rounded_full().bg(ca(FACE, 0.14)).flex().items_center().gap(px(5.))

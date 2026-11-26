@@ -242,8 +242,8 @@ pub fn running(window: &Window) -> bool {
 ///
 /// Its frames are on the process's shared clock (`on_frame_step`), the one the page's own motion waits for too (the
 /// playing bars on Home, 60 a second on theirs), so both are drawn in the same frames. On a clock of its own the two
-/// drifted apart and the window was drawn about 60 times a second, each time the whole page (the owner's error.log,
-/// 2026-11-20: 66 a second).
+/// drifted apart and the window was drawn about 60 times a second, each time the whole page (a real error.log: 66 a
+/// second).
 pub fn ticker(window: &mut Window, cx: &mut Context<crate::shell::Root>) -> Task<()> {
     // (Each step asks for the next; the chain ends when the task is let go, or with the window.)
     // (Not moving (the window behind, hidden, in the tray): looked at again 4 times a second, off the shared clock, so

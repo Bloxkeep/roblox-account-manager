@@ -767,7 +767,7 @@ fn auto_part(r: &Root, this: &WeakEntity<Root>) -> Div {
         let _ = me.update(cx, |r, cx| choose_auto(r, cx, v, every));
     });
     let mut everys = Segmented::new("ram-every", every.to_string()).item("0", off);
-    for n in [15, 30] {
+    for n in [5, 10, 15, 30] {
         everys = everys.item(n.to_string(), r.i18n.tv("ram.min", &[("n", &n.to_string())]));
     }
     everys = everys.item("60", r.tr("ram.hour"));
@@ -776,8 +776,9 @@ fn auto_part(r: &Root, this: &WeakEntity<Root>) -> Div {
         let v = v.parse::<i64>().unwrap_or(0);
         let _ = me.update(cx, |r, cx| choose_auto(r, cx, at, v));
     });
+    // (A row whose choices don't fit beside its label, in a long language or the timer's six, puts them under it.)
     let line = |label: String, ctl: Segmented| {
-        div().flex().items_center().justify_between().gap(px(12.)).child(div().flex_none().whitespace_nowrap().text_size(px(T_M)).text_color(c(TEXT_2)).child(label)).child(ctl)
+        div().flex().flex_wrap().items_center().justify_between().gap_x(px(12.)).gap_y(px(8.)).child(div().flex_none().whitespace_nowrap().text_size(px(T_M)).text_color(c(TEXT_2)).child(label)).child(ctl)
     };
     // The recommended setting in one press (Mem Reduct's own default: above 90 %, its default areas).
     let best = at == BEST_AT && every == 0 && areas == DEFAULT_AREAS;

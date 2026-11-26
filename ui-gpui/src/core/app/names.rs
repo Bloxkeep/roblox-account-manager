@@ -1,9 +1,9 @@
 //! AppController.Names.cs: Settings › Appearance › Hide account names, for screenshots and streams: wherever Bloxkeep writes an
 //! account's name (page, toasts, notifications, progress, mini window, monitor tab, Roblox window titles) it writes its first
-//! letter and "…", as Discord's streamer mode shortens names, the pictures kept (the owner's call, 2026-11-07). The page gets
-//! the real names and shortens them itself, so search finds them; copying copies the real one. Discord has its own switch
-//! (Settings › Discord), since a channel may be shared while the screen isn't; there an account stays "Account N" (its place
-//! in the list), to tell them apart in a message.
+//! letter and "…", as Discord's streamer mode shortens names, the pictures kept. The page gets the real names and shortens them
+//! itself, so search finds them; copying copies the real one. Discord has its own switch (Settings › Discord), since a channel
+//! may be shared while the screen isn't; there an account stays "Account N" (its place in the list), to tell them apart in a
+//! message.
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;

@@ -758,7 +758,7 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
     // BLOXKEEP_SHOT_MODEL=blocks: a plain model of boxes (mesh::blocks), for a hidden shot without Roblox.
     let blocks = cfg!(feature = "shot") && std::env::var("BLOXKEEP_SHOT_MODEL").is_ok_and(|v| v == "blocks");
     // (Each account's model is kept for the run: coming back to the page, or to the account, shows it at once; Roblox
-    // is asked again only after a change of look. "loading khá lâu", the owner, 2026-11-15.)
+    // is asked again only after a change of look.)
     let kept = MODELS.with(|m| m.borrow().get(&user).cloned());
     // (After a change: the model before it, not to be taken for the new one.)
     let after = Some(r.avatar.solid_file.clone()).filter(|f| r.avatar.swapping && !f.is_empty());
@@ -878,10 +878,10 @@ fn on_view(r: &Root) -> bool {
 /// none is drawn while Bloxkeep's window isn't the one in use (Roblox played beside it keeps the processor).
 ///
 /// It ends when the box isn't on screen any more (`want` starts it again when it is): it went on drawing after the
-/// page was left, 30 to 60 pictures a second of an avatar nobody saw, on every core, for the rest of the run (the
-/// owner's Bloxkeep at two cores while on Home, 2026-11-20; measured: 123 % of a core with Settings shown). Nor is
-/// one drawn while the window is hidden or minimized. With nothing pressed (the idle or the slow turn) it draws 30
-/// a second, as the animated themes do; walking and jumping keep 60.
+/// page was left, 30 to 60 pictures a second of an avatar nobody saw, on every core, for the rest of the run (a
+/// user's Bloxkeep at two cores while on Home,; measured: 123 % of a core with Settings shown). Nor is one drawn
+/// while the window is hidden or minimized. With nothing pressed (the idle or the slow turn) it draws 30 a second,
+/// as the animated themes do; walking and jumping keep 60.
 fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
     if r.avatar.spinning || !lively(&r.avatar) {
         return;
@@ -891,8 +891,8 @@ fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
     let (run, user) = (r.avatar.spin_run, r.avatar.of);
     cx.spawn(async move |this, cx| {
         let mut previous = std::time::Instant::now();
-        // (How long until the next step: 16 ms (60 a second, on Windows' fine tick) while it moves, walking or in the
-        // idle (33 ms there looked stepped: the owner, 2026-11-21, "chuyển hết lên 60fps"); 250 ms while nothing may move.)
+        // (How long until the next step: 16 ms (60 a second, on Windows' fine tick) while it moves, walking or in the idle
+        // (33 ms there looked stepped); 250 ms while nothing may move.)
         let mut wait = 16;
         loop {
             if wait < 100 {
@@ -1244,8 +1244,8 @@ fn draw(r: &mut Root, cx: &mut Context<Root>) {
             r.avatar.drawing = false;
             // The model was replaced while this picture of the one before it was drawn (after a change: R6 to R15):
             // the picture is dropped and the new model drawn. Returning here with `drawing` still set let no picture
-            // be drawn ever again, and the box stood frozen on the old body though the new model had come (the owner,
-            // 2026-11-18: "R6 qua R15 vẫn freeze"; since 1.1.2-alpha.9, when a change stopped emptying the box).
+            // be drawn ever again, and the box stood frozen on the old body though the new model had come (since
+            // 1.1.2-alpha.9, when a change stopped emptying the box).
             if r.avatar.solid_ask != ask {
                 r.avatar.stale = false;
                 draw(r, cx);
@@ -1748,7 +1748,7 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
         .on_mouse_move(cx.listener(|r, e: &MouseMoveEvent, _, cx| {
             // Where the mouse is over the box (-1 to 1 each way, right and up): it looks there. Only on the box: a
             // mouse move is heard over the whole window, and outside it the avatar went on looking at the box's edge
-            // nearest the mouse (the owner, 2026-11-25: "ở ngoài vùng nó vẫn cứ cố nhìn theo").
+            // nearest the mouse.
             if STAGE_AT.get().is_some_and(|b| !b.contains(&e.position)) {
                 if r.avatar.over {
                     r.avatar.over = false;
@@ -1937,8 +1937,8 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
                     .flex()
                     .items_center()
                     .gap(px(10.))
-                    // The way back said in words, first (an unnamed window icon at the end was missed, owner 2026-11-15);
-                    // Esc on the stage does the same.
+                    // The way back said in words, first (an unnamed window icon at the end was missed); Esc on the stage
+                    // does the same.
                     .child(Button::new("av3-small", root.tr("av.back")).icon("chevronLeft").small().quiet().on_click(cx.listener(|r, _, _, cx| set_big(r, false, cx))))
                     .child(div().flex_1().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(root.tr("av3.title"))),
             )
@@ -1976,7 +1976,7 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
                     .child(Button::new("av3-save-b", root.tr("av3.save")).icon("download").disabled(av.saving).on_click(cx.listener(|r, _, _, cx| save_picture(r, cx)))),
             )
             // What is worn kept as an outfit on Roblox, here too (it was only under Saved outfits, out of sight in this
-            // view; owner 2026-11-15). Only signed in as this account.
+            // view). Only signed in as this account.
             .when(friends::signed(root).is_some_and(|(_, u, c)| !c.is_empty() && u == av.of), |d| {
                 d.child(
                     Button::new("av3-outfit", root.tr(if av.saving_look { "av.savingLook" } else { "av.saveLook" }))
@@ -2947,7 +2947,7 @@ fn close_fit(r: &mut Root, cx: &mut Context<Root>) {
 
 /// Finds which part of the model shown each thing is, by the faces of the thing's own model: asked once per thing
 /// (kept for the run, roblox::item_faces), all at once. What it finds is in error.log, so whether the model moves as
-/// the sliders are dragged on the owner's PC shows there.
+/// the sliders are dragged on a real PC shows there.
 fn find_parts(r: &mut Root, cx: &mut Context<Root>) {
     let Some(f) = r.avatar.fit.as_mut() else { return };
     let Some(base) = f.base.clone() else { return };

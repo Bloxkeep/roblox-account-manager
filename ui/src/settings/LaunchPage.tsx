@@ -38,8 +38,8 @@ export function LaunchPage({ title }: { title: string }) {
     ['direct', t('launch.direct'), !!ins.direct],
     ...(ins.store || st.launchVia === 'store' ? [['store', t('launch.storeName'), !!ins.store] as [string, string, boolean]] : []),
     ...(st.customLauncher ? [['custom', t('launch.custom', { name: st.customLauncher }), true] as [string, string, boolean]] : []),
-    // Roblox VNG, always last (the owner's rule, 2026-10-28: never first, only used when picked); dimmed while not on this PC
-    // (hidden, it looked as if Bloxkeep took the official Roblox for VNG).
+    // Roblox VNG, always last (never first, only used when picked); dimmed while not on this PC (hidden, it looked as if
+    // Bloxkeep took the official Roblox for VNG).
     ['vng', 'Roblox VNG', !!ins.vng],
   ];
   const saved = st.launchVia || 'auto';

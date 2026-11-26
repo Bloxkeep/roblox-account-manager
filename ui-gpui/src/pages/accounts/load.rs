@@ -1,7 +1,7 @@
 // The Game monitor's load: how hard the Roblox windows work this PC, at the right of the monitor's head (a state
 // word, then CPU, RAM and GPU), and a click on it opens what's behind those figures: a ring for each, the whole PC's
-// CPU and RAM, Windows' memory handed out, and about how many windows the PC runs (capacity.rs). The owner,
-// 2026-11-17: "làm cái như này trong game monitor này". Figures from the app's metrics, every few seconds.
+// CPU and RAM, Windows' memory handed out, and about how many windows the PC runs (capacity.rs).
+// Figures from the app's metrics, every few seconds.
 use gpui_kit::{prelude::*, *};
 use serde_json::Value;
 

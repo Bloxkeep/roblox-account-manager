@@ -41,8 +41,8 @@ pub enum Out<'a> {
     /// Its time (100 ns from the start), size and pixels (BGRA, rows packed); false: nobody takes them any more.
     Pixels(&'a mut dyn FnMut(i64, u32, u32, Vec<u8>) -> bool),
     /// The shared texture holding the latest frame (Window::paint_shared_texture: its handle and size), given after
-    /// each frame copied in; false: nobody draws it any more. The frame never leaves the GPU: measured on the owner's
-    /// wallpaper at 1920×1200 (2026-11-18), ~0.6 % of one core against ~9.4 % through memory.
+    /// each frame copied in; false: nobody draws it any more. The frame never leaves the GPU: measured on a
+    /// wallpaper at 1920×1200, ~0.6 % of one core against ~9.4 % through memory.
     Shared(&'a mut dyn FnMut(isize, u32, u32) -> bool),
 }
 
@@ -287,9 +287,9 @@ fn inside(hwnd: isize, w: u32, h: u32) -> (u32, u32, u32, u32) {
 
 /// A decoded video's picture on the GPU (video.rs): one texture GPUI draws straight from (Window::paint_shared_texture),
 /// each frame written over the last. A new picture for every frame (15–30 a second) went through GPUI's atlas: a texture
-/// made and let go each time, and the RAM of a playing clip kept climbing (the owner, 2026-11-19: "khi chạy video roblox
-/// ram tăng lên nhiều"). Made on the device GPUI draws with: one of its own cost some 47 MB and 21 NVIDIA driver
-/// threads, kept for good after the first clip (measured with --clip-check, 2026-11-19). Written on the window thread.
+/// made and let go each time, and the RAM of a playing clip kept climbing. Made on the device GPUI draws with: one of
+/// its own cost some 47 MB and 21 NVIDIA driver threads, kept for good after the first clip (measured with --clip-check,
+/// 2026-11-19). Written on the window thread.
 pub struct SharedFrame {
     out: SharedOut,
     /// The device it was made on: GPUI makes a new one after a lost device, and the texture is made again then.

@@ -11,7 +11,7 @@
 (() => {
   const out = [];
   const W = innerWidth, H = innerHeight;
-  // Off by more than this reads as crooked: the owner saw a pill 1 px high next to a title at 150 % (1.5 screen pixels).
+  // Off by more than this reads as crooked: a user saw a pill 1 px high next to a title at 150 % (1.5 screen pixels).
   const TOL = 0.75;
   const name = el => {
     if (!el || el.nodeType !== 1) return '?';

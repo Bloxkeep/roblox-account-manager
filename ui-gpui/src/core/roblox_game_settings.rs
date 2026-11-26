@@ -128,7 +128,7 @@ pub fn fps_allowed(fps: i32) -> bool {
 }
 
 /// No limit: Roblox's own menu stops at 240, and a FramerateCap above that lifts the cap. 9999 is what Voidstrap's FPS
-/// unlocker writes (its Bootstrapper.cs, read 2026-11-15); the owner asked for it as Lunar Client has it.
+/// unlocker writes (its Bootstrapper.cs, read 2026-11-15); a user asked for it as Lunar Client has it.
 pub const FPS_UNLIMITED: i32 = 9999;
 
 /// What a client opens with; None: nothing of Bloxkeep's. An account's own limit (Account.fps_cap) goes over

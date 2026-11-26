@@ -3,7 +3,6 @@
 //! (topmost for an instant, in case Windows won't hand back the keyboard), the Roblox window goes back to its place,
 //! and only then is it visible again. The cursor doesn't move; real input stops it; impossible while locked.
 use std::{
-    collections::HashMap,
     ffi::c_void,
     sync::atomic::{AtomicU32, Ordering},
     time::Duration,
@@ -11,10 +10,6 @@ use std::{
 
 use windows_sys::Win32::{
     Foundation::HWND,
-    Graphics::{
-        Dwm::DwmSetWindowAttribute,
-        Gdi::{RDW_ALLCHILDREN, RDW_ERASE, RDW_FRAME, RDW_INVALIDATE, RedrawWindow},
-    },
     System::{
         RemoteDesktop::{WTSFreeMemory, WTSQuerySessionInformationW},
         SystemInformation::GetTickCount,
@@ -24,13 +19,18 @@ use windows_sys::Win32::{
         Input::KeyboardAndMouse::{GetLastInputInfo, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, LASTINPUTINFO, MAPVK_VK_TO_VSC, MapVirtualKeyW, SendInput},
         Shell::SHQueryUserNotificationState,
         WindowsAndMessaging::{
-            BringWindowToTop, GetClassNameW, GetForegroundWindow, GetLayeredWindowAttributes, GetShellWindow, GetWindow, GetWindowLongW, GetWindowThreadProcessId,
-            IsHungAppWindow, IsIconic, IsWindow, IsWindowVisible, SetForegroundWindow, SetLayeredWindowAttributes, SetWindowLongW, SetWindowPos, ShowWindowAsync,
+            BringWindowToTop, GetClassNameW, GetForegroundWindow, GetShellWindow, GetWindowLongW, GetWindowThreadProcessId, IsHungAppWindow, IsIconic, IsWindow,
+            IsWindowVisible, SetForegroundWindow, SetWindowPos,
         },
     },
 };
 
-use super::{log, win_kit::hwnd, window_report};
+use super::{
+    log,
+    win_kit::hwnd,
+    window_loan::{self, How},
+    window_report,
+};
 
 /// Well inside Roblox's 20 minutes, so a person at the PC most of the time still leaves an idle minute for it.
 pub const INTERVAL: Duration = Duration::from_secs(12 * 60);
@@ -54,26 +54,14 @@ pub fn input_size() -> i32 {
     std::mem::size_of::<INPUT>() as i32
 }
 
-const SW_RESTORE: i32 = 9;
-const SW_SHOWMINNOACTIVE: i32 = 7;
-const SW_SHOWNOACTIVATE: i32 = 4;
-const SW_HIDE: i32 = 0;
 const GWL_EXSTYLE: i32 = -20;
 const WS_EX_TOPMOST: i32 = 0x8;
-const WS_EX_TRANSPARENT: i32 = 0x20;
-const WS_EX_LAYERED: i32 = 0x80000;
-const LWA_ALPHA: u32 = 0x2;
-const GW_HWNDPREV: u32 = 3;
 const SWP_NOSIZE: u32 = 0x1;
 const SWP_NOMOVE: u32 = 0x2;
 const SWP_NOACTIVATE: u32 = 0x10;
-const SWP_NOOWNERZORDER: u32 = 0x200;
-// Not async: a window put back under yours while yours is still always-on-top would become always-on-top itself.
-// So a window that has stopped answering isn't moved (the move waits for its answer).
 const RESTACK: u32 = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE;
 const HWND_TOPMOST: isize = -1;
 const HWND_NOTOPMOST: isize = -2;
-const DWMWA_TRANSITIONS_FORCEDISABLED: u32 = 3;
 
 const WTS_CURRENT_SESSION: u32 = u32::MAX; // -1
 const WTS_SESSION_INFO_EX: i32 = 25;
@@ -112,41 +100,13 @@ fn foreground() -> isize {
     // SAFETY: plain call.
     unsafe { GetForegroundWindow() as isize }
 }
-// Async: ShowWindow waits for the window to answer, and a hung Roblox would hold Bloxkeep's timer (rejoin, saves).
-fn show_async(h: isize, command: i32) -> bool {
-    // SAFETY: plain call; posted to the window's thread.
-    unsafe { ShowWindowAsync(w(h), command) != 0 }
-}
 fn get_ex_style(h: isize) -> i32 {
     // SAFETY: plain query of a handle.
     unsafe { GetWindowLongW(w(h), GWL_EXSTYLE) }
 }
-fn set_ex_style(h: isize, value: i32) {
-    // SAFETY: plain call; only the extended style is written.
-    unsafe {
-        SetWindowLongW(w(h), GWL_EXSTYLE, value);
-    }
-}
 fn set_window_pos(h: isize, after: isize, flags: u32) -> bool {
     // SAFETY: plain call; no size or place is given (RESTACK keeps them).
     unsafe { SetWindowPos(w(h), w(after), 0, 0, 0, 0, flags) != 0 }
-}
-fn redraw(h: isize) {
-    // SAFETY: plain call over the whole window.
-    unsafe {
-        RedrawWindow(w(h), std::ptr::null(), std::ptr::null_mut(), RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_ALLCHILDREN);
-    }
-}
-fn layered_attributes(h: isize) -> Option<(u32, u8, u32)> {
-    let (mut key, mut alpha, mut flags) = (0u32, 0u8, 0u32);
-    // SAFETY: three out values on the stack.
-    if unsafe { GetLayeredWindowAttributes(w(h), &mut key, &mut alpha, &mut flags) } != 0 { Some((key, alpha, flags)) } else { None }
-}
-fn set_layered_attributes(h: isize, key: u32, alpha: u8, flags: u32) {
-    // SAFETY: plain call on a layered window.
-    unsafe {
-        SetLayeredWindowAttributes(w(h), key, alpha, flags);
-    }
 }
 
 /// As Windows judges it for its notifications (a game, a video, a presentation).
@@ -227,48 +187,27 @@ pub fn person_active() -> bool {
     last != OWN_INPUT.load(Ordering::SeqCst) && since_tick(last) < USER_IDLE_NEEDED
 }
 
-/// A window left as it is (in view): only its place in the stack is noted, to go back to.
-pub fn note(h: isize, place: (isize, i32)) -> Before {
-    Before { window: h, ex_style: get_ex_style(h), had_attributes: false, key: 0, alpha: 255, flags: 0, above: place.0, depth: place.1, minimized: false }
-}
-
-/// A Roblox window as it was before a nudge; `above` is the window it goes back under.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Before {
-    pub window: isize,
-    pub ex_style: i32,
-    pub had_attributes: bool,
-    pub key: u32,
-    pub alpha: u8,
-    pub flags: u32,
-    pub above: isize,
-    pub depth: i32,
-    pub minimized: bool,
-}
-
 /// Returns the windows reached; gives up on the rest as soon as someone touches the PC. `press`
 /// (tests only) stands in for the key press, so a test never types on the desktop. Blocking: run off the window's thread.
 pub fn nudge(windows: &[isize], keep_going: &dyn Fn() -> bool, press: Option<&dyn Fn(isize)>) -> Vec<isize> {
+    nudge_held(windows, &[], keep_going, press)
+}
+
+/// `nudge`, the windows in `longer` held in front longer before and after their key: ones whose key Roblox didn't take
+/// last time (a window kept to little memory can take a while to come back).
+pub fn nudge_held(windows: &[isize], longer: &[isize], keep_going: &dyn Fn() -> bool, press: Option<&dyn Fn(isize)>) -> Vec<isize> {
     let press: &dyn Fn(isize) = match press {
         Some(p) => p,
         None => &press_key,
     };
     let mut reached: Vec<isize> = Vec::new();
-    let previous = foreground();
     let mut baseline = last_input_tick();
     // Still our last round's input: the person's own is older.
     let person = if baseline == OWN_INPUT.load(Ordering::SeqCst) { PERSON_INPUT.load(Ordering::SeqCst) } else { baseline };
     let mut sent = false;
-    // Read before any of them moves.
-    let mut places: HashMap<isize, (isize, i32)> = HashMap::new();
-    for &h in windows {
-        if !places.contains_key(&h) && is_window(h) {
-            places.insert(h, place(h));
-        }
-    }
-    let mut hidden: Vec<Before> = Vec::new();
-    // Windows Bloxkeep hid, shown for the nudge.
-    let mut unseen: Vec<isize> = Vec::new();
+    // Every window's place in the stack read before any of them moves; each lent (left alone by the app's other
+    // window rules) until the round is given back.
+    let mut round = window_loan::borrow_round(windows, How::NUDGE);
     // Each window's outcome for error.log, by process id.
     let mut outcomes: Vec<String> = Vec::new();
     for &h in windows {
@@ -282,23 +221,27 @@ pub fn nudge(windows: &[isize], keep_going: &dyn Fn() -> bool, press: Option<&dy
             continue;
         }
         // Unseen and click-through first, so neither its coming to the front nor a click at that moment shows.
-        // A minimized window still gets kicked: restored for the nudge, then minimized again.
-        let minimized = is_iconic(h);
-        // A window Bloxkeep hid (roblox_processes::hide_windows) is shown for the nudge, still unseen, then hidden.
-        let unshown = !is_visible(h);
-        hidden.push(hide(h, places.get(&h).copied().unwrap_or((0, 0)), minimized));
-        if minimized {
-            show_async(h, SW_RESTORE);
-        } else if unshown {
-            show_async(h, SW_SHOWNOACTIVATE);
-        }
+        // A minimized window still gets kicked: restored for the nudge, then minimized again; a window Bloxkeep hid
+        // (roblox_processes::hide_windows) is shown for the nudge, still unseen, then hidden.
+        let Some(lent) = round.lend(h) else {
+            outcomes.push(format!("{} skipped (gone, or already in this round)", pid_of(h)));
+            continue;
+        };
+        let (minimized, unshown) = (lent.minimised, lent.unshown);
         // try … finally: the window goes back to minimized or hidden whatever happened.
         (|| {
             if !focus(h) {
                 outcomes.push(format!("{} skipped (Windows refused to bring it to the front)", pid_of(h)));
                 return;
             }
-            std::thread::sleep(Duration::from_millis(if minimized { 400 } else { 150 })); // a restored Roblox window needs a moment to draw again
+            let long = longer.contains(&h);
+            // A restored Roblox window needs a moment to draw again.
+            std::thread::sleep(Duration::from_millis(match (long, minimized || unshown) {
+                (true, true) => 1500,
+                (true, false) => 500,
+                (false, true) => 400,
+                (false, false) => 150,
+            }));
             // The key goes to whichever window has the keyboard, and a person's keys would mix with it.
             if foreground() != h || last_input_tick() != baseline || !keep_going() {
                 let why = if foreground() != h {
@@ -313,19 +256,20 @@ pub fn nudge(windows: &[isize], keep_going: &dyn Fn() -> bool, press: Option<&dy
             }
             press(h);
             sent = true;
-            std::thread::sleep(Duration::from_millis(60));
+            // Roblox reads the key a little after it is sent (about 100 ms after, in its logs): a window minimized or
+            // hidden again before then drops it.
+            std::thread::sleep(Duration::from_millis(match (long, minimized || unshown) {
+                (true, _) => 1000,
+                (false, true) => 300,
+                (false, false) => 60,
+            }));
             // Our own key counts as input; anything newer than this is a person.
             baseline = last_input_tick();
             reached.push(h);
             outcomes.push(format!("{} done{}", pid_of(h), if minimized { " (minimized)" } else if unshown { " (hidden)" } else { "" }));
         })();
-        if minimized {
-            show_async(h, SW_SHOWMINNOACTIVE);
-        }
-        if unshown {
-            show_async(h, SW_HIDE);
-            unseen.push(h);
-        }
+        // Asked down again at once; the give-back below waits for it and sees it unseen until then.
+        round.put_away(h);
     }
     // finally:
     // Else the last input is the person's, and must stay theirs.
@@ -333,117 +277,14 @@ pub fn nudge(windows: &[isize], keep_going: &dyn Fn() -> bool, press: Option<&dy
         OWN_INPUT.store(baseline, Ordering::SeqCst);
         PERSON_INPUT.store(person, Ordering::SeqCst);
     }
-    // Nothing touched (turned off, a person back, no window answering): the window you're in is left alone.
-    if !hidden.is_empty() {
-        give_back(previous);
-    }
-    // Highest in the stack first, so one that goes under another finds it there; seen again only once in place
-    // (a minimized one once minimized again).
-    let mut by_depth: Vec<&Before> = hidden.iter().collect();
-    by_depth.sort_by_key(|b| b.depth); // OrderBy: stable
-    for before in by_depth {
-        put_back(before);
-    }
-    let mut i = 0;
-    while i < 10
-        && (hidden.iter().any(|b| b.minimized && is_window(b.window) && !is_iconic(b.window)) || unseen.iter().any(|&w| is_window(w) && is_visible(w)))
-    {
-        std::thread::sleep(Duration::from_millis(50));
-        i += 1;
-    }
-    for before in &hidden {
-        show(before);
-    }
+    // The keyboard back to the window that had it (none when no window was taken: the window you're in is left
+    // alone), then each window back in its place, the highest first, and state, and seen again only once there
+    // (window_loan.rs). Our own key is noted above first, so it isn't taken for a person's.
+    round.give_back();
     if !outcomes.is_empty() {
         log::note(&format!("Anti-AFK: nudged {} of {} Roblox window(s): {}.", reached.len(), windows.len(), outcomes.join("; ")));
     }
     reached
-}
-
-/// The nearest shown, not-topmost window above, and the depth. Hidden ones don't count: a program's hidden
-/// input-method window rides along with its front window, so going back under one would leave the window in front.
-pub fn place(h: isize) -> (isize, i32) {
-    let mut above: isize = 0;
-    let mut depth = 0;
-    // SAFETY: plain queries of handles.
-    let prev = |x: isize| unsafe { GetWindow(w(x), GW_HWNDPREV) as isize };
-    let mut win = prev(h);
-    while win != 0 && depth < 5000 {
-        if above == 0 && is_visible(win) && (get_ex_style(win) & WS_EX_TOPMOST) == 0 {
-            above = win;
-        }
-        win = prev(win);
-        depth += 1;
-    }
-    (above, depth)
-}
-
-/// A minimized one also loses Windows' restore animation, which the taskbar would show.
-pub fn hide(h: isize, place: (isize, i32), minimized: bool) -> Before {
-    hidden(h, place, minimized, true)
-}
-
-/// `hide` for a macro's turn: its clicks must land on it (alpha 1 still takes them), so it isn't made click-through.
-pub fn hide_for_input(h: isize, place: (isize, i32), minimized: bool) -> Before {
-    hidden(h, place, minimized, false)
-}
-
-fn hidden(h: isize, place: (isize, i32), minimized: bool, click_through: bool) -> Before {
-    let ex = get_ex_style(h);
-    let (mut key, mut alpha, mut flags) = (0u32, 255u8, 0u32);
-    let mut had = false;
-    if (ex & WS_EX_LAYERED) != 0 {
-        (key, alpha, flags, had) = match layered_attributes(h) {
-            Some((k, a, f)) => (k, a, f, true),
-            // Layered another way (UpdateLayeredWindow): nothing to read, and `hide`'s alpha would stay. Shown fully again.
-            None => (0, 255, LWA_ALPHA, true),
-        };
-    }
-    let before = Before { window: h, ex_style: ex, had_attributes: had, key, alpha, flags, above: place.0, depth: place.1, minimized };
-    set_ex_style(h, ex | WS_EX_LAYERED | if click_through { WS_EX_TRANSPARENT } else { 0 });
-    set_layered_attributes(h, 0, HIDDEN_ALPHA, LWA_ALPHA);
-    if minimized {
-        animations(h, false);
-    }
-    before
-}
-
-/// Only the bits `hide` set are touched. A hung window is left to `recover`: a change of
-/// style waits for the window's answer.
-pub fn show(b: &Before) {
-    if !is_window(b.window) || is_hung(b.window) {
-        if is_window(b.window) {
-            log::note(&format!(
-                "Unseen window: Roblox window {} stopped responding while shown unseen (nudge, picture or macro turn); left unseen until it answers.",
-                pid_of(b.window)
-            ));
-        }
-        return;
-    }
-    const OURS: i32 = WS_EX_LAYERED | WS_EX_TRANSPARENT;
-    set_ex_style(b.window, (get_ex_style(b.window) & !OURS) | (b.ex_style & OURS));
-    if b.had_attributes {
-        set_layered_attributes(b.window, b.key, b.alpha, b.flags);
-    }
-    if b.minimized {
-        animations(b.window, true);
-    }
-    redraw(b.window);
-}
-
-fn animations(h: isize, on: bool) {
-    let disabled: i32 = if on { 0 } else { 1 };
-    // SAFETY: one int, its size given.
-    unsafe {
-        DwmSetWindowAttribute(w(h), DWMWA_TRANSITIONS_FORCEDISABLED as _, &disabled as *const i32 as *const c_void, std::mem::size_of::<i32>() as u32);
-    }
-}
-
-pub fn put_back(b: &Before) {
-    if b.minimized || b.above == 0 || !is_window(b.window) || !is_window(b.above) || is_hung(b.window) {
-        return;
-    }
-    set_window_pos(b.window, b.above, RESTACK | SWP_NOOWNERZORDER);
 }
 
 /// Windows may refuse to hand the keyboard back (a click landed meanwhile): made topmost for an instant, your
@@ -469,7 +310,7 @@ pub fn give_back(previous: isize) {
 }
 
 /// Its icons or the wallpaper behind them: never lifted over the windows.
-fn is_desktop(h: isize) -> bool {
+pub(crate) fn is_desktop(h: isize) -> bool {
     // SAFETY: plain calls; the class name buffer holds 32 chars.
     unsafe {
         if w(h) == GetShellWindow() {
@@ -521,34 +362,9 @@ pub fn press_named(name: &str) {
     }
 }
 
-/// Undoes a nudge cut short by Bloxkeep closing; told apart by HIDDEN_ALPHA, which nothing else uses.
-/// A macro's turn leaves its unseen window layered but not click-through: undone the same way.
+/// Undoes a nudge, picture or macro turn cut short by Bloxkeep closing (window_loan::recover).
 pub fn recover(windows: &[isize]) {
-    const OURS: i32 = WS_EX_LAYERED | WS_EX_TRANSPARENT;
-    let mut recovered: Vec<u32> = Vec::new();
-    for &win in windows {
-        let ex = get_ex_style(win);
-        if (ex & WS_EX_LAYERED) == 0 {
-            continue;
-        }
-        let Some((_, alpha, flags)) = layered_attributes(win) else {
-            continue;
-        };
-        if (flags & LWA_ALPHA) == 0 || alpha != HIDDEN_ALPHA || is_hung(win) {
-            continue;
-        }
-        set_ex_style(win, ex & !OURS);
-        animations(win, true);
-        redraw(win);
-        recovered.push(pid_of(win));
-    }
-    if !recovered.is_empty() {
-        log::note(&format!(
-            "Unseen window: made {} unseen Roblox window(s) visible again after a cut-short nudge or turn (pids {}).",
-            recovered.len(),
-            recovered.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(", ")
-        ));
-    }
+    window_loan::recover(windows);
 }
 
 /// The window's process id, for error.log (0 when gone).

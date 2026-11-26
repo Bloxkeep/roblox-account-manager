@@ -278,10 +278,10 @@ pub async fn run(c: &mut Checks, dir: &str) {
 
     // Closed while its window is late: the window that comes later is closed as it is claimed.
     let closed_pids: Arc<Mutex<Vec<i32>>> = Arc::new(Mutex::new(Vec::new()));
-    let real_close = app.launching.close_client.borrow().clone();
+    let real_close = app.close_desk.close_hook.borrow().clone();
     {
         let closed = closed_pids.clone();
-        *app.launching.close_client.borrow_mut() = Some(Arc::new(move |pid, _| closed.lock().unwrap().push(pid)));
+        *app.close_desk.close_hook.borrow_mut() = Some(Rc::new(move |pid, _| closed.lock().unwrap().push(pid)));
     }
     let closed_now = || closed_pids.lock().unwrap().clone();
     app.launching.late.borrow_mut().push(launch(a, 150.0, FIRST, None));
@@ -309,11 +309,11 @@ pub async fn run(c: &mut Checks, dir: &str) {
         window(&app, a) == 0 && closed_now().contains(&1011),
         format!("{} closed {:?}", window(&app, a), closed_now()),
     );
-    *app.launching.close_client.borrow_mut() = real_close;
+    *app.close_desk.close_hook.borrow_mut() = real_close;
     app.controller.close_when_claimed.borrow_mut().clear();
     reset(&app);
 
-    // A rejoin whose client quit before its window: tried again later, a few times, as a drop in game is.
+    // A rejoin whose client quit before its window: tried again, as a drop in game is, for as long as auto-rejoin is on.
     app.update_account(a, |x| x.auto_rejoin = true);
     let rejoin = |tries: i32| {
         let mut l = PendingLaunch::new(a, HashSet::new(), Stamp::utc_now().plus_secs(-20.0), Some(GameTarget::new(1818, None, None, None)), true, None);
@@ -329,15 +329,32 @@ pub async fn run(c: &mut Checks, dir: &str) {
         (q.len(), q.first().map(|r| r.open_retries), q.first().map(|r| r.due))
     };
     c.check(
-        "a rejoin whose client quit before its window: tried again 30 s on",
-        len == 1 && tries == Some(1) && due.is_some_and(|d| d > Stamp::utc_now().plus_secs(20.0)),
+        "a rejoin whose client quit before its window: tried again 10 s on",
+        len == 1 && tries == Some(1) && due.is_some_and(|d| d > Stamp::utc_now().plus_secs(5.0) && d < Stamp::utc_now().plus_secs(15.0)),
         len,
     );
     app.controller.rejoin_queue.borrow_mut().clear();
     rejoin(3);
     claim(&[]);
-    let len = app.controller.rejoin_queue.borrow().len();
-    c.check("…its tries used up: not again (it is said instead)", len == 0 && pending_len() == 0, len);
+    let (len, tries, due) = {
+        let q = app.controller.rejoin_queue.borrow();
+        (q.len(), q.first().map(|r| r.open_retries), q.first().map(|r| r.due))
+    };
+    c.check(
+        "…after four tries it still goes again, two minutes on: there is no last try while auto-rejoin is on",
+        len == 1 && tries == Some(4) && due.is_some_and(|d| d > Stamp::utc_now().plus_secs(100.0)) && pending_len() == 0,
+        format!("{len} queued, tries {tries:?}"),
+    );
+    app.controller.rejoin_queue.borrow_mut().clear();
+    rejoin(9);
+    claim(&[]);
+    let due = app.controller.rejoin_queue.borrow().first().map(|r| r.due);
+    c.check(
+        "…and from then on every five minutes",
+        due.is_some_and(|d| d > Stamp::utc_now().plus_secs(280.0) && d < Stamp::utc_now().plus_secs(310.0)),
+        due.is_some(),
+    );
+    app.controller.rejoin_queue.borrow_mut().clear();
     app.update_account(a, |x| x.auto_rejoin = false);
     rejoin(0);
     claim(&[]);
@@ -347,7 +364,7 @@ pub async fn run(c: &mut Checks, dir: &str) {
     app.controller.rejoin_queue.borrow_mut().clear();
 
     // A launch by hand whose client quit before its window: said. "Opened 1 account." was the last word with no window
-    // to show for it (the owner's run, 2026-11-13).
+    // to show for it.
     let by_hand = |closing: bool| {
         let l = launch(a, 20.0, FIRST, None);
         app.controller.pending.borrow_mut().push(l.clone());

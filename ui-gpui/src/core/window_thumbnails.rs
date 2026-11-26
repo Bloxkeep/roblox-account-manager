@@ -131,8 +131,8 @@ pub struct WindowThumbnails {
 }
 
 /// A picture shows the part of its window that had the window's size when placed: a window that grew (Arrange, brought
-/// to the front) showed its top-left corner zoomed in until the next refresh (owner, 2026-11-02). So each window's
-/// size and minimising are looked at this often, and the pictures placed again at once.
+/// to the front) showed its top-left corner zoomed in until the next refresh. So each window's size and minimising are
+/// looked at this often, and the pictures placed again at once.
 const WATCH_EVERY: Duration = Duration::from_millis(50);
 
 impl WindowThumbnails {

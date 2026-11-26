@@ -206,7 +206,7 @@ impl MiniWindow {
         // Opening: shown (unseen until its page has drawn, WebToolWindow::show) once the page has what to draw, not
         // when the page says its size. A page kept from the last showing sits in a hidden window, which GPUI doesn't
         // draw, so it never said it: opened again within a minute of hiding, the window stayed away and the button
-        // stuck on "on" (the owner, 2026-11-21: "mini window hỏng rồi, ko on/off được").
+        // stuck on "on".
         if self.showing.get() && !self.tool.visible() {
             self.place_and_show();
         }

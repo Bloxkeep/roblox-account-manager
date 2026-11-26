@@ -89,8 +89,8 @@ impl App {
         if self.controller.disposed.get() {
             return;
         }
-        // Each one noted: "hotkeys stop once a Roblox window came to the front" (owner, 2026-11-07) needs to know
-        // whether the key reached Bloxkeep at all, and what it did.
+        // Each one noted: "hotkeys stop once a Roblox window came to the front" needs to know whether the key
+        // reached Bloxkeep at all, and what it did.
         let waiting = input_turn::holder().map(|who| format!(", waiting for {who}'s turn")).unwrap_or_default();
         log::note(&format!("Hotkey {} received{}.", hotkey_name(id), waiting));
         // Hide, minimise and next wait for a nudge, a picture or a macro's turn under way (input_turn.rs).

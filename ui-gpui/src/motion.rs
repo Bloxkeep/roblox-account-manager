@@ -21,7 +21,7 @@ use std::{
 use gpui_kit::*;
 
 /// 60 frames a second, the step of the shared clock the page's other motion and the animated theme use (30 looked
-/// stepped on a fast screen: the owner, 2026-11-21, "motion cứ 30fps kiểu gì ấy").
+/// stepped on a fast screen).
 const STEP: Duration = Duration::from_nanos(1_000_000_000 / 60);
 
 /// How a place's motion is drawn: in its bounds, at `t` seconds of the motion's clock, or standing still (`None`: the

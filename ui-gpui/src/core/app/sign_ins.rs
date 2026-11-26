@@ -2,7 +2,7 @@
 //! days and, months later, refuses the replaced one (devforum.roblox.com/t/4328913: announced 2026-02-03, enforced from
 //! 2026-05-01). The new cookie comes in the Set-Cookie of an answer to the old one (RobloxApi queues it) and is saved once
 //! Roblox says it's the same user. Bloxkeep never asks for one (auth's /v1/session/refresh): that ends the session it renews,
-//! signing out a browser or another app sharing the account (the owner's choice, 2026-10-22).
+//! signing out a browser or another app sharing the account.
 use std::rc::Rc;
 use std::sync::LazyLock;
 use std::time::Duration;
@@ -138,7 +138,7 @@ impl App {
                     break;
                 }
                 // Offline or rate-limited: asked again a little later. Not a notice to accept (403 "User is moderated"): it stays until
-                // the person accepts, so asking again only adds requests (2026-10-29, the owner's PC: 46 in five minutes).
+                // the person accepts, so asking again only adds requests (a real PC: 46 in five minutes).
                 Err(ex) if roblox_api::is_expected_error(&ex) && attempt < RENEWED_CHECK_TRIES && !ex.moderated() => {
                     rt::sleep(Duration::from_secs(10 * (attempt * attempt) as u64)).await;
                     if !self.is_vault(&vault) {

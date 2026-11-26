@@ -30,6 +30,7 @@ use crate::core::{
         rejoin::JoinCheck,
     },
     base::{Cancel, Guid, Stamp},
+    close_plan::{Cause, DropWhy, End, Then},
     game_target::GameTarget,
     models::{Account, GameBan, LaunchPreset, stamp_min},
     multi_instance,
@@ -222,11 +223,11 @@ impl R {
     }
 
     fn closing(&self) -> bool {
-        self.app.rejoin.closing_for_rejoin.borrow().contains(&self.me)
+        self.app.close_desk.closing_of(self.me).is_some()
     }
 
     fn clear_closing(&self) {
-        self.app.rejoin.closing_for_rejoin.borrow_mut().clear();
+        self.app.close_desk.clear();
     }
 
     fn queue_len(&self) -> usize {
@@ -276,7 +277,7 @@ impl R {
     }
 
     fn should_rejoin(&self, launch: &Rc<PendingLaunch>, state: Option<&ClientState>) -> bool {
-        self.app.should_rejoin(self.id, launch, state, false).is_some()
+        self.app.should_rejoin(self.id, launch, state, &End::Unasked).is_some()
     }
 
     /// The account's own windows set aside (no window counts as open) while `f` runs, then back.
@@ -375,7 +376,7 @@ async fn body(c: &mut Checks, r: &mut R) {
     r.line(now(), LEAVE);
     let ended = app.ended_state(me);
     c.check("the leave Bloxkeep's close made isn't the person's", ended.as_ref().is_some_and(|s| s.status == "disconnected"), &ended);
-    app.on_session_ended(id, &launch, ended);
+    app.on_session_ended(id, &launch, ended, End::Rejoin);
     let target = r.queued_target();
     c.check("…so it rejoins: the same game, any server", target.as_ref().is_some_and(|t| t.place_id == PLACE && t.job_id.is_none()), &target);
     r.clear_queue();
@@ -383,10 +384,10 @@ async fn body(c: &mut Checks, r: &mut R) {
     r.clear_closing();
     let own = app.ended_state(me);
     c.check("a leave nobody else made is still the person's", own.as_ref().is_some_and(|s| s.status == "left"), &own);
-    c.check("…and isn't rejoined", !app.queue_rejoin(id, &launch, own.as_ref()) && r.queue_len() == 0, ());
+    c.check("…and isn't rejoined", !app.queue_rejoin(id, &launch, own.as_ref(), End::Unasked) && r.queue_len() == 0, ());
 
-    // In the game, back to Roblox's home and the window closed with X before Roblox logged the disconnect (the owner's
-    // PC, 2026-10-29): a leave all the same, not a drop.
+    // In the game, back to Roblox's home and the window closed with X before Roblox logged the disconnect: a leave all
+    // the same, not a drop.
     r.new_window();
     r.line(now(), LAUNCH);
     r.line(now(), JOIN);
@@ -399,7 +400,7 @@ async fn body(c: &mut Checks, r: &mut R) {
         closed_with_x.as_ref().is_some_and(|s| s.status == "left"),
         &closed_with_x,
     );
-    c.check("…and isn't rejoined", !app.queue_rejoin(id, &launch, closed_with_x.as_ref()) && r.queue_len() == 0, ());
+    c.check("…and isn't rejoined", !app.queue_rejoin(id, &launch, closed_with_x.as_ref(), End::Unasked) && r.queue_len() == 0, ());
 
     // Sent to the game (Roblox picks the server), and none came.
     r.run(game(PLACE));
@@ -551,9 +552,9 @@ async fn body(c: &mut Checks, r: &mut R) {
         app.controller.games.borrow_mut().remove(&SEA);
         *app.rejoin.ask_join.borrow_mut() = party_hook;
     }
-    // One account opened into a chosen server that had ended (the owner's, 2026-11-14: Roblox's "This experience has
-    // ended, or the server became unavailable unexpectedly due to a system error", answered 311 at 46 s and closed only at
-    // 60 s). Asked 12 s on, and another server at once on that answer.
+    // One account opened into a chosen server that had ended (Roblox's "This experience has ended, or the server became
+    // unavailable unexpectedly due to a system error", answered 311 at 46 s and closed only at 60 s). Asked 12 s on, and
+    // another server at once on that answer.
     app.rejoin.join_checks.borrow_mut().remove(&me);
     *party_reply.lock().unwrap() = answer(200, Some(12), Some("Unable to join Game 311"));
     party_asks.store(0, Ordering::SeqCst);
@@ -664,7 +665,7 @@ async fn body(c: &mut Checks, r: &mut R) {
         state.as_ref().is_some_and(|s| s.status == "disconnected" && s.place_id == Some(555) && s.chosen_place == Some(OTHER)),
         &state,
     );
-    app.on_session_ended(id, &opened, state);
+    app.on_session_ended(id, &opened, state, End::Unasked);
     let target = r.queued_target();
     c.check(
         "…and a drop there rejoins that game (any server), not the one Bloxkeep opened",
@@ -1142,7 +1143,7 @@ async fn body(c: &mut Checks, r: &mut R) {
     c.check(
         "…nor is it closed as a lost connection when Roblox's status says not in a game",
         !r.closing() && lost_told.is_none(),
-        app.rejoin.closing_for_rejoin.borrow().len(),
+        app.close_desk.closing.borrow().len(),
     );
     // Its ban told after 5 seconds, the window still on Join Error 600 a minute later: not closed with "trying again".
     r.new_window();
@@ -1157,7 +1158,7 @@ async fn body(c: &mut Checks, r: &mut R) {
     c.check(
         "…nor, its ban told by Roblox's join answer, closed a minute on with \"trying again\"",
         !r.closing() && trying_told.is_none(),
-        app.rejoin.closing_for_rejoin.borrow().len(),
+        app.close_desk.closing.borrow().len(),
     );
     app.rejoin.game_ban_noted.borrow_mut().clear();
     // In that game again later: the ban is over.
@@ -1278,7 +1279,7 @@ async fn body(c: &mut Checks, r: &mut R) {
     let closed_at_once = Rc::new(PendingLaunch::new(id, HashSet::new(), now().plus_secs(-120.0), game(GPO), false, None));
     let mut last_lines = ClientState::new("disconnected", Some(GPO), Some("e403336e-5756-44c9-b029-0ae6873a3d03".into()), Some(267), now());
     last_lines.banned_by_game = true;
-    app.on_session_ended(id, &closed_at_once, Some(last_lines));
+    app.on_session_ended(id, &closed_at_once, Some(last_lines), End::Unasked);
     let bans: Vec<i64> = r.acc().game_bans.iter().map(|b| b.place_id).collect();
     let ban_told = r.told();
     c.check(
@@ -1385,8 +1386,8 @@ async fn newer_drops(c: &mut Checks, r: &mut R) {
         c.check(&format!("Error Code 256 by {what}: read as a drop and rejoined"), r.closing(), format!("{state:?} | {said:?}"));
     }
 
-    // Roblox's "Connection Failed" box (279, no response from server) after "Joining game": the owner's test 2026-11-14, a
-    // rejoin into a server that had just run out of memory. No serverId, no disconnect line. The real lines, in order.
+    // Roblox's "Connection Failed" box (279, no response from server) after "Joining game": a test, a rejoin into a server
+    // that had just run out of memory. No serverId, no disconnect line. The real lines, in order.
     {
         let at = now().plus_secs(-40.0);
         r.new_window();
@@ -1443,7 +1444,7 @@ async fn newer_drops(c: &mut Checks, r: &mut R) {
             &state,
         );
         // The move failing after the old server is gone: Roblox's "Disconnected" box, Error Code 256 mid-teleport, its
-        // words logged (as the owner's three windows logged them, 2026-11-18). A drop at once, closed to rejoin.
+        // words logged (as a user's three windows logged them). A drop at once, closed to rejoin.
         for failed in [
             "[FLog::Network] Client has been disconnected with reason: Disconnected from game, please reconnect",
             "Warning [FLog::Network] Lost connection with reason : Lost connection due to an unknown error. Please reconnect.",
@@ -1591,8 +1592,8 @@ async fn newer_drops(c: &mut Checks, r: &mut R) {
         app.controller.presence.borrow_mut().remove(&21);
     }
 
-    // A timed ban (BanAsync with a duration): its end is in the kick line's metadata. The owner's test 2026-11-14, the
-    // exact metadata: still "banned" ten minutes after the 2-minute ban ended.
+    // A timed ban (BanAsync with a duration): its end is in the kick line's metadata. a test, the exact metadata:
+    // still "banned" ten minutes after the 2-minute ban ended.
     {
         let at = |t: &str| Stamp::parse(t).expect("a time");
         let real_end = roblox_log_watcher::ban_end_of(
@@ -1650,8 +1651,8 @@ async fn newer_drops(c: &mut Checks, r: &mut R) {
     }
 
     // A window opened on Roblox's home screen, a game picked there, then Error Code 1025 ("Disconnected from the
-    // experience", the owner's PC, 2026-11-11, client 0.747's lines): it stayed on Roblox's error box, left as "opened
-    // without a game". It goes back to the game the person was in.
+    // experience", a real PC, client 0.747's lines): it stayed on Roblox's error box, left as "opened without a
+    // game". It goes back to the game the person was in.
     {
         const PICKED: i64 = 98894876188248;
         let picked_join = format!("[FLog::Output] ! Joining game '14a2746a-981f-4fed-92c9-d3a998eb8f4c' place {PICKED} at 128.116.54.33");
@@ -1678,7 +1679,7 @@ async fn newer_drops(c: &mut Checks, r: &mut R) {
         r.tick().await;
         c.check("a home-screen window dropped in a game picked there (1025): closed to rejoin", r.closing(), &home_state);
         r.clear_queue();
-        app.on_session_ended(r.id, &home_launch, home_state.clone());
+        app.on_session_ended(r.id, &home_launch, home_state.clone(), End::Rejoin);
         let home_target = r.queued_target();
         c.check(
             "…into that game, any server",
@@ -1692,7 +1693,7 @@ async fn newer_drops(c: &mut Checks, r: &mut R) {
         let adopted = r.run(None);
         r.tick().await;
         c.check("…but not one adopted from outside Bloxkeep: left open", !r.closing(), ());
-        c.check("…nor rejoined once closed", !app.queue_rejoin(r.id, &adopted, home_state.as_ref()) && r.queue_len() == 0, r.queue_len());
+        c.check("…nor rejoined once closed", !app.queue_rejoin(r.id, &adopted, home_state.as_ref(), End::Unasked) && r.queue_len() == 0, r.queue_len());
         // Left by choice there: not rejoined; and one that never was in a game has nowhere to go back to.
         r.new_window();
         let home_launch = home_run(r);
@@ -1704,8 +1705,8 @@ async fn newer_drops(c: &mut Checks, r: &mut R) {
         let left = r.poll(|s| s.status == "left").await;
         r.tick().await;
         c.check("…one the person left there: not closed", !r.closing(), &left);
-        c.check("…nor rejoined once closed (left there)", !app.queue_rejoin(r.id, &home_launch, left.as_ref()) && r.queue_len() == 0, r.queue_len());
-        c.check("…and a home-screen window never in a game isn't rejoined", !app.queue_rejoin(r.id, &home_launch, None) && r.queue_len() == 0, r.queue_len());
+        c.check("…nor rejoined once closed (left there)", !app.queue_rejoin(r.id, &home_launch, left.as_ref(), End::Unasked) && r.queue_len() == 0, r.queue_len());
+        c.check("…and a home-screen window never in a game isn't rejoined", !app.queue_rejoin(r.id, &home_launch, None, End::Unasked) && r.queue_len() == 0, r.queue_len());
         r.clear_queue();
         r.clear_closing();
     }
@@ -1809,7 +1810,7 @@ async fn joins(c: &mut Checks, r: &mut R, questions: &Arc<AtomicI32>, reply: &Ar
     let refused_end = app.ended_state(me);
     c.check(
         "…and closed by the person, not rejoined",
-        !app.queue_rejoin(id, &refused_game, refused_end.as_ref()) && r.queue_len() == 0,
+        !app.queue_rejoin(id, &refused_game, refused_end.as_ref(), End::Unasked) && r.queue_len() == 0,
         r.queue_len(),
     );
     r.clear_queue();
@@ -1905,7 +1906,7 @@ async fn joins(c: &mut Checks, r: &mut R, questions: &Arc<AtomicI32>, reply: &Ar
     let checked_end = app.ended_state(me);
     c.check(
         "…closed by the person, not rejoined",
-        !app.queue_rejoin(id, &checked_game, checked_end.as_ref()) && r.queue_len() == 0,
+        !app.queue_rejoin(id, &checked_game, checked_end.as_ref(), End::Unasked) && r.queue_len() == 0,
         r.queue_len(),
     );
     r.clear_queue();
@@ -2155,7 +2156,7 @@ async fn memory_and_waits(c: &mut Checks, r: &mut R) {
         r.told();
         let oom_launch = r.run(game(920587237));
         app.rejoin.ran_out_of_memory.borrow_mut().insert(id);
-        app.queue_rejoin(id, &oom_launch, None);
+        app.queue_rejoin(id, &oom_launch, None, End::Unasked);
         let oom_said = r.told();
         c.check(
             "a window that ran out of memory: said so, not \"left the game\"",
@@ -2319,16 +2320,16 @@ async fn close_after_leave(c: &mut Checks, r: &mut R) {
     let (me, id) = (r.me, r.id);
     r.clear_queue();
     r.clear_closing();
-    app.controller.user_closed.borrow_mut().clear();
     // This process stands in for the client: its "close" is only noted, never done.
     let closed: Arc<Mutex<Vec<i32>>> = Arc::new(Mutex::new(Vec::new()));
-    let real_close = app.launching.close_client.borrow().clone();
+    let real_close = app.close_desk.close_hook.borrow().clone();
     {
         let closed = closed.clone();
-        *app.launching.close_client.borrow_mut() = Some(Arc::new(move |pid, _| closed.lock().unwrap().push(pid)));
+        *app.close_desk.close_hook.borrow_mut() = Some(Rc::new(move |pid, _| closed.lock().unwrap().push(pid)));
     }
     let pids = || closed.lock().unwrap().clone();
-    let shut = || pids().contains(&me) || app.controller.user_closed.borrow().contains(&id);
+    let leaves = || app.close_desk.closing_account(id).is_some_and(|c| c.cause == Cause::Leave && c.then == Then::StayClosed);
+    let shut = || pids().contains(&me) || leaves();
 
     let _launch = r.run(game(PLACE));
     r.new_window();
@@ -2349,7 +2350,8 @@ async fn close_after_leave(c: &mut Checks, r: &mut R) {
     c.check("…with the setting off, the window stays on Roblox's home screen", !shut(), ());
 
     let _ = app.vault_mut(|d| d.settings.close_after_leave = true);
-    app.rejoin.closing_for_rejoin.borrow_mut().insert(me);
+    // Closing already for a rejoin (recorded only: this process isn't closed).
+    app.expect_close(Some(id), me, Cause::Drop(DropWhy::Dropped), Then::Rejoin);
     app.close_after_leave(now());
     c.check("…a leave Bloxkeep's own close made (for a rejoin) isn't closed again", !shut(), ());
     r.clear_closing();
@@ -2360,13 +2362,13 @@ async fn close_after_leave(c: &mut Checks, r: &mut R) {
     app.close_after_leave(now());
     let now_closed = pids();
     c.check("…setting on, the person's own leave: the window closes", now_closed.contains(&me), &now_closed);
-    c.check("…as the person's close (no rejoin of it)", app.controller.user_closed.borrow().contains(&id) && r.queue_len() == 0, ());
+    c.check("…closed to stay closed (no rejoin of it)", leaves() && r.queue_len() == 0, ());
     closed.lock().unwrap().clear();
     app.close_after_leave(now());
     let again = pids();
     c.check("…and only once", again.is_empty(), &again);
 
     let _ = app.vault_mut(|d| d.settings.close_after_leave = false);
-    *app.launching.close_client.borrow_mut() = real_close;
-    app.controller.user_closed.borrow_mut().clear();
+    *app.close_desk.close_hook.borrow_mut() = real_close;
+    app.close_desk.clear();
 }

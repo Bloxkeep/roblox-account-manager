@@ -178,7 +178,7 @@ Sign in / signed out (replaces Log out, Logged out) · account (not acc/profile)
 
 - `theme.keep` (words.json) "Thành lúc hoàng hôn" (English "Keep at dusk"): not changed, meaning unclear; probably "Giữ lúc hoàng hôn"? Check where it shows first.
 - `gc.title` "Code" as a panel heading (was "Giftcode"): maybe "Mã quà" or "Giftcode" is what the audience says.
-- Play = "Chơi" everywhere (Roblox VN's word) instead of the old "Vào game": confirm the owner agrees for the account card button and tray.
+- Play = "Chơi" everywhere (Roblox VN's word) instead of the old "Vào game": confirm the maintainer agrees for the account card button and tray.
 - `wiki.oddsUnlucky` "Bạn xui thật." and `wiki.oddsNormal` "Cố thêm chút.": playful tone, check it is not too chummy.
 - `cm.altsN` "{n} alt", `cm.board` "Treo nhiều alt nhất": the guidelines say the app never says "alt"; the English also says "alts", so left as it is.
 - `in.tr.cancel` "Hủy lời mời" for "Take it back" (withdraw a trade): "Rút lại" may be more exact.
@@ -462,7 +462,7 @@ account аккаунт | preset пресет | vault хранилище | master
 - av.lookName, av.saveLook and the outfit strings (コーデ): Roblox JP may use コスチューム. コーデ is the gamer wording.
 - gp.million "M", gp.billion "B": left as in English. Japanese reads 万 and 億, but the code divides by 10^6 so a swap needs a code change. Neither helps unless gp.thousand is also set.
 - ps.none: this key is shared by preset_menu.rs ("No presets yet") and servers.rs:940 (no private servers). English shows the preset text on both screens, and so does ja now. This is a source bug: the servers screen needs its own key.
-- friends/フレンド: if the owner prefers 友達 (casual), revert the glossary replacement. Roblox's own JP UI says フレンド.
+- friends/フレンド: if the maintainer prefers 友達 (casual), revert the glossary replacement. Roblox's own JP UI says フレンド.
 - 放置防止: if you want the English term AFK in the label, 「AFK対策」 is the alternative.
 - macro.tile.record 「1回プレイすればまねします」: casual. Alternative: 操作を記録して再現します.
 - pf.hiMorning, pf.hiAfternoon and pf.hiEvening: a greeting followed directly by the name. A suffix such as さん may be needed in code.

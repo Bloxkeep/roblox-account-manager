@@ -1,9 +1,9 @@
 // WebToolWindow.cs: a small borderless window whose whole face is one of the app's pages: the macro panel beside the
-// game today, the mini window (mini_window), the game overlay and colour picker (overlay_window) (the owner's rule of
-// 2026-11-03: nothing the user sees drawn in WinForms). The window is only the host: a tool window (not in Alt+Tab),
-// Windows 11's rounded corners in the theme's line colour. Its page was a WebView2 browser (ui/'s <page>.html) until
-// 2026-11-19; now the interface draws it, in a window of its own put inside this one (tool_page,
-// ui-gpui/src/toolpage.rs), made on the first show and let go a while after the window hides.
+// game today, the mini window (mini_window), the game overlay and colour picker (overlay_window) (nothing the user
+// sees drawn in WinForms). The window is only the host: a tool window (not in Alt+Tab), Windows 11's rounded corners
+// in the theme's line colour. Its page was a WebView2 browser (ui/'s <page>.html) until 2026-11-19; now the interface
+// draws it, in a window of its own put inside this one (tool_page, ui-gpui/src/toolpage.rs), made on the first show
+// and let go a while after the window hides.
 //
 // The page and the host talk in the app page's own messages: the page posts { cmd, args } ("ready", "size" with its
 // size in CSS pixels, "act" with what was clicked, "drag" to move the window, "resize" to make it taller or shorter by

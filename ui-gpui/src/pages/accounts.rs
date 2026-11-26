@@ -260,8 +260,8 @@ pub fn is_local(a: &Value) -> bool {
     s(a, "state") == "running"
 }
 /// Its window open but not in a game: back on Roblox's menu after leaving one, or signed out in it. Its session still
-/// names the last game it played, which is not where it is (owner 2026-11-13: Home said "Playing Thai Anomalies" for
-/// hours after they left it).
+/// names the last game it played, which is not where it is (Home said "Playing Thai Anomalies" for hours after they
+/// left it).
 pub fn in_menu(a: &Value) -> bool {
     is_local(a) && matches!(conn(a), "menu" | "signedout")
 }
@@ -289,9 +289,9 @@ fn banned(a: &Value) -> bool {
 pub fn label(a: &Value) -> String {
     ["label", "alias", "displayName", "username"].iter().map(|k| s(a, k)).find(|n| !n.is_empty()).unwrap_or_default().to_string()
 }
-// No numbered tags (owner 2026-11-14: "bỏ số đi"): the face's dot and the state line say how an account is.
+// No numbered tags: the face's dot and the state line say how an account is.
 
-/// An account card's and an open window's tile corner (owner 2026-11-14: rounder cards).
+/// An account card's and an open window's tile corner.
 const R_CARD: f32 = 18.;
 
 /// Free to join a game: not open, signed in, not banned (as the Accounts bar's Play).
@@ -656,7 +656,7 @@ pub fn state_of(root: &Root, a: &Value) -> (String, u32, bool) {
     } else if presence(a) == "ingame" {
         (root.tr("row.elsewhere"), TEXT_2, true)
     } else if presence(a) == "online" {
-        // Roblox's own blue for online (as Friends shows it): grey words made a dot hardly seen (owner, 2026-11-24).
+        // Roblox's own blue for online (as Friends shows it): grey words made a dot hardly seen.
         (root.tr("act.online"), ONLINE, false)
     } else if presence(a) == "studio" {
         (root.tr("act.studio"), TEXT_2, false)
@@ -894,8 +894,8 @@ pub fn avatar(a: &Value, size: f32, ring: u32, cx: &mut App) -> Div {
 }
 
 /// An account's face in a row of faces, each over the one before: no state mark (caught under the next face's edge it
-/// read as a grey chip between them; the owner, 2026-11-18: "cấn cấn"), and its edge solid, so the face before doesn't
-/// show through it where the surface `ring` is see-through (a picture theme).
+/// read as a grey chip between them), and its edge solid, so the face before doesn't show through it where the surface
+/// `ring` is see-through (a picture theme).
 pub fn stacked(a: &Value, size: f32, ring: u32, cx: &mut App) -> Div {
     face(a, size, crate::theme::over(c(ring), Hsla { a: 1., ..c(GROUND) }), cx)
 }
@@ -948,7 +948,7 @@ const COL_MIN: f32 = 330.;
 /// Monitor tiles can become compact, with room for the account details and actions below the preview.
 const MON_COL_MIN: f32 = 320.;
 /// With many windows open (a farm, past MON_MANY), tiles as narrow as this and pared down (`tile`'s `compact`): six
-/// in a row at a common window's width instead of four (the owner, 2026-11-17: 30 windows in eight rows).
+/// in a row at a common window's width instead of four (30 windows in eight rows).
 const MON_COL_COMPACT: f32 = 228.;
 const MON_MANY: usize = 12;
 const MON_COL_MAX: f32 = 560.;
@@ -1204,8 +1204,7 @@ fn ask_delete(r: &mut Root, ids: Vec<String>, names: Vec<String>, window: &mut W
 }
 
 /// The layout shown: cards or a list, as picked here or as the app's settings keep it ("layout", as app.js sent it).
-/// A list until cards are picked (the setting is "" until first chosen): the owner, 2026-11-13, "muốn cái list là mặc
-/// định chứ không phải card".
+/// A list until cards are picked (the setting is "" until first chosen).
 fn as_list(root: &Root, cx: &mut App) -> bool {
     let kept = root.state.pointer("/settings/layout").and_then(Value::as_str) != Some("cards");
     let picked = cx.try_global::<menu::Ui>().and_then(|u| u.list);
@@ -1242,10 +1241,9 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
             body = body.child(super::remote_watch::controls(root, cx));
         }
         // The Roblox windows' live pictures, a block a game, with the buttons for each game's windows (the old Game
-        // monitor, its own view of the page since 2026-11-13: the owner's pick over pictures above the cards).
-        // Every window, whatever the filter says: with "Playing" picked, a window on Roblox's home screen (or one not
-        // opened by Bloxkeep) went, and the view said "Open a game…" under a tab that counted 1, with "No matching
-        // accounts" under that (the owner's screenshot, 2026-11-13).
+        // monitor, its own view of the page: over pictures above the cards). Every window, whatever the filter says:
+        // with "Playing" picked, a window on Roblox's home screen (or one not opened by Bloxkeep) went, and the view
+        // said "Open a game…" under a tab that counted 1, with "No matching accounts" under that.
         let every = every_sorted(root, cx);
         body = match windows(root, &every, inner, cx) {
             // (What a picture does, as the old monitor's head said.)
@@ -1299,7 +1297,7 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
     }
     if shown.is_empty() && !all.is_empty() && !root.acc_win {
         body = body.child(
-            // In the middle of the page (the owner, 2026-11-17: tucked at the top left it read as left over).
+            // In the middle of the page (tucked at the top left it read as left over).
             div()
                 .w_full()
                 .pt(px(120.))
@@ -1460,7 +1458,7 @@ fn monitor_grid(count: usize, width: f32, height: f32, detail_lines: usize, many
     let minimum = width.min(narrowest);
     let chrome = if many { 110. } else { 175. + 30. * detail_lines as f32 };
     // When no layout fits the screen (30 windows of a farm), the most columns, the tiles across the whole width: they
-    // stayed at their smallest and left a band empty at the right (the owner, 2026-11-17).
+    // stayed at their smallest and left a band empty at the right.
     let across_all = ((width - (max_cols - 1) as f32 * GRID_GAP) / max_cols as f32).min(MON_COL_MAX).max(minimum).floor();
     let mut best = (max_cols, across_all);
     let mut best_fits = false;
@@ -1766,7 +1764,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     let ram = ram_total(root, all.iter().chain(t.strays.iter()), cx);
     let (dropped, look) = (t.dropped, t.look);
     // (A window open with nobody in a game, or one Bloxkeep didn't open: "Roblox not open" stood over a bar that
-    // said "1 Roblox window", the owner's screenshot, 2026-11-13.)
+    // said "1 Roblox window", a screenshot.)
     let open = t.open;
     let first = if playing > 0 {
         root.i18n.tn("acc.sum.playing", playing as i64, &[])
@@ -1797,8 +1795,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
         .map(|key| {
             let f: DropAct = std::rc::Rc::new(move |r, _, cx| {
                 // Shown at once: the app only remembers this one and sends no new state for it (set_settings' "quick"
-                // keys: the web page showed it itself), so the list kept its old order until some other change came
-                // (the owner, 2026-11-13: "bấm 1 hồi nó mới nhảy qua cái mình chọn").
+                // keys: the web page showed it itself), so the list kept its old order until some other change came.
                 r.edit_state(cx, |s| {
                     if let Some(now) = s.pointer_mut("/settings/sort") {
                         *now = json!(key);
@@ -1891,7 +1888,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
                 })
                 .child(tools_menu(root, all, cx))
                 // Add account, and the other ways to add one beside it: one yellow button split by a hairline, as the C#
-                // page's (owner 2026-11-13: the arrow was a separate dark square).
+                // page's (the arrow was a separate dark square).
                 .child(
                     div()
                         .flex()
@@ -2277,7 +2274,7 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, m
     let tool = |k: &'static str, mark: &'static str, tip: String| IconButton::new((k, i), mark).size(30.).tip(tip);
     let mut win_tools: Vec<AnyElement> = Vec::new();
     // The same buttons folded or not, whenever a window of the game is open: with one of two windows still joining
-    // (no window yet), they showed only once the game was folded (the owner, 2026-11-17).
+    // (no window yet), they showed only once the game was folded.
     if !wins.is_empty() {
         let hs: Vec<String> = wins.iter().map(|(h, _)| h.clone()).collect();
         let (front, back) = (hs.clone(), hs);
@@ -2513,8 +2510,8 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, compact
         .cursor_pointer()
         .map(|d| {
             if on {
-                // (The plain ground and the yellow ring: yellow mixed into the ground read olive, the owner's rule
-                // of 2026-11-15 against tinted grounds.)
+                // (The plain ground and the yellow ring: yellow mixed into the ground read olive, against tinted
+                // grounds.)
                 d.tones(c(RAISED), c(RAISED_2)).edge(c(FACE), c(FACE))
             } else if bad {
                 d.tones(tinted(RAISED, BAD, 0.09), tinted(RAISED_2, BAD, 0.11)).edge(ca(BAD, 0.38), ca(BAD, 0.52))
@@ -3218,7 +3215,7 @@ fn handle_of(a: &Value) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join(" · "))
 }
 
-/// The note the owner wrote on an account (Edit), when there is one.
+/// The note a user wrote on an account (Edit), when there is one.
 fn note_of(a: &Value) -> Option<String> {
     Some(s(a, "note").trim()).filter(|n| !n.is_empty()).map(str::to_string)
 }
@@ -3288,8 +3285,7 @@ fn tags_of(root: &Root, a: &Value) -> Vec<Div> {
 }
 
 /// The star: this account is a main account, or no longer (its menu's "Main account" does the same). On the card
-/// itself, since people didn't find where a main account is set (the owner, 2026-11-15: "người dùng khó biết gán main
-/// account ở đâu"); lit while it is one.
+/// itself, since people didn't find where a main account is set; lit while it is one.
 fn main_button(root: &Root, a: &Value, at: &str, size: f32, cx: &mut Context<Root>) -> Div {
     let id = id_of(a);
     let on = a.get("isMain").and_then(Value::as_bool).unwrap_or(false);
@@ -3788,8 +3784,8 @@ fn bar(root: &Root, picked: &[Value], width: f32, cx: &mut Context<Root>) -> imp
                 }).into_any_element()
             }
         })
-        // The presets to run, and Save as preset… with these accounts (pages/preset_menu.rs).
-        // (Named while there is any room: as an icon among the others nobody found it, the owner, 2026-11-18.)
+        // The presets to run, and Save as preset… with these accounts (pages/preset_menu.rs). (Named while
+        // there is any room: as an icon among the others nobody found it.)
         .child(groups::bar_button(root, width < 880., cx))
         .child(crate::pages::preset_menu::button(root, !compact, cx))
         .child(more(root, picked, cx))

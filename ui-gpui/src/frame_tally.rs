@@ -1,8 +1,8 @@
 // How hard the window's thread works, in error.log: every 10 minutes that had any frame, one line with the frames
 // drawn and the frames only presented again (GPUI presents every display refresh for a second after fast mouse input,
 // 240 a second on a 240 Hz screen), the busiest second, and the UI thread's CPU time over those minutes. Measured
-// 2026-11-17 on the owner's PC: the UI thread used ~30 % of a core while they used the app, ~1 % idle; this line says
-// how many frames that was before anything is capped.
+// 2026-11-17 on a real PC: the UI thread used ~30 % of a core while they used the app, ~1 % idle; this line says how
+// many frames that was before anything is capped.
 use std::time::Duration;
 
 use gpui_kit::App;

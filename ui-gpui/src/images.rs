@@ -2,9 +2,9 @@
 // and data: addresses (the dev mock's drawn faces). Each is fetched once by worker threads and kept for the session;
 // a view asks with `pic(url, cx)` and gets None until it is there, then every window is drawn again.
 //
-// Made quick (the owner, 2026-11-12: slow everywhere, avatars, items): a picture from the web is kept on this PC too
-// (cache/pictures), so the next run draws it at once; the last asked is fetched first (what the page shows now, not
-// what scrolled past); and the workers keep their connections to each server open between pictures.
+// Made quick (slow everywhere, avatars, items): a picture from the web is kept on this PC too (cache/pictures), so
+// the next run draws it at once; the last asked is fetched first (what the page shows now, not what scrolled past);
+// and the workers keep their connections to each server open between pictures.
 use crate::threads::Hold;
 use std::{
     collections::HashMap,
@@ -87,11 +87,11 @@ const KEEP: usize = 400;
 const IDLE: Duration = Duration::from_secs(600);
 
 /// A picture no window has drawn for this long is let go, however few are kept: its bytes, its sized copies, GPUI's
-/// decoded copy and its place on the window's atlas. Measured on the owner's PC (2026-11-15, twenty minutes of
-/// browsing the Roblox tab on the plain Dark theme): 428 MB, of which 62 atlas textures of 4 MB each and ~380 MB of
-/// heap, nearly all pictures of pages left minutes before (the same build showing one page: 98 MB, 2 textures). The
-/// count rule above only started past 600 pictures and ten minutes, so nothing was ever let go in a normal sitting.
-/// One wanted again comes back from this PC's copy (cache/pictures) in a few milliseconds.
+/// decoded copy and its place on the window's atlas. Measured on a real PC (2026-11-15, twenty minutes of browsing
+/// the Roblox tab on the plain Dark theme): 428 MB, of which 62 atlas textures of 4 MB each and ~380 MB of heap,
+/// nearly all pictures of pages left minutes before (the same build showing one page: 98 MB, 2 textures). The count
+/// rule above only started past 600 pictures and ten minutes, so nothing was ever let go in a normal sitting. One
+/// wanted again comes back from this PC's copy (cache/pictures) in a few milliseconds.
 const AWAY: Duration = Duration::from_secs(45);
 /// How often the pictures away are looked for, and how long the windows get to draw (and so ask for what they show)
 /// before the look.
@@ -160,8 +160,8 @@ pub fn init(cx: &mut App) {
                     loop {
                         // The draw that asked last goes first (the page as it is now, not what a scroll left behind),
                         // and within one draw the first asked first: taken from the list's end, a long table's
-                        // pictures came from its foot up, and the rows on screen got theirs last (the owner,
-                        // 2026-11-15: a wiki's item icons "hiện muộn, hiện chậm").
+                        // pictures came from its foot up, and the rows on screen got theirs last (a wiki's item
+                        // icons).
                         let next = (0..jobs.len()).max_by_key(|i| (jobs[*i].2.load(Ordering::Relaxed) / 96, std::cmp::Reverse(*i)));
                         if let Some(i) = next {
                             break jobs.remove(i);
@@ -246,17 +246,16 @@ pub fn init(cx: &mut App) {
             let asked = Instant::now();
             cx.update(|cx| drop_far(cx));
             // No window of the app on screen (in the tray, minimized): the pictures it isn't showing go at this look,
-            // not 45 s after (the owner, 2026-11-15, of 230 MB in Task Manager: "không có cách nào hài hòa à").
+            // not 45 s after (of 230 MB in Task Manager).
             let hidden = cx.update(|cx| none_on_screen(cx));
             if hidden {
                 cx.update(|cx| {
                     // What the window showed when it left stays (the pictures of its last frame, drawn within a second of
                     // the newest): it comes back at once as it was, with nothing to fetch, decode or upload again. All
-                    // the rest goes. (It used to let every picture go and push the whole process's memory out to the
-                    // page file, K32EmptyWorkingSet: Task Manager's number fell, but the memory was the same, and
-                    // bringing the window back read it all in again and made every picture again, slow and stepped;
-                    // the owner, 2026-11-19, "cải thiện độ mượt và tốc độ khi bấm lại vào app". Windows takes from a
-                    // window in the background by itself when Roblox needs the room.)
+                    // the rest goes. (It used to let every picture go and push the whole process's memory out to the page
+                    // file, K32EmptyWorkingSet: Task Manager's number fell, but the memory was the same, and bringing the
+                    // window back read it all in again and made every picture again, slow and stepped. Windows takes
+                    // from a window in the background by itself when Roblox needs the room.)
                     if let Some(last) = last_drawn(cx.global::<Images>()) {
                         trim(cx, Some(last + AWAY - Duration::from_secs(1)));
                     }
@@ -681,7 +680,7 @@ pub fn tone2(url: &str) -> Option<u32> {
 
 /// `image`'s CatmullRom resize, a row at a time: `image` first fills a float copy as wide as the picture and as tall as
 /// the result (16 bytes a pixel), 29 MB for one big game picture halved, and several were made at once: Rust's heap
-/// went 88 -> 129 MB at the owner's start (alpha.16, 2026-11-22). Here only one float row is kept. The same weights as
+/// went 88 -> 129 MB at a real start (alpha.16). Here only one float row is kept. The same weights as
 /// `image` (each output pixel weighs the input pixels its widened kernel covers).
 fn catmull_rom(src: &image::RgbaImage, w: u32, h: u32) -> image::RgbaImage {
     resize_part(src, (0, 0, src.width(), src.height()), w, h, Kernel::CatmullRom)
@@ -841,8 +840,8 @@ enum Use {
 /// `near`: as it is painted, whether its box is in or near the part of the window it shows in (None as it is laid out).
 /// A copy is made only for a picture painted near view: one far out of it (a tile of a long list scrolled far away)
 /// waits until it comes near. Made for every tile of a list, the copies of those never drawn kept their pixels, as only
-/// a drawn one gives them to the graphics card: on the owner's PC, 491 copies and 79 MB of pixels after a few pages of
-/// games (error.log, 2026-11-20).
+/// a drawn one gives them to the graphics card: on a real PC, 491 copies and 79 MB of pixels after a few pages of games
+/// (error.log, 2026-11-20).
 fn copy(url: &str, long: u32, original: &Arc<Image>, (w, h): (u32, u32), sigma: f32, near: Option<bool>, cx: &mut App) -> Use {
     let now = Instant::now();
     let images = cx.global_mut::<Images>();

@@ -329,7 +329,7 @@ pub enum Kind {
     /// Something that asks for you now (Rejoin on a dropped account): the warning orange, faint.
     Tint,
     /// Smoked glass beside a main one on a hero: a shade darker than what it stands on, with a hairline of light (Apple's
-    /// dark glass); white glass there read a muddy grey on Sunset's purple (the owner, 2026-11-19).
+    /// dark glass); white glass there read a muddy grey on Sunset's purple.
     Smoke,
 }
 
@@ -479,8 +479,8 @@ impl RenderOnce for Button {
                 b = b.on_click(move |e, w, cx| f(e, w, cx));
             }
         }
-        // Flat, every kind: the raised yellow block on a darker base was taken out (owner, 2026-11-12: "bỏ cái kiểu
-        // nút nổi nổi đi, trông slop"). The press still shows through `ground`.
+        // Flat, every kind: the raised yellow block on a darker base was taken out. The press still shows through
+        // `ground`.
         let _ = (block, key);
         b.into_any_element()
     }
@@ -615,9 +615,9 @@ impl RenderOnce for IconButton {
             .justify_center()
             .when(self.round, |d| d.rounded_full())
             .when(!self.round, |d| d.rounded(px(radius + 1.)))
-            // (The web page's icon buttons give more than its buttons: scale .88.)
-            // The mark of the place you're on grows in on the spring and shrinks away when you leave (nav-bar).
-            // (A quiet tile, not the face colour: the yellow is kept for the one main action of a place, owner 2026-11-13.)
+            // (The web page's icon buttons give more than its buttons: scale .88.) The mark of the place you're on grows in
+            // on the spring and shrinks away when you leave (nav-bar). (A quiet tile, not the face colour: the yellow is
+            // kept for the one main action of a place.)
             .child(div().absolute().rounded(px(radius)).bg(ca(TEXT, 0.12)).with_spring("here", SpringAnimation::new(BOUNCE).to(self.selected), |d, p| {
                 let k = p.0.max(0.);
                 d.inset(px((1. - k) * 9.)).opacity(k.min(1.))
@@ -1040,11 +1040,11 @@ impl RenderOnce for TextArea {
     }
 }
 
-/// The fuller look of blocks, tried out (the owner, 2026-11-15: the blocks "trông đơn giản quá, kém sang": a grey
-/// film with a hairline, grey words in it): a solid block with a finished edge, each figure with its own mark and
-/// colour, states as pills. Off until the owner takes it; a hidden shot turns it on with BLOXKEEP_SHOT_CARDS=2.
+/// The fuller look of blocks, tried out (the blocks: a grey film with a hairline, grey words in it): a solid
+/// block with a finished edge, each figure with its own mark and colour, states as pills. Off until
+/// taken; a hidden shot turns it on with BLOXKEEP_SHOT_CARDS=2.
 pub fn rich() -> bool {
-    // (Taken, 2026-11-15: "thẻ còn đơn điệu thì làm nó rich lên". BLOXKEEP_SHOT_CARDS=1: a hidden shot of the look before.)
+    // (Taken. BLOXKEEP_SHOT_CARDS=1: a hidden shot of the look before.)
     static RICH: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *RICH.get_or_init(|| !(cfg!(feature = "shot") && std::env::var("BLOXKEEP_SHOT_CARDS").is_ok_and(|v| v == "1")))
 }
@@ -1057,7 +1057,7 @@ thread_local! {
 /// A game's own colour for what is drawn from here on: its page's blocks stand on a ground faintly of it, their heads
 /// and marks carry it, its wiki's links are of it. The old page did this everywhere a game was shown (app.css's --gt,
 /// from the game's picture: the wiki's grounds 7 to 16 % of it, its links 60 %); without it every game's page was the
-/// same grey (the owner, 2026-11-15: "các trang wiki không được màu sắc như bản cũ", the blocks "nhợt nhạt").
+/// same grey.
 pub fn set_game_tint(tone: Option<u32>) {
     GAME_TINT.with(|t| t.set(tone));
 }
@@ -1078,9 +1078,9 @@ pub fn game_ink() -> Option<Hsla> {
 /// mouse, its hairline and that under the mouse, faintly of that game's colour; the theme's own when it has none.
 pub fn toned(_tone: Option<u32>) -> (Hsla, Hsla, Hsla, Hsla) {
     // The theme's charcoal for every card, whatever game it is about (see `block_tones`): mixed with its game's
-    // colour, a row of cards was a brown one, a red one and a grey one (the owner's mock-up of Accounts, 2026-11-15,
-    // has them all the one charcoal). What says which game it is stays on the card: the game's own picture and name.
-    // (No hairline at rest, only under the mouse: see `surface`.)
+    // colour, a row of cards was a brown one, a red one and a grey one (a user's mock-up of Accounts, has them all
+    // the one charcoal). What says which game it is stays on the card: the game's own picture and name. (No hairline
+    // at rest, only under the mouse: see `surface`.)
     (block_ground(), c(RAISED), ca(WHITE, 0.), ca(WHITE, 0.17))
 }
 
@@ -1089,9 +1089,9 @@ pub fn block_ground() -> Hsla {
     // (A step more than it was, 0.55: blocks have no hairline round them now, their ground alone sets them apart.)
     let ground = mix(c(PANEL), c(RAISED), 0.8);
     // On a picture theme the panel under it is glass already: a card nearly solid on it (the custom theme's 94 %)
-    // read as a slab laid on the glass (the owner, 2026-11-18: "khối kính hơi đặc"). It is a thin pane of light
-    // over the glass instead, as glass cards are, and the picture goes on showing through both. (A thin layer of the
-    // card's own colour was tried first: on the panel's near-same colour the card lost its shape.)
+    // read as a slab laid on the glass. It is a thin pane of light over the glass instead, as glass cards are, and
+    // the picture goes on showing through both. (A thin layer of the card's own colour was tried first: on the
+    // panel's near-same colour the card lost its shape.)
     if crate::theme::backdrop().is_none() {
         return ground;
     }
@@ -1110,10 +1110,10 @@ pub fn ink_of(tone: u32) -> Hsla {
     Hsla { h: t.h, s: t.s.clamp(0.5, 0.92), l: if dark { t.l.clamp(0.64, 0.78) } else { t.l.clamp(0.3, 0.42) }, a: 1. }
 }
 
-/// A game's name in the game's own colours (the owner, 2026-11-15: "tên trên thẻ nên để màu, vibe của game đó", beside
-/// Blox Fruits' blue and orange logo): the colours of its picture at `url` (its icon), the name in the first and, when
-/// the picture has a second colour and the name more than one word, its last word in that. One run of text, so it is
-/// cut short as any name is. A game with no picture yet, or a grey one, is written as before.
+/// A game's name in the game's own colours (beside Blox Fruits' blue and orange logo): the colours of its picture at
+/// `url` (its icon), the name in the first and, when the picture has a second colour and the name more than one word,
+/// its last word in that. One run of text, so it is cut short as any name is. A game with no picture yet, or a grey
+/// one, is written as before.
 pub fn game_name(name: impl Into<SharedString>, url: Option<&str>, cx: &mut App) -> StyledText {
     let name: SharedString = name.into();
     let Some(first) = url.filter(|_| rich()).and_then(|u| crate::images::tone(u, cx)) else { return StyledText::new(name) };
@@ -1129,9 +1129,9 @@ pub fn game_name(name: impl Into<SharedString>, url: Option<&str>, cx: &mut App)
 
 /// A block's ground and hairline, on every page: the theme's own charcoal, a step between the panel and a raised
 /// block, with the theme's hairline. Mixed with the game's colour (11 % of it, the page 6 %) an orange game's page
-/// read brown all over, its figures, its table and its side column most (the owner, 2026-11-15, with a mock-up in
-/// charcoal: page #18191C, blocks #202124). The game's colour stays where it is a colour: its picture and logo, the
-/// marks on its blocks' heads, its name, its wiki.
+/// read brown all over, its figures, its table and its side column most (with a mock-up in charcoal: page #18191C,
+/// blocks #202124). The game's colour stays where it is a colour: its picture and logo, the marks on its blocks'
+/// heads, its name, its wiki.
 pub fn block_tones() -> (Hsla, Hsla) {
     (block_ground(), c(LINE))
 }
@@ -1146,10 +1146,10 @@ pub fn block_edge() -> Vec<BoxShadow> {
 
 /// A card on a panel: barely lighter, with a hairline. Every page's cards are this one.
 pub fn surface() -> Div {
-    // No hairline round it: every block of every page in a 1-px outline, boxes in boxes, read as a plain HTML page
-    // (the owner, 2026-11-15: "bớt cái kiểu html thuần giúp tao với, cả app"). Its ground a step above the panel and
-    // its finished edge (a hair of light on top, a close shadow under) set it apart.
-    // Glass on the blocks only: the block is the glass itself (the frosted picture, a pane of light, a light edge).
+    // No hairline round it: every block of every page in a 1-px outline, boxes in boxes, read as a plain HTML page.
+    // Its ground a step above the panel and its finished edge (a hair of light on top, a close shadow under) set it
+    // apart. Glass on the blocks only: the block is the glass itself (the frosted picture, a pane of light, a light
+    // edge).
     if crate::theme::glass_blocks() {
         return glass_block(div());
     }
@@ -1346,9 +1346,9 @@ fn dotted_with(parts: impl Iterator<Item = Div>) -> Div {
 /// Bloxkeep's block: `el` standing on a base of `base`, `rise` px of it showing under it (the main button's base, a
 /// tile's game colour). The base is as round as the block.
 ///
-/// Flat since 2026-11-12 (owner: "bỏ cái kiểu nút nổi nổi đi", then "Flatten cards too"): nothing stands on a raised
-/// base any more. What the base used to say is kept as an edge: picked (the face's base) a yellow ring, in trouble
-/// (`bad_base`) a red one; a game's own colour or the plain dark base, nothing.
+/// Flat since 2026-11-12 (then "Flatten cards too"): nothing stands on a raised base any more. What the base used to
+/// say is kept as an edge: picked (the face's base) a yellow ring, in trouble (`bad_base`) a red one; a game's own
+/// colour or the plain dark base, nothing.
 pub fn on_base(base: Hsla, rise: f32, radius: f32, el: impl IntoElement) -> Div {
     let _ = rise;
     let ring = if base == c(FACE_BASE) {
@@ -1649,8 +1649,7 @@ thread_local! {
 const MOUSE_WAKES: std::time::Duration = std::time::Duration::from_millis(2500);
 
 /// Whether the mouse moved over the window a moment ago while another app was in front: someone is looking at it, so
-/// what moves goes on smoothly (the owner, 2026-11-20: "khi ko focus vào app thì nhìn app chuyển động khá lag": the
-/// theme and the hover motion stood still between moves and jumped on each one).
+/// what moves goes on smoothly (the theme and the hover motion stood still between moves and jumped on each one).
 pub fn mouse_over_lately() -> bool {
     MOUSE_OVER.with(|m| m.get().is_some_and(|t| t.elapsed() < MOUSE_WAKES))
 }
@@ -1761,9 +1760,8 @@ pub fn marquee(id: &'static str, text: String) -> Div {
     let long = room > 0. && own > room + 1.;
     let span = own + GAP;
     // Where the words are comes from the marquee's own clock, which stands while the window is behind and goes on from
-    // there: they stop where they are and go on from there, instead of jumping back to the start each time (the owner,
-    // 2026-11-20: "ko focus, chữ chạy spotify nó cứ lag lag": the mouse over the window and off it again started them
-    // over every few seconds).
+    // there: they stop where they are and go on from there, instead of jumping back to the start each time (the mouse
+    // over the window and off it again started them over every few seconds).
     let said = text.clone();
     let at = move |running: bool| (marquee_clock(id, &said, running) * SPEED) % span;
     let row = div().flex().flex_none().gap(px(GAP)).child(word().relative().child(keep(true, text.clone()))).when(long, |d| d.child(word()));
@@ -1828,8 +1826,8 @@ pub fn playing_bars(_id: &'static str, live: bool, color: Hsla) -> Div {
 
 /// What a game is doing, before the word for it: being played (a green dot whose ring spreads and fades, as a
 /// stream's "live" mark; still while the window is behind) or played before (a clock with its arrow back). Both were
-/// a plain dot, grey or green (the owner, 2026-11-18: "kiếm cái nào đẹp hơn"). `id` names its motion among its
-/// neighbours; `quiet` is the clock's colour. The ring moves in the motion layer over the app (motion.rs).
+/// a plain dot, grey or green. `id` names its motion among its neighbours; `quiet` is the clock's colour. The ring
+/// moves in the motion layer over the app (motion.rs).
 pub fn state_mark(_id: &'static str, live: bool, size: f32, quiet: Hsla) -> AnyElement {
     if !live {
         return icon("history", size + 6., quiet).into_any_element();
@@ -2141,12 +2139,12 @@ pub fn waiting_rows(n: usize, w: f32, h: f32, gap: f32) -> AnyElement {
     breathing(n, w, h, gap)
 }
 
-/// How well a game's name answers what was typed, as a player types it: None when it doesn't, lower is better.
-/// The name and the words are folded and their marks (emoji, brackets, "+", "[UPD]") read as spaces, then, best first:
-/// the whole name, its start, a word's start, its initials ("gpo" Grand Piece Online, "ps99" Pet Simulator 99, "bf"
-/// Blox Fruits), anywhere in it, run together ("growagarden"), each word typed starting a word of it ("gun for"), one
+/// How well a game's name answers what was typed, as a player types it: None when it doesn't, lower is better. The
+/// name and the words are folded and their marks (emoji, brackets, "+", "[UPD]") read as spaces, then, best first: the
+/// whole name, its start, a word's start, its initials ("gpo" Grand Piece Online, "ps99" Pet Simulator 99, "bf" Blox
+/// Fruits), anywhere in it, run together ("growagarden"), each word typed starting a word of it ("gun for"), one
 /// letter wrong in a word of 4 or more ("bloks", "simulatr"), and its letters in order ("gnfrg"). A plain "contains"
-/// found nothing for any of those (the owner, 2026-11-15: "cái search của nó ngu").
+/// found nothing for any of those.
 pub fn name_match(name: &str, typed: &str) -> Option<u32> {
     let norm = |t: &str| folded(t).chars().map(|ch| if ch.is_alphanumeric() { ch } else { ' ' }).collect::<String>().split_whitespace().collect::<Vec<_>>().join(" ");
     let (n, q) = (norm(name), norm(typed));
@@ -2253,7 +2251,7 @@ pub fn folded(text: &str) -> String {
 mod name_match_tests {
     use super::name_match;
 
-    /// What a player types for the games in the owner's list (2026-11-15), and what must come of it.
+    /// What a player types for the games in a user's list, and what must come of it.
     #[test]
     fn finds_as_players_type() {
         let hit = |name: &str, typed: &str| name_match(name, typed).is_some();
@@ -2381,8 +2379,8 @@ pub fn float(at: PopAt, priority: usize, el: impl IntoElement) -> Div {
         PopAt::Under => (div().absolute().top(relative(1.)).left_0(), Anchor::TopLeft),
     };
     // Only while the spot it hangs from is in what the page shows of itself: kept inside the window as it is, a menu
-    // whose button had scrolled away stood at the window's top over whatever was there (the owner's server-country and
-    // privacy menus over the account tabs, 2026-11-18: "khả năng cao là dính hết").
+    // whose button had scrolled away stood at the window's top over whatever was there (a user's server-country and
+    // privacy menus over the account tabs).
     let seen = std::rc::Rc::new(std::cell::Cell::new(true));
     let mark = seen.clone();
     let el = anchored().anchor(anchor).snap_to_window_with_margin(px(8.)).child(el).into_any_element();

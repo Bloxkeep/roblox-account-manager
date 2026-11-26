@@ -1,6 +1,6 @@
 // Every country's name by its ISO 3166-1 code, in English and Vietnamese. The server country menu names a server's
 // country from its address, and a block not in server_regions.rs's table is asked of ipinfo.io, which may answer any
-// code: with only 14 names the menu showed "MY", "MX" and "ID" (the owner, 2026-11-20). A code not here shows as is.
+// code: with only 14 names the menu showed "MY", "MX" and "ID". A code not here shows as is.
 
 /// (code, English, Vietnamese).
 const ALL: &[(&str, &str, &str)] = &[

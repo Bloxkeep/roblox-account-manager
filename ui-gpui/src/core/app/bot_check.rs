@@ -3,7 +3,7 @@
 //! roblox.com does), hands the answer to Roblox and asks the join again carrying it; if let in, the held window reopens.
 //! error.log notes each step by kind and field names only, so an unhandled kind shows what it was.
 //! (AppController.BotCheck.cs)
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
 use serde_json::Value;
 
@@ -12,20 +12,14 @@ use super::{
     launching::{require_vault, run_of, same_vault},
 };
 use crate::core::{
-    base::{Cancel, Fail, Guid, Res, Stamp},
+    base::{Cancel, Fail, Guid, Res},
+    close_plan::{Cause, Then},
     forms::captcha_form::CaptchaForm,
     l, log,
     models::Account,
     roblox_api::{self, JoinChallenge},
-    roblox_processes, rt,
+    rt,
 };
-
-#[derive(Default)]
-pub struct BotCheckState {
-    /// Closes a window Bloxkeep opens again at once (a field, so the checks don't close a real process).
-    /// None: roblox_processes::close.
-    pub close_for_reopen: RefCell<Option<Rc<dyn Fn(i32, bool)>>>,
-}
 
 /// The check's whole metadata plus captchaToken: sent back with only unifiedCaptchaId, captchaToken and actionType, Roblox
 /// answered 403 "an internal error occurred" (2026-10-27).
@@ -34,15 +28,6 @@ pub(crate) fn captcha_answer(challenge: &JoinChallenge, token: &str) -> Res<Stri
 }
 
 impl App {
-    /// `_closeForReopen(pid, force)`.
-    pub fn close_for_reopen(&self, pid: i32, force: bool) {
-        let f = self.bot_check.close_for_reopen.borrow().clone();
-        match f {
-            Some(f) => f(pid, force),
-            None => roblox_processes::close(pid, force),
-        }
-    }
-
     pub async fn solve_bot_check(self: &Rc<Self>, id: Guid) -> Res<Value> {
         let vault = require_vault(self)?;
         let account = self.account(id)?;
@@ -54,20 +39,21 @@ impl App {
         let target = run.1.target.clone().expect("checked above");
         let place = self.controller.logs.borrow().state_of(run.0).and_then(|s| s.place_id).unwrap_or(target.place_id);
 
-        // As a preset's restart does: whatever auto-rejoin says.
-        let reopen = |app: &App| {
+        // As a preset's restart does: whatever auto-rejoin says, where it can be opened again (close_plan.rs A4).
+        // True when the window is being closed to open again; the toast says "opening again" only then.
+        let reopen = |app: &App| -> bool {
             let Some(now) = run_of(app, id) else {
-                return;
+                return false;
             };
             if now.0 != run.0 {
-                return;
+                return false;
             }
-            app.rejoin.join_refused.borrow_mut().retain(|l| !Rc::ptr_eq(l, &now.1));
             let restart = app.restart_target(now.0, &now.1);
-            app.presets.restarts.borrow_mut().insert(id, (restart, Stamp::utc_now()));
-            app.rejoin.closing_for_rejoin.borrow_mut().insert(now.0);
-            app.close_for_reopen(now.0, app.in_game_now(now.0));
+            let asked = app.ask_close_with(Some(id), now.0, Cause::BotCheck, Then::Reopen(restart), false, || {
+                app.rejoin.join_refused.borrow_mut().retain(|l| !Rc::ptr_eq(l, &now.1));
+            });
             app.push_state();
+            asked.closing()
         };
 
         let (cookie, account_realm, job) = (account.cookie.clone(), account.realm.clone(), target.job_id.clone());
@@ -78,8 +64,9 @@ impl App {
                 first.http,
                 first.status.map(|s| s.to_string()).unwrap_or_default()
             ));
-            reopen(self);
-            self.toast(&l::f("Roblox no longer asks {0} for a check. Opening its window again…", &[&self.name(&account)]), "ok");
+            if reopen(self) {
+                self.toast(&l::f("Roblox no longer asks {0} for a check. Opening its window again…", &[&self.name(&account)]), "ok");
+            }
             return Ok(Value::Null);
         };
 
@@ -118,8 +105,9 @@ impl App {
         if again.challenge.is_some() || again.http == 403 {
             return Err(Fail::user(l::f("The check was solved, but Roblox still won't let {0} join.", &[&self.name(&account)])));
         }
-        reopen(self);
-        self.toast(&l::f("Check passed. Opening {0}'s window again…", &[&self.name(&account)]), "ok");
+        if reopen(self) {
+            self.toast(&l::f("Check passed. Opening {0}'s window again…", &[&self.name(&account)]), "ok");
+        }
         Ok(Value::Null)
     }
 

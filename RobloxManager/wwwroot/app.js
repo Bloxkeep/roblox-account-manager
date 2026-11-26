@@ -112,8 +112,8 @@
   const isOnline = a => isLocal(a) || ['online', 'ingame', 'studio'].includes(a.presence?.type);
 
   // Settings › Appearance › Hide account names: each account's name shortened to its first letter and "…", its picture
-  // kept, as Discord's streamer mode does (the owner's call, 2026-11-07; the app shortens them the same way in toasts and
-  // window titles: AppController.ShortName). Real names stay in a.real for the search and the name sort only.
+  // kept, as Discord's streamer mode does (the app shortens them the same way in toasts and window titles:
+  // AppController.ShortName). Real names stay in a.real for the search and the name sort only.
   const hidingNames = () => !!S.app?.hideNames;
   /** A name's first letter as it reads (one emoji is one), or '' for none. */
   const firstLetter = s => { const v = (s || '').trim(); return v ? (typeof Intl.Segmenter === 'function' ? [...new Intl.Segmenter().segment(v)][0].segment : [...v][0]) : ''; };
@@ -474,10 +474,10 @@
       target.style.visibility = 'hidden';
     };
     place();
-    // First the logo bounces where the window's still logo was: a squash, a hop, a landing (owner, 2026-11-08: "nảy ở
-    // giữa xong bung ra"); then the card bursts out around it as it flies to its place.
-    // It grows as it hops (the window's still logo is its own size), lands squashed, hops once more and settles big;
-    // the card then bursts out of it as a circle while the logo flies to its place on the card, shrinking back.
+    // First the logo bounces where the window's still logo was: a squash, a hop, a landing; then the card bursts out
+    // around it as it flies to its place. It grows as it hops (the window's still logo is its own size), lands
+    // squashed, hops once more and settles big; the card then bursts out of it as a circle while the logo flies to
+    // its place on the card, shrinking back.
     const BIG = 1.5;
     const up = 'cubic-bezier(.2, .7, .35, 1)', down = 'cubic-bezier(.6, 0, .85, .45)';
     const bounce = () => {
@@ -3502,7 +3502,7 @@
   // The app covers the window (its logo, or a picture of the old page) until the page is on screen: told once a frame
   // (with the visible avatars, briefly waited for) is drawn, and a moment more. Two frames drawn weren't yet two on
   // screen: woken from its sleep in the tray or from minimised, the browser showed the window empty for two frames
-  // after the picture came off (seen at 60 fps in the owner's recording, 2026-11-07).
+  // after the picture came off (seen at 60 fps in a recording).
   function pageShown() {
     const imgs = [...document.querySelectorAll('#scroll img')].slice(0, 40).map(img => img.decode().catch(() => {}));
     Promise.race([Promise.all(imgs), new Promise(r => setTimeout(r, 400))])

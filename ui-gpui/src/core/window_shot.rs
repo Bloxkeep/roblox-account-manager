@@ -1,8 +1,8 @@
 //! A picture of a Roblox window's game, for /pc screenshot (AppController.Remote.cs). A window in view, or behind others,
-//! is pictured as it is. A minimized one, or one Bloxkeep hid, has nothing to picture: it is shown for a moment the way
-//! anti-AFK shows it (all but invisible, click-through, not given the keyboard: anti_afk::hide), given time
-//! to draw, pictured, then minimized or hidden again. Only the game is pictured, not the title bar (an account's name).
-//! Tried on the owner's PC (2026-10-29): a minimized window came out whole, in about half a second, nothing seen.
+//! is pictured as it is. A minimized one, or one Bloxkeep hid, has nothing to picture: it is borrowed for a moment the
+//! way anti-AFK borrows it (all but invisible, click-through, not given the keyboard: window_loan.rs), given time to
+//! draw, pictured, then given back minimized or hidden again. Only the game is pictured, not the title bar (an account's name). Tried on a
+//! real PC (2026-10-29): a minimized window came out whole, in about half a second, nothing seen.
 use std::{
     ffi::c_void,
     sync::{Condvar, Mutex, mpsc},
@@ -12,12 +12,12 @@ use std::{
 use windows_sys::Win32::{
     Foundation::{HWND, RECT},
     Graphics::Gdi::{BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CreateCompatibleDC, CreateDIBSection, DIB_RGB_COLORS, DeleteDC, DeleteObject, GetDC, ReleaseDC, SelectObject},
-    UI::WindowsAndMessaging::{GetClientRect, IsHungAppWindow, IsIconic, IsWindow, IsWindowVisible, ShowWindowAsync},
+    UI::WindowsAndMessaging::{GetClientRect, IsHungAppWindow, IsIconic, IsWindow, IsWindowVisible},
 };
 
 use super::{
-    anti_afk,
     win_kit::{Picture, hwnd},
+    window_loan::{self, How},
 };
 
 /// How long a window shown again is given to draw (as anti-AFK gives a minimized one).
@@ -36,9 +36,6 @@ const IN_VIEW_TIME: Duration = Duration::from_millis(1500);
 /// command after it, which are answered one by one).
 const PICTURE_TIME: Duration = Duration::from_secs(5);
 
-const SW_HIDE: i32 = 0;
-const SW_SHOWMINNOACTIVE: i32 = 7;
-const SW_SHOWNOACTIVATE: i32 = 4;
 // The client area only, and what DirectX draws too (without it, a game's window comes out black).
 const PW_CLIENTONLY: u32 = 1;
 const PW_RENDERFULLCONTENT: u32 = 2;
@@ -73,12 +70,6 @@ fn is_visible(h: isize) -> bool {
 fn is_hung(h: isize) -> bool {
     // SAFETY: plain query of a handle.
     unsafe { IsHungAppWindow(hwnd(h)) != 0 }
-}
-fn show_async(h: isize, command: i32) {
-    // SAFETY: plain call; posted to the window's thread.
-    unsafe {
-        ShowWindowAsync(hwnd(h), command);
-    }
 }
 
 /// The window's game no wider than `max_width`, for its tile while it is hidden or minimized (hidden_stills.rs), with
@@ -169,8 +160,10 @@ fn shown_traced(h: isize) -> (Option<Picture>, String) {
         let how = format!("in view, {looks} look(s) in {} ms, {}", started.elapsed().as_millis(), result.as_ref().map(said).unwrap_or_else(|| "no picture (not answering, or no size)".into()));
         return (result, how);
     }
-    let before = anti_afk::hide(h, (0, 0), minimized);
-    show_async(h, SW_SHOWNOACTIVATE);
+    // Lent: shown unseen and click-through, left alone by the app's other window rules meanwhile.
+    let Some(loan) = window_loan::borrow(h, How::PICTURE) else {
+        return (None, "window gone or not answering".into());
+    };
     std::thread::sleep(DRAW_TIME);
     // Shown again, Roblox needs a moment for its first frame, longer with many windows open; until then the
     // picture is all one colour (white: of six windows pictured from Discord, five came out white, the one in view whole, 2026-11-07).
@@ -183,7 +176,7 @@ fn shown_traced(h: isize) -> (Option<Picture>, String) {
         // It went back by itself (a full-screen Roblox minimizes when it isn't in front): shown once more.
         if (minimized && is_iconic(h) || unshown && !is_visible(h)) && shown_again < 2 {
             shown_again += 1;
-            show_async(h, SW_SHOWNOACTIVATE);
+            loan.open_again();
             std::thread::sleep(DRAW_TIME);
         }
         looks += 1;
@@ -211,20 +204,14 @@ fn shown_traced(h: isize) -> (Option<Picture>, String) {
         if shown_again > 0 { format!(", went back by itself {shown_again} time(s)") } else { String::new() },
         result.as_ref().map(said).unwrap_or_else(|| "no picture (not answering, or no size)".into())
     );
-    // finally:
-    if minimized {
-        show_async(h, SW_SHOWMINNOACTIVE);
-    }
-    if unshown {
-        show_async(h, SW_HIDE);
-    }
-    // Seen again only once it is minimized or hidden again (it would flash up otherwise).
-    let mut i = 0;
-    while i < 10 && is_window(h) && (minimized && !is_iconic(h) || unshown && is_visible(h)) {
-        std::thread::sleep(Duration::from_millis(50));
-        i += 1;
-    }
-    anti_afk::show(&before);
+    // finally: minimized or hidden again (waited for, asked again if it didn't land), and seen again only then; left
+    // open when the person took it meanwhile.
+    let back = loan.give_back();
+    let how = match back.kept {
+        Some(window_loan::Kept::PersonInFront) => format!("{how}; left open, a person had it in front"),
+        _ if !back.held => format!("{how}; it didn't go back as it was"),
+        _ => how,
+    };
     (result, how)
 }
 

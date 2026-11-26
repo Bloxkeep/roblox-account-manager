@@ -1,7 +1,7 @@
 // The app's own memory as Rust asked for it (Box, Vec, String...: every picture's pixels too), counted as it is asked
 // for and given back, for error.log's memory line (mem_tally.rs). Beside the process's private bytes it splits what the
-// app holds from what Windows, the graphics driver and freed-but-kept heap hold (the owner, 2026-11-20: 596 MB at the
-// peak, and no way to say of what). Two atomic adds a call: nothing to notice beside the allocation itself.
+// app holds from what Windows, the graphics driver and freed-but-kept heap hold (596 MB at the peak, and no way to say
+// of what). Two atomic adds a call: nothing to notice beside the allocation itself.
 use std::{
     alloc::{GlobalAlloc, Layout, System},
     sync::atomic::{AtomicUsize, Ordering::Relaxed},
@@ -91,10 +91,10 @@ pub fn take_look_peak() -> usize {
     PEAK_LOOK.swap(IN_USE.load(Relaxed), Relaxed)
 }
 
-/// Where Rust's heap goes (the owner, 2026-11-20: 52-70 MB held, of it 2-5 MB pictures, and nothing said of the rest).
-/// About one allocation in every 256 KB asked for (32 KB in a shot) is kept with the calls that asked for it, until it
-/// is given back; error.log's memory line is followed by the biggest holders, as addresses in the exe (read with the
-/// build's .pdb), a shot's BLOXKEEP_SHOT_SITES file by name. Freeing looks at one counter unless a kept one may be it.
+/// Where Rust's heap goes (52-70 MB held, of it 2-5 MB pictures, and nothing said of the rest). About one allocation
+/// in every 256 KB asked for (32 KB in a shot) is kept with the calls that asked for it, until it is given back;
+/// error.log's memory line is followed by the biggest holders, as addresses in the exe (read with the build's .pdb), a
+/// shot's BLOXKEEP_SHOT_SITES file by name. Freeing looks at one counter unless a kept one may be it.
 #[cfg(any(feature = "shot", feature = "core"))]
 pub mod sites {
     use std::{
@@ -119,8 +119,8 @@ pub mod sites {
 
     static ON: AtomicBool = AtomicBool::new(false);
     static BASE: AtomicUsize = AtomicUsize::new(0);
-    /// Past this many bytes in Rust's heap the holders are taken at once (a peak lasts moments: the owner's alpha.15
-    /// went 70 MB -> 132 and 143 MB and back between two memory lines, 2026-11-22, with nothing saying what).
+    /// Past this many bytes in Rust's heap the holders are taken at once (a peak lasts moments: alpha.15
+    /// went 70 MB -> 132 and 143 MB and back between two memory lines, with nothing saying what).
     static SPIKE_AT: AtomicUsize = AtomicUsize::new(96 << 20);
     static SPIKE: Mutex<Option<String>> = Mutex::new(None);
     /// Per bucket of addresses, how many kept allocations are in it: freeing anything else stops at one load.

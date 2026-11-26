@@ -158,8 +158,8 @@ pub async fn run(c: &mut Checks, _dir: &str) {
             (),
         );
     }
-    // Multi-Roblox turned on from the tray with a vault (owner 2026-11-19: it only opened Bloxkeep): Bloxkeep comes up
-    // and the app is asked to turn it on (it asks its question there).
+    // Multi-Roblox turned on from the tray with a vault (it only opened Bloxkeep): Bloxkeep comes up and the app is
+    // asked to turn it on (it asks its question there).
     {
         let mut s = seen.borrow_mut();
         s.open = false;

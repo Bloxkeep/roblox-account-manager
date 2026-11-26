@@ -20,6 +20,7 @@ use super::{
 };
 use crate::core::{
     base::{Cancel, Fail, Guid, Res, Stamp},
+    close_plan::{Cause, DropWhy, End, Open, Then, Who},
     game_target::GameTarget,
     l, log,
     models::{Account, GameBan},
@@ -80,14 +81,12 @@ pub struct RejoinState {
     pub ran_out_of_memory: RefCell<HashSet<Guid>>,
     /// The rejoin `rejoin` is doing now: out of the queue, its window not asked for yet.
     pub rejoin_in_flight: RefCell<Option<Rc<RejoinRequest>>>,
-    /// Clients already being closed for a kick in their log (so it happens once).
-    pub closing_for_rejoin: RefCell<HashSet<i32>>,
     /// Rejoins that took `rejoin_cts` so far (see rejoin).
     pub rejoin_generation: std::cell::Cell<u64>,
 }
 
 /// Rejoins in a row after which "keeps getting disconnected" is said, once. Every rejoin waits REJOIN_DELAY however
-/// many came before (the owner's choice, 2026-10-21): a game's ban stops them instead.
+/// many came before: a game's ban stops them instead.
 pub const KEEPS_DROPPING: i32 = 2;
 /// A client in its game this long is fine again: its next drop counts from one.
 pub const STAY_RESETS_REJOINS: Duration = Duration::from_secs(10 * 60);
@@ -164,9 +163,9 @@ pub fn rejoin_place(launch: &PendingLaunch, last_log: Option<&ClientState>) -> i
 
 /// Where a rejoin goes: the game or private server opened (any server: the one it was on may be gone), or a game the
 /// person started in the window since. A window opened on Roblox's home screen goes back to the game the person was in
-/// there (2026-11-11: the owner's dropped with "Disconnected from game" and stayed on Roblox's error box, left as "opened
-/// without a game"); None while it has been in none. A window adopted from outside Bloxkeep gets none: its server may be
-/// a private or reserved one, and going back would be into a public one (audit R9).
+/// there (a user's dropped with "Disconnected from game" and stayed on Roblox's error box, left as "opened without a
+/// game"); None while it has been in none. A window adopted from outside Bloxkeep gets none: its server may be a private
+/// or reserved one, and going back would be into a public one (audit R9).
 pub fn rejoin_target(launch: &PendingLaunch, last_log: Option<&ClientState>) -> Option<GameTarget> {
     if let Some(opened) = &launch.target {
         return Some(match last_log.and_then(|l| l.chosen_place) {
@@ -208,8 +207,9 @@ pub fn playability_why(answer: &Playability) -> String {
 }
 
 impl App {
-    pub fn on_session_ended(&self, account_id: Guid, launch: &Rc<PendingLaunch>, last_log: Option<ClientState>) {
-        self.note_session_end(account_id, launch, last_log.as_ref()); // before auto-rejoin reads (and forgets) whether Roblox closed it
+    /// `end`: what the close desk says follows (close_desk.rs `close_ended`).
+    pub fn on_session_ended(&self, account_id: Guid, launch: &Rc<PendingLaunch>, last_log: Option<ClientState>, end: End) {
+        self.note_session_end(account_id, launch, last_log.as_ref(), matches!(end, End::Reopen(_))); // before auto-rejoin reads (and forgets) whether Roblox closed it
         self.controller.offline_strikes.borrow_mut().remove(&account_id);
         // A game ban in its last lines, unseen before the window closed: noted all the same, or the next preset would
         // open the account into Join Error 600.
@@ -220,22 +220,25 @@ impl App {
             self.note_game_ban(account_id, place, log.kick_message.clone(), launch.started_at.get(), log.ban_ends);
         }
         // Closed for good: a scheduled stop no longer owns the account, so a client opened by hand later stays open.
-        if !self.queue_rejoin(account_id, launch, last_log.as_ref()) {
+        if !self.queue_rejoin(account_id, launch, last_log.as_ref(), end) {
             self.forget_scheduled_open(account_id);
         }
     }
 
-    /// True when auto-rejoin (or the preset's planned restart) will bring the client back.
-    pub(crate) fn queue_rejoin(&self, account_id: Guid, launch: &Rc<PendingLaunch>, last_log: Option<&ClientState>) -> bool {
+    /// True when auto-rejoin (or a reopen Bloxkeep closed it for: a restart, a server switch) will bring the client back.
+    pub(crate) fn queue_rejoin(&self, account_id: Guid, launch: &Rc<PendingLaunch>, last_log: Option<&ClientState>, end: End) -> bool {
         let out_of_memory = self.rejoin.ran_out_of_memory.borrow_mut().remove(&account_id);
-        let restarting = self.presets.restarts.borrow_mut().remove(&account_id);
-        let restart = restarting.is_some();
-        let Some(account) = self.should_rejoin(account_id, launch, last_log, restart) else {
+        let restarting = match &end {
+            End::Reopen(target) => Some(target.clone()),
+            _ => None,
+        };
+        let Some(account) = self.should_rejoin(account_id, launch, last_log, &end) else {
             self.controller.rejoins_in_a_row.borrow_mut().remove(&account_id); // closed for good: a client opened later counts from one again
+            self.close_desk.stop_moving(account_id); // its server switch, if any, ends here
             return false;
         };
         self.controller.rejoin_queue.borrow_mut().retain(|r| r.account_id != account_id);
-        if let Some((restart_target, _)) = restarting {
+        if let Some(restart_target) = restarting {
             // Not a drop: not counted, and goes ahead whatever auto-rejoin says.
             let place = restart_target.place_id;
             self.controller.rejoin_queue.borrow_mut().push(RejoinRequest {
@@ -301,15 +304,17 @@ impl App {
             && self.controller.presence.borrow().get(&account.user_id).is_some_and(|p| p.r#type == 0 || p.r#type == 1)
     }
 
-    /// The account when its window goes back; None (logged why) when it doesn't.
-    pub(crate) fn should_rejoin(&self, account_id: Guid, launch: &Rc<PendingLaunch>, last_log: Option<&ClientState>, restart: bool) -> Option<Account> {
+    /// The account when its window goes back; None (logged why) when it doesn't. `end`: what the close desk says
+    /// follows; a reopen goes ahead whatever auto-rejoin says.
+    pub(crate) fn should_rejoin(&self, account_id: Guid, launch: &Rc<PendingLaunch>, last_log: Option<&ClientState>, end: &End) -> Option<Account> {
         let no = |reason: &str| -> Option<Account> {
             log::note(&format!("Rejoin: account {}'s window ended, not rejoined ({reason}).", short(account_id)));
             None
         };
-        if self.controller.user_closed.borrow_mut().remove(&account_id) {
-            return no("closed on purpose");
+        if let End::Closed { why, .. } = end {
+            return no(why);
         }
+        let restart = matches!(end, End::Reopen(_));
         // Roblox closed it when another window opened: a rejoin would only close the next one (roblox_updates.rs).
         if self.roblox_updates.closed_by_roblox.borrow_mut().remove(&account_id) {
             return no("Roblox closed it as another opened");
@@ -416,7 +421,8 @@ impl App {
             let Some(state) = log_of(self, info.0) else {
                 continue;
             };
-            if self.rejoin.closing_for_rejoin.borrow().contains(&info.0) {
+            // Closing already, whoever asked (a person's close of a window slow to go included): not closed again.
+            if self.close_desk.closing_of(info.0).is_some() {
                 continue;
             }
             // A rejoin of a hidden window: hidden again once in its game.
@@ -650,59 +656,66 @@ impl App {
             {
                 continue;
             }
-            log::note(&format!(
-                "Rejoin: closing window {} to rejoin, {}.",
-                info.0,
-                if dropped {
-                    format!(
-                        "disconnected (code {}{})",
-                        state.reason.map(|c| c.to_string()).unwrap_or_else(|| "none".into()),
-                        if state.kick_message.as_deref().is_some_and(|m| !m.is_empty()) { ", kicked with a message" } else { "" }
-                    )
-                } else if server_gone {
-                    "its chosen server ended or is full".to_string()
-                } else {
-                    format!("no server after {} s", GET_IN_TIMEOUT.as_secs())
-                }
-            ));
-            self.note_drop_lines(
-                account.id,
-                info.0,
-                &if dropped {
-                    format!("dropped, code {}, closed to rejoin", state.reason.map(|c| c.to_string()).unwrap_or_else(|| "none".into()))
-                } else if teleport_dead {
-                    "a teleport that never reached a server, closed to rejoin".to_string()
-                } else {
-                    "never got into its game, closed to rejoin".to_string()
-                },
-            );
-            self.rejoin.closing_for_rejoin.borrow_mut().insert(info.0);
-            // Said as what it was: on 2026-10-21 a game's "DataStore lock lost, please rejoin the game." went out as
-            // "Lost connection".
-            let n = self.name(&account);
-            let text = if !dropped {
-                if target_job.is_some() {
-                    l::f("{0} couldn't get into that server (full or closed) — joining another one…", &[&n])
-                } else {
-                    l::f("{0} couldn't get into the game — trying again…", &[&n])
-                }
-            } else if let Some(words) = state.kick_message.as_deref().filter(|m| !m.is_empty()) {
-                l::f("{0} was kicked by the game, rejoining: {1}", &[&n, &words])
-            } else if state.reason == Some(267) {
-                l::f("{0} was kicked by the game — rejoining…", &[&n])
-            } else if state.reason == Some(SERVER_SHUTDOWN) {
-                l::f("{0}'s server shut down — joining another one…", &[&n])
-            } else if let Some(lost) = state.reason.filter(|c| lost_connection(*c)) {
-                let _ = lost;
-                l::f("{0} lost connection — restarting Roblox…", &[&n])
-            } else if let Some(other) = state.reason {
-                let why = super::activity::kick_reason(other);
-                l::f("{0} was disconnected ({1}) — restarting Roblox…", &[&n, &why])
+            let why = if dropped {
+                DropWhy::Dropped
+            } else if teleport_dead {
+                DropWhy::DeadTeleport
             } else {
-                l::f("{0} dropped out of the game, reason unknown — restarting Roblox…", &[&n])
+                DropWhy::NeverGotIn
             };
-            self.notify(&text, "info", "drop", account.id, true, None);
-            roblox_processes::close(info.0, false);
+            self.ask_close_with(Some(account.id), info.0, Cause::Drop(why), Then::Rejoin, false, || {
+                log::note(&format!(
+                    "Rejoin: closing window {} to rejoin, {}.",
+                    info.0,
+                    if dropped {
+                        format!(
+                            "disconnected (code {}{})",
+                            state.reason.map(|c| c.to_string()).unwrap_or_else(|| "none".into()),
+                            if state.kick_message.as_deref().is_some_and(|m| !m.is_empty()) { ", kicked with a message" } else { "" }
+                        )
+                    } else if server_gone {
+                        "its chosen server ended or is full".to_string()
+                    } else {
+                        format!("no server after {} s", GET_IN_TIMEOUT.as_secs())
+                    }
+                ));
+                self.note_drop_lines(
+                    account.id,
+                    info.0,
+                    &if dropped {
+                        format!("dropped, code {}, closed to rejoin", state.reason.map(|c| c.to_string()).unwrap_or_else(|| "none".into()))
+                    } else if teleport_dead {
+                        "a teleport that never reached a server, closed to rejoin".to_string()
+                    } else {
+                        "never got into its game, closed to rejoin".to_string()
+                    },
+                );
+                // Said as what it was: on 2026-10-21 a game's "DataStore lock lost, please rejoin the game." went out as
+                // "Lost connection".
+                let n = self.name(&account);
+                let text = if !dropped {
+                    if target_job.is_some() {
+                        l::f("{0} couldn't get into that server (full or closed) — joining another one…", &[&n])
+                    } else {
+                        l::f("{0} couldn't get into the game — trying again…", &[&n])
+                    }
+                } else if let Some(words) = state.kick_message.as_deref().filter(|m| !m.is_empty()) {
+                    l::f("{0} was kicked by the game, rejoining: {1}", &[&n, &words])
+                } else if state.reason == Some(267) {
+                    l::f("{0} was kicked by the game — rejoining…", &[&n])
+                } else if state.reason == Some(SERVER_SHUTDOWN) {
+                    l::f("{0}'s server shut down — joining another one…", &[&n])
+                } else if let Some(lost) = state.reason.filter(|c| lost_connection(*c)) {
+                    let _ = lost;
+                    l::f("{0} lost connection — restarting Roblox…", &[&n])
+                } else if let Some(other) = state.reason {
+                    let why = super::activity::kick_reason(other);
+                    l::f("{0} was disconnected ({1}) — restarting Roblox…", &[&n, &why])
+                } else {
+                    l::f("{0} dropped out of the game, reason unknown — restarting Roblox…", &[&n])
+                };
+                self.notify(&text, "info", "drop", account.id, true, None);
+            });
         }
     }
 
@@ -1080,6 +1093,12 @@ impl App {
         let Some(due) = due else {
             return;
         };
+        // What the waits above don't cover (close_plan.rs O1, O3): Roblox's own updater running from Bloxkeep, a window
+        // of this account still closing. (A Close of it took its rejoin out of the queue: O2 has nothing to add.)
+        if let Open::Wait(why) = self.may_open(Who::Auto, Some(due.account_id), now) {
+            self.note_rejoin_held(Some(why.words()));
+            return;
+        }
         if now.secs_since(self.controller.last_session_start.get()) < secs(self.rejoin_spacing(&due)) {
             return;
         }
@@ -1207,8 +1226,9 @@ impl App {
         };
         let vault = vault_now(&self);
         let account = self.find_account(request.account_id);
-        // server_hop.rs: taken here, even by a rejoin that stops below.
-        let hopping = self.server_hop.hopping.borrow_mut().remove(&request.account_id).is_some();
+        // On its way to another server (server_hop.rs): not sent to another account's server. The switch lasts until its
+        // window is in its game (close_desk.rs), or ends here with a rejoin that stops below.
+        let hopping = self.close_desk.moving_of(request.account_id);
         let already_open = |app: &App, id: Guid| is_running(app, id) || app.controller.pending.borrow().iter().any(|p| p.account_id == id);
         let stop = match (&vault, &account) {
             (None, _) => Some("locked"),
@@ -1231,6 +1251,7 @@ impl App {
         };
         if let Some(why) = stop {
             log::note(&format!("Rejoin: account {} dropped from the queue ({why}).", short(request.account_id)));
+            self.close_desk.stop_moving(request.account_id);
             let_go(&self, &taken);
             return;
         }
@@ -1456,7 +1477,7 @@ impl App {
     pub fn ended_state(&self, pid: i32) -> Option<ClientState> {
         let log = self.controller.logs.borrow_mut().last_state_of(pid);
         match log {
-            Some(l) if l.status == "left" && self.rejoin.closing_for_rejoin.borrow().contains(&pid) => {
+            Some(l) if l.status == "left" && self.close_desk.own_close(pid) => {
                 Some(ClientState { status: "disconnected".into(), reason: None, ..l })
             }
             other => other,
@@ -1529,18 +1550,19 @@ impl App {
                 continue;
             }
             self.controller.offline_strikes.borrow_mut().remove(&id);
-            log::note(&if stuck_in_game && moving {
-                format!("Rejoin: closing window {} to rejoin, its log says a teleport under way for over {} s but its account was out of a game on {TELEPORT_STRIKES} status checks.", info.0, secs(TELEPORT_GIVE_UP) as i64)
-            } else if stuck_in_game {
-                format!("Rejoin: closing window {} to rejoin, its log says in a game but its account was out of one on {STUCK_IN_GAME_STRIKES} status checks.", info.0)
-            } else {
-                format!("Rejoin: closing window {} to rejoin, its account was out of a game on two status checks (no log to go by).", info.0)
+            // Bloxkeep's own close: never taken for Roblox closing it. Not a window already closing (close_plan.rs A2).
+            self.ask_close_with(Some(account.id), info.0, Cause::Drop(DropWhy::OutOfGame), Then::Rejoin, false, || {
+                log::note(&if stuck_in_game && moving {
+                    format!("Rejoin: closing window {} to rejoin, its log says a teleport under way for over {} s but its account was out of a game on {TELEPORT_STRIKES} status checks.", info.0, secs(TELEPORT_GIVE_UP) as i64)
+                } else if stuck_in_game {
+                    format!("Rejoin: closing window {} to rejoin, its log says in a game but its account was out of one on {STUCK_IN_GAME_STRIKES} status checks.", info.0)
+                } else {
+                    format!("Rejoin: closing window {} to rejoin, its account was out of a game on two status checks (no log to go by).", info.0)
+                });
+                self.note_drop_lines(account.id, info.0, if moving { "a teleport under way too long while Roblox says out of a game, closed to rejoin" } else { "no disconnect logged while Roblox says out of a game, closed to rejoin" });
+                let n = self.name(&account);
+                self.notify(&l::f("{0} dropped out of the game, reason unknown — restarting Roblox…", &[&n]), "info", "drop", account.id, true, None);
             });
-            self.note_drop_lines(account.id, info.0, if moving { "a teleport under way too long while Roblox says out of a game, closed to rejoin" } else { "no disconnect logged while Roblox says out of a game, closed to rejoin" });
-            self.rejoin.closing_for_rejoin.borrow_mut().insert(info.0); // Bloxkeep's own close: never taken for Roblox closing it
-            let n = self.name(&account);
-            self.notify(&l::f("{0} dropped out of the game, reason unknown — restarting Roblox…", &[&n]), "info", "drop", account.id, true, None);
-            roblox_processes::close(info.0, false);
         }
     }
 }

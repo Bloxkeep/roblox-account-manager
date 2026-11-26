@@ -94,8 +94,8 @@ pub fn net_version(text: Option<&str>) -> Option<[i64; 4]> {
     Some(out)
 }
 
-/// What is installed, from disk and registry: up to a second on a busy PC (2026-10-29, the owner's: 0.9 s in a
-/// process check), so the process tick reads it on a worker (`tick_roblox_updates`).
+/// What is installed, from disk and registry: up to a second on a busy PC (0.9 s in a process check), so the
+/// process tick reads it on a worker (`tick_roblox_updates`).
 pub fn read_installs(via: &str, custom: &str) -> (InstallsInfo, Option<String>) {
     // What Default opens Roblox with: the links' program, or what stands in for it when they are gone or Roblox
     // VNG's (RobloxLauncher.FallbackLauncher), so Settings names the program really used.

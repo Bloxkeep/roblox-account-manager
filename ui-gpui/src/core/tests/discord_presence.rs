@@ -287,7 +287,7 @@ async fn game_shown(c: &mut Checks, dir: &str) {
         (&state, game()),
     );
     // Discord's clock under the game's name counts from when the window got into it, not from when Bloxkeep opened
-    // (owner, 2026-11-15: 17 h on a game just joined).
+    // (17 h on a game just joined).
     app.relaunch.started.set(Stamp::utc_now().plus_secs(-17.0 * 3600.0));
     let start = app.presence_activity().start_unix;
     let joined = at.unix_secs();

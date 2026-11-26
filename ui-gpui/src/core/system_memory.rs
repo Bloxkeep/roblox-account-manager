@@ -94,7 +94,7 @@ fn path_root(path: &str) -> String {
 /// memory was almost full). Each existing page file counts from its size now up to its largest: the one set, or for a
 /// system-managed one ("?:" for every drive) Microsoft's 3 × RAM or 4 GB, whichever is larger, capped at its drive's
 /// size ÷ 8 (learn.microsoft.com, page file size for 64-bit Windows); each within its drive's free space less 1 GB.
-/// A page file set but never made counts for nothing: on 2026-10-22 the owner's E: one (16–32 GB) didn't exist
+/// A page file set but never made counts for nothing: a user's E: one (16–32 GB) didn't exist
 /// (BitLocker's PagefileOnOsVolume = 1 makes page files only on the system drive at boot), and counting it kept the
 /// warning quiet while 6 Roblox windows filled the commit limit (99.7 %, two crashed on ERROR_COMMITMENT_LIMIT).
 ///

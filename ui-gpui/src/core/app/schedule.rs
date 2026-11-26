@@ -18,6 +18,7 @@ use super::controller::{bool_of, str_of};
 use super::presets::{same_vault, secs, short};
 use crate::core::{
     base::{Fail, Guid, Kind, Res, Stamp},
+    close_plan::{Cause, Open, Who},
     clock, l, log,
     models::{Account, LaunchPreset, PresetSchedule, ScheduledRunState, VaultData},
     roblox_api, rt,
@@ -162,8 +163,6 @@ pub struct ScheduleState {
     pub missed_reported: RefCell<HashSet<(Guid, String)>>,
     /// Since when runs could have been missed: the app's start, then each lock.
     pub locked_since: Cell<Wall>,
-    /// Accounts a scheduled stop is closing right now: a start in the same minute waits for them to go.
-    pub stop_closing: RefCell<HashSet<Guid>>,
 }
 
 impl Default for ScheduleState {
@@ -177,7 +176,6 @@ impl Default for ScheduleState {
             locked_schedules: RefCell::default(),
             missed_reported: RefCell::default(),
             locked_since: Cell::new(Wall::now()),
-            stop_closing: RefCell::default(),
         }
     }
 }
@@ -495,10 +493,21 @@ impl App {
         while self.controller.launch_cts.borrow().is_some() && clock::utc_now() < until && same_vault(&self.held_vault(), &vault) {
             rt::sleep(Duration::from_millis(1000)).await;
         }
+        // Roblox updating, its background copies swept, the PC just woke (close_plan.rs O1, O3): waited for as a launch is.
+        let held = |app: &App| match app.may_open(Who::Auto, None, clock::utc_now()) {
+            Open::Wait(why) => Some(why),
+            _ => None,
+        };
+        if let Some(why) = held(self) {
+            log::note(&format!("{tag} waits to open: {} ({} min at most).", why.words(), SCHEDULE_LAUNCH_WAIT.as_secs() / 60));
+        }
+        let until = clock::utc_now().plus_secs(secs(SCHEDULE_LAUNCH_WAIT));
+        while held(self).is_some() && clock::utc_now() < until && same_vault(&self.held_vault(), &vault) {
+            rt::sleep(Duration::from_millis(1000)).await;
+        }
         let closing = |app: &App| -> bool {
-            let stop_closing = app.schedule.stop_closing.borrow();
             let running = app.controller.running.borrow();
-            preset.account_ids.iter().any(|id| stop_closing.contains(id) && running.contains_key(id))
+            preset.account_ids.iter().any(|id| running.contains_key(id) && app.close_desk.closing_account(*id).is_some_and(|c| c.cause == Cause::Stop))
         };
         if closing(self) {
             log::note(&format!("{tag} waits for its stop to finish closing its windows."));
@@ -507,12 +516,6 @@ impl App {
         let until = clock::utc_now().plus_secs(secs(SCHEDULE_STOP_WAIT));
         while closing(self) && clock::utc_now() < until && same_vault(&self.held_vault(), &vault) {
             rt::sleep(Duration::from_millis(500)).await;
-        }
-        {
-            let mut stop_closing = self.schedule.stop_closing.borrow_mut();
-            for id in &preset.account_ids {
-                stop_closing.remove(id);
-            }
         }
         if !same_vault(&self.held_vault(), &vault) {
             log::note(&format!("{tag} didn't run, Bloxkeep was locked meanwhile."));
@@ -700,8 +703,7 @@ impl App {
         if ids.is_empty() {
             return; // closed by hand meanwhile
         }
-        self.schedule.stop_closing.borrow_mut().extend(ids.iter().copied());
-        self.close_accounts(&ids, false); // gracefully, and marked as closed on purpose: no auto-rejoin
+        self.close_accounts_for(&ids, false, Cause::Stop); // gracefully, and marked as closed on purpose: no auto-rejoin
         self.notify(
             &l::p(ids.len() as i64, "Scheduled preset {0} finished: closing {1} account.", "Scheduled preset {0} finished: closing {1} accounts.", &[&run.name, &ids.len()]),
             "info",

@@ -13,9 +13,10 @@ use windows_sys::Win32::Foundation::{CloseHandle, FILETIME};
 use windows_sys::Win32::System::Threading::{GetProcessTimes, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
 
 use super::App;
-use super::controller::{INSTALL_CACHE_LIFETIME, PendingLaunch};
+use super::controller::{INSTALL_CACHE_LIFETIME, PendingLaunch, ROBLOX_VERSION_INTERVAL};
 use super::installs::{InstallsInfo, net_version, read_installs};
 use crate::core::base::{Cancel, Fail, Guid, Res, Stamp};
+use crate::core::close_plan::{Cause, Then};
 use crate::core::models::{Account, stamp_min};
 use crate::core::roblox_api::{self, realm};
 use crate::core::roblox_installs::{self, ClientVersion};
@@ -63,8 +64,12 @@ pub struct RobloxUpdatesState {
     pub together_since: Cell<Option<Stamp>>,
     /// The build each client runs, read once from its file by the path it started from; None when Windows wouldn't say.
     pub client_builds: RefCell<HashMap<i32, Option<ClientVersion>>>,
-    /// The newest build the automatic update was tried for: once each, so a launcher that can't doesn't run every tick.
+    /// The newest build the automatic update started for: once each. Set only once it really started (the launcher
+    /// running, or Close, update, reopen under way); a refusal leaves it, so it is tried again.
     pub auto_updated_for: RefCell<Option<String>>,
+    /// When the automatic update last failed to start (the launcher wouldn't run): tried again no sooner than
+    /// ROBLOX_VERSION_INTERVAL after, not every tick.
+    pub auto_update_failed_at: Cell<Option<Stamp>>,
     /// The build the automatic update is waiting for windows over (said once in the log).
     pub auto_update_waits_for: RefCell<Option<String>>,
     /// When "Close, update, reopen" closed the windows; None when none is under way. Rejoins wait for it.
@@ -120,6 +125,7 @@ impl Default for RobloxUpdatesState {
             together_since: Cell::new(None),
             client_builds: RefCell::new(HashMap::new()),
             auto_updated_for: RefCell::new(None),
+            auto_update_failed_at: Cell::new(None),
             auto_update_waits_for: RefCell::new(None),
             update_reopen_since: Cell::new(None),
             update_reopen_updating: Cell::new(false),
@@ -181,31 +187,32 @@ pub fn launcher_running_since(launcher: &str, since: Stamp) -> bool {
     win_kit::pids_by_name(launcher).unwrap_or_default().into_iter().any(|pid| process_start(pid).is_some_and(|start| start >= after))
 }
 
-/// Closes the Roblox app Roblox's installer opened since `since` (no game in it), looking a few seconds in case it is
-/// still starting.
-pub async fn close_installer_app(since: Stamp) {
-    let after = to_file_time(since.plus_secs(-1.0));
-    for _ in 0..6 {
-        let closed = rt::blocking(move || {
-            let mut closed = false;
-            for p in roblox_processes::get_players() {
-                if p.created >= after && !roblox_processes::is_closing(p.pid) && roblox_processes::opened_by_installer(p.pid, p.created) {
-                    log::note(&format!("Closed the Roblox app Roblox's installer opened after updating (pid {}).", p.pid));
-                    roblox_processes::close(p.pid, false);
-                    closed = true;
-                }
-            }
-            closed
-        })
-        .await;
-        if closed {
-            return;
-        }
-        rt::sleep(Duration::from_millis(500)).await;
-    }
-}
-
 impl App {
+    /// Closes the Roblox app Roblox's installer opened since `since` (no game in it), looking a few seconds in case it
+    /// is still starting. Found on a worker; closed through the close desk, as a window Bloxkeep didn't open.
+    pub async fn close_installer_app(&self, since: Stamp) {
+        let after = to_file_time(since.plus_secs(-1.0));
+        for _ in 0..6 {
+            let found: Vec<i32> = rt::blocking(move || {
+                roblox_processes::get_players()
+                    .into_iter()
+                    .filter(|p| p.created >= after && !roblox_processes::is_closing(p.pid) && roblox_processes::opened_by_installer(p.pid, p.created))
+                    .map(|p| p.pid)
+                    .collect()
+            })
+            .await;
+            for &pid in &found {
+                self.ask_close_with(None, pid, Cause::Untracked, Then::StayClosed, false, || {
+                    log::note(&format!("Closed the Roblox app Roblox's installer opened after updating (pid {pid})."));
+                });
+            }
+            if !found.is_empty() {
+                return;
+            }
+            rt::sleep(Duration::from_millis(500)).await;
+        }
+    }
+
     /// Notes the Roblox clients that appeared since the last tick: not those running when Bloxkeep started, nor the
     /// windowless copy a client starts in the notification area as it closes (its parent is that client) — counted as new,
     /// two closing at once looked as if each had closed the other.
@@ -242,7 +249,7 @@ impl App {
     /// `children_of`: child processes by parent: the ended client's own notification-area copy isn't a new window.
     pub fn check_closed_by_roblox(&self, account: Guid, pid: i32, started_at: Stamp, now: Stamp, in_order: bool, children_of: &dyn Fn(i32) -> Vec<i32>) -> bool {
         // Without Multi-Roblox holding Roblox's single-window lock, Roblox closing the older window is how it always works.
-        if !multi_instance::armed() || self.controller.user_closed.borrow().contains(&account) || self.rejoin.closing_for_rejoin.borrow().contains(&pid) {
+        if !multi_instance::armed() || self.close_desk.closing_of(pid).is_some() || self.close_desk.closing_account(account).is_some() {
             return false;
         }
         let starts: Vec<(i32, Stamp)> = self.roblox_updates.client_starts.borrow().iter().map(|(k, v)| (*k, *v)).collect();
@@ -474,8 +481,8 @@ impl App {
     }
 
     /// The newest build goes in by itself once no window could be cut off by it (a launcher's copy: Roblox's own updates
-    /// itself as it opens), or at once with "now": as Close, update, reopen, the windows in a game opening again after (the
-    /// owner, 2026-11-07). AppSettings' auto_update_roblox.
+    /// itself as it opens), or at once with "now": as Close, update, reopen, the windows in a game opening again after.
+    /// AppSettings' auto_update_roblox.
     pub fn auto_update_roblox(self: &Rc<Self>, players: &[PlayerProcess]) {
         let settings = self.controller.vault.borrow().as_ref().map(|v| {
             let d = v.data();
@@ -494,12 +501,12 @@ impl App {
             return;
         }
         let version = self.roblox_version_dto();
-        if version.up_to_date != Some(false) || version.updater.is_none() || version.latest == *self.roblox_updates.auto_updated_for.borrow() {
+        if version.up_to_date != Some(false) || version.updater.is_none() || !self.auto_update_due(&version.latest, Stamp::utc_now()) {
             return;
         }
         // By itself it closes only what it can open again. A window not in a game, one whose log isn't read yet (a second
-        // after unlocking, when the windows open before are picked up) or one Bloxkeep didn't open would stay closed: the
-        // owner's window did, 2026-11-11 01:25 ("closing 1 tracked … 0 to reopen"). It waits for them instead.
+        // after unlocking, when the windows open before are picked up) or one Bloxkeep didn't open would stay closed: a
+        // user's window did, 2026-11-11 01:25 ("closing 1 tracked … 0 to reopen"). It waits for them instead.
         let running: Vec<(Guid, (i32, Rc<PendingLaunch>))> = self.controller.running.borrow().iter().map(|(k, v)| (*k, v.clone())).collect();
         let reopenable: Vec<i32> = running.iter().filter(|(id, run)| self.can_reopen(*id, run)).map(|(_, run)| run.0).collect();
         let stay = would_stay_closed(players.iter().map(|p| p.pid), reopenable);
@@ -515,22 +522,47 @@ impl App {
             }
             return;
         }
-        *self.roblox_updates.auto_updated_for.borrow_mut() = latest.clone();
         log::note(&format!(
             "Roblox update: automatic, to {}{}.",
             latest.as_deref().unwrap_or(""),
             if players.is_empty() { ", no Roblox open".to_string() } else { format!(", closing and reopening {} Roblox", players.len()) }
         ));
         // The C# let these throw up into the tick (its step logs it); here they are logged the same way.
-        if players.is_empty() {
-            if let Err(e) = self.update_roblox(true) {
-                log::write(&e);
-            }
-            return;
+        let outcome = if players.is_empty() {
+            self.update_roblox(true).map(|_| self.controller.roblox_updating.get())
+        } else {
+            // As Close, update, reopen: the windows in a game open again after (an account farming overnight isn't left closed).
+            self.update_and_reopen().map(|_| self.roblox_updates.update_reopen_since.get().is_some())
+        };
+        if let Err(e) = &outcome {
+            log::write(e);
         }
-        // As Close, update, reopen: the windows in a game open again after (an account farming overnight isn't left closed).
-        if let Err(e) = self.update_and_reopen() {
-            log::write(&e);
+        self.note_auto_update(latest, outcome.ok(), Stamp::utc_now());
+    }
+
+    /// The automatic update may be tried for `latest` now: not once it started for that build, nor within
+    /// ROBLOX_VERSION_INTERVAL of a failed start.
+    pub fn auto_update_due(&self, latest: &Option<String>, now: Stamp) -> bool {
+        if *latest == *self.roblox_updates.auto_updated_for.borrow() {
+            return false;
+        }
+        !self.roblox_updates.auto_update_failed_at.get().is_some_and(|at| now >= at && now.secs_since(at) < ROBLOX_VERSION_INTERVAL.as_secs_f64())
+    }
+
+    /// What came of an automatic try: `started` Some(true) when it really started (done for that build), Some(false)
+    /// when it was turned down (tried again on a later tick, once what held it is over), None when it failed (tried
+    /// again after ROBLOX_VERSION_INTERVAL).
+    pub fn note_auto_update(&self, latest: Option<String>, started: Option<bool>, now: Stamp) {
+        match started {
+            Some(true) => {
+                *self.roblox_updates.auto_updated_for.borrow_mut() = latest;
+                self.roblox_updates.auto_update_failed_at.set(None);
+            }
+            Some(false) => {}
+            None => {
+                self.roblox_updates.auto_update_failed_at.set(Some(now));
+                log::note(&format!("Roblox update: automatic, failed to start; tried again in {} min.", ROBLOX_VERSION_INTERVAL.as_secs() / 60));
+            }
         }
     }
 
@@ -547,27 +579,23 @@ impl App {
         }
         let mut tracked: HashSet<i32> = HashSet::new();
         let running: Vec<(Guid, (i32, Rc<PendingLaunch>))> = self.controller.running.borrow().iter().map(|(k, v)| (*k, v.clone())).collect();
+        // Bloxkeep's own closes: neither a drop nor closed by Roblox. One that can't be opened again (close_plan.rs A4)
+        // stays closed. It outranks every reopen asked before (close_plan.rs A2), whose target it replaces with its own.
+        let mut reopen = 0;
         for (id, run) in running {
             tracked.insert(run.0);
-            if self.can_reopen(id, &run) {
-                let target = self.restart_target(run.0, &run.1);
-                self.presets.restarts.borrow_mut().insert(id, (target, Stamp::utc_now()));
+            if self.can_reopen(id, &run) && self.ask_close(Some(id), run.0, Cause::UpdateReopen, Then::Reopen(self.restart_target(run.0, &run.1)), false).closing() {
+                reopen += 1;
             } else {
-                self.controller.user_closed.borrow_mut().insert(id);
+                self.ask_close(Some(id), run.0, Cause::UpdateReopen, Then::StayClosed, false);
             }
-            self.rejoin.closing_for_rejoin.borrow_mut().insert(run.0); // Bloxkeep's own close: neither a drop nor closed by Roblox
-            roblox_processes::close(run.0, self.in_game_now(run.0));
         }
         let mut untracked = 0;
         for other in roblox_processes::get_player_pids().into_iter().filter(|pid| !tracked.contains(pid)) {
-            roblox_processes::close(other, false);
+            self.ask_close(None, other, Cause::UpdateReopen, Then::StayClosed, false);
             untracked += 1;
         }
-        log::note(&format!(
-            "Close, update, reopen: closing {} tracked and {untracked} other Roblox window(s), {} to reopen.",
-            tracked.len(),
-            self.presets.restarts.borrow().len()
-        ));
+        log::note(&format!("Close, update, reopen: closing {} tracked and {untracked} other Roblox window(s), {reopen} to reopen.", tracked.len()));
         self.roblox_updates.update_reopen_since.set(Some(Stamp::utc_now()));
         self.roblox_updates.update_reopen_updating.set(false);
         self.push_state();
@@ -636,7 +664,7 @@ impl App {
                 rt::blocking(move || launcher_running_since(&launcher, started_at)).await
             };
             if own && !running {
-                close_installer_app(started_at).await;
+                self.close_installer_app(started_at).await;
             }
             if updated && !(own && running) {
                 log::note(&format!("Roblox update: done, now build {}.", self.installs().client.map(|c| c.folder).unwrap_or_else(|| "unknown".into())));

@@ -243,7 +243,7 @@ fn core_defines(name: &str) -> bool {
 pub async fn run(c: &mut Checks, dir: &str) {
     // The sign-in window, made as always but never shown: it stays up once its browser has started, and the
     // controller's wait for it ends only when it is closed. (Its state went as soon as the browser was up, so the app
-    // took it for closed and an empty frame stayed: the owner's blank "Sign in to Roblox", 2026-11-15, whose
+    // took it for closed and an empty frame stayed: a user's blank "Sign in to Roblox", whose
     // error.log said "closed" in the second it opened.)
     {
         use crate::core::forms::browser_login_form::BrowserLoginForm;
@@ -337,8 +337,8 @@ pub async fn run(c: &mut Checks, dir: &str) {
 
     body(c, &app, &roblox, &cookie, [a, b, v, s, cc, w, d]).await;
 
-    // Every refusal and warning the person sees is in error.log, names scrubbed (owner, 2026-11-15: error.log must cover
-    // every case, nobody is asked for a screenshot).
+    // Every refusal and warning the person sees is in error.log, names scrubbed (error.log must cover every case, nobody
+    // is asked for a screenshot).
     {
         // (The checks above end locked: the names to scrub come from the open vault.)
         if app.controller.vault.borrow().is_none() {
@@ -516,11 +516,10 @@ async fn body(c: &mut Checks, app: &Rc<App>, roblox: &Arc<Roblox>, cookie: &dyn 
         roblox.asked_with(&cookie("V2")).iter().map(|r| r.host.clone()).collect::<Vec<_>>().join(", "),
     );
 
-    // ── Never renewed on purpose ──
-    // Roblox's session refresh ends the session it renews: an account pasted from a browser, or shared with another app,
-    // would be signed out there. Only what Roblox sends on its own is saved (the owner's choice, 2026-10-22).
-    // PORT: the C# asked reflection for RefreshSessionAsync / RenewSignInsIfDue; here the core's source is searched for
-    // their Rust names.
+    // ── Never renewed on purpose ── Roblox's session refresh ends the session it renews: an account pasted from a
+    // browser, or shared with another app, would be signed out there. Only what Roblox sends on its own is saved. PORT:
+    // the C# asked reflection for RefreshSessionAsync / RenewSignInsIfDue; here the core's source is searched for their
+    // Rust names.
     c.check(
         "Bloxkeep has no way to end a session to renew it (no call to auth's /v1/session/refresh)",
         !core_defines("refresh_session") && !core_defines("refresh_session_async") && !core_defines("renew_sign_ins_if_due"),

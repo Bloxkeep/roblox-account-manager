@@ -34,8 +34,7 @@ const QUIT_EVENT: &str = r"Local\Bloxkeep.Quit";
 const SINGLE_INSTANCE_MUTEX: &str = r"Local\Bloxkeep.SingleInstance";
 
 /// `base` for this run: with its own data folder (BLOXKEEP_DATA, a test copy run on an empty folder to try the first
-/// start) a Bloxkeep is an instance of its own, beside the everyday one rather than giving way to it (the owner,
-/// 2026-11-19: "cho tôi thử 1 bản build không có dữ liệu để test onboarding").
+/// start) a Bloxkeep is an instance of its own, beside the everyday one rather than giving way to it.
 fn instance_name(base: &str) -> String {
     match std::env::var("BLOXKEEP_DATA").ok().filter(|d| !d.is_empty()) {
         Some(dir) => {
@@ -171,7 +170,7 @@ pub fn main_core(args: &[String]) {
     };
     // A downloaded update applied here restarts Bloxkeep through Velopack's Update.exe, and Windows lets the run it
     // starts come to the front only if this one, just started by the person, passes its right on: without it the
-    // updated window opened behind the others (the owner, 2026-11-15: "nó ko tự pop up lên nó ở đằng sau").
+    // updated window opened behind the others.
     if !another_runs {
         // SAFETY: plain call.
         unsafe { AllowSetForegroundWindow(ASFW_ANY) };

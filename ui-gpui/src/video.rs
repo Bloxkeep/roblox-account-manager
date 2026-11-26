@@ -1,6 +1,6 @@
 // A game's gameplay clip (the video its Roblox page plays first), shown over and over on its tile while the mouse
-// rests there (pages/clips.rs), with its sound (the owner, 2026-11-19: "some Roblox game demos have sound"); a button
-// on the clip turns the sound off for every clip, kept between runs.
+// rests there (pages/clips.rs), with its sound; a button on the clip turns the sound off for every clip, kept between
+// runs.
 //
 // Roblox keeps it as WebM (VP9, with Opus sound; Adopt Me's: 640Ã—360, 15 frames a second, 32 s, ~10 MB, measured
 // 2026-11-13). GPUI has no video, so Windows' own Media Foundation decodes it (its WebM reader and VP9 decoder are part
@@ -23,7 +23,7 @@ use std::{
 use gpui_kit::{prelude::*, AnyWindowHandle, AsyncApp, Context, EventEmitter, ImageSource, ObjectFit, RenderImage, Subscription, WeakEntity, Window, div, img};
 
 /// Frames decoded ahead of the one on screen: two (each up to 960 or 1600 pixels wide, 2-6 MB; four held 12 MB for
-/// a clip, the owner's error.log 2026-11-20); a frame decodes in a few ms, far within one frame's time.
+/// a clip, a real error.log); a frame decodes in a few ms, far within one frame's time.
 const AHEAD: usize = 2;
 /// Not drawn for this long: the clock stops and the decoder is let go (the page went, or the window is hidden); drawn
 /// again, the clip starts over.

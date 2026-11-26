@@ -7,7 +7,7 @@ use serde_json::Value;
 use super::App;
 use super::auto_lock::AUTO_LOCK_CHOICES;
 use super::controller::{JsonKind, error_text, has, int32_of, long_of, opt_bool, opt_str};
-use super::memory::RAM_LIMIT_CHOICES;
+use super::memory::{CPU_LIMIT_CHOICES, RAM_LIMIT_CHOICES};
 use super::presets::RESTART_ABOVE_CHOICES;
 use super::server_hop::HOP_ABOVE_CHOICES;
 use super::tray::MULTI_CLOSE_FIRST;
@@ -268,6 +268,15 @@ impl App {
             {
                 s.ram_limit_mb = v;
             }
+            if let Some(open) = opt_bool(a, "ramLimitOpen") {
+                s.ram_limit_open = open;
+            }
+            if has(a, "cpuLimit", JsonKind::Number)
+                && let Ok(v) = i32::try_from(long_of(a, "cpuLimit"))
+                && CPU_LIMIT_CHOICES.contains(&v)
+            {
+                s.cpu_limit_percent = v;
+            }
             if has(a, "restartAboveMb", JsonKind::Number)
                 && let Ok(v) = i32::try_from(long_of(a, "restartAboveMb"))
                 && RESTART_ABOVE_CHOICES.contains(&v)
@@ -479,6 +488,7 @@ impl App {
         }
         step(|| self.save_before_closing()); // normally done already, before the window agreed to close
         step(|| self.give_cores_back());
+        step(|| self.lift_cpu_limits());
         step(|| self.lift_ram_limits());
         step(|| self.give_memory_priority_back()); // no Roblox window stays at low RAM priority without Bloxkeep to raise it again
         // A launch cut short: the next Roblox opened by hand gets the person's own file. Also one that couldn't be put

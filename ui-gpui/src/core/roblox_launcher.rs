@@ -76,7 +76,8 @@ fn links_open() -> bool {
 }
 
 /// What opens Roblox when the links don't: Bloxstrap, Fishstrap or Voidstrap, another Bloxstrap-style launcher, the newest
-/// RobloxPlayerBeta.exe, and VNG's client only when nothing else is there (the owner's rule, 2026-10-28).
+/// RobloxPlayerBeta.exe, a client seen running here before (roblox_installs::note_running), and VNG's client only
+/// when nothing else is there.
 pub(crate) fn fallback_launcher() -> Option<(String, Vec<String>)> {
     for name in ["Bloxstrap", "Fishstrap", "Voidstrap"] {
         if let Some(exe) = installs::find_bootstrapper(name) {
@@ -88,7 +89,20 @@ pub(crate) fn fallback_launcher() -> Option<(String, Vec<String>)> {
             return Some((exe, Vec::new()));
         }
     }
-    installs::find_any_client().or_else(installs::find_vng_client).map(|client| (client, Vec::new()))
+    installs::find_any_client().or_else(installs::seen_client).or_else(installs::find_vng_client).map(|client| (client, Vec::new()))
+}
+
+/// "Roblox isn't installed", with what was looked at written to error.log (once until it changes): the sentence alone
+/// never said why a PC with Roblox on it got it.
+fn not_installed() -> Fail {
+    static SAID: Mutex<String> = Mutex::new(String::new());
+    let seen = format!("Roblox start: nothing found to open Roblox with ({}).", installs::probe_report());
+    let mut last = SAID.lock().unwrap_or_else(|e| e.into_inner());
+    if *last != seen {
+        log::note(&seen);
+        *last = seen;
+    }
+    not_found(l::t("Roblox isn't installed. Install it from roblox.com/download, then try again."))
 }
 
 /// A random number from Random.Shared's place: the bytes of a new v4 Guid.
@@ -259,11 +273,11 @@ fn open_auto(uri: &str) -> Res<String> {
                     "Only Roblox VNG is installed. Choose Roblox VNG under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download.",
                 )));
             }
-            return Err(not_found(if installs::store_edition_installed() {
-                l::t("Only Roblox from the Microsoft Store is installed. Choose it under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download.")
+            return Err(if installs::store_edition_installed() {
+                not_found(l::t("Only Roblox from the Microsoft Store is installed. Choose it under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download."))
             } else {
-                l::t("Roblox isn't installed. Install it from roblox.com/download, then try again.")
-            }));
+                not_installed()
+            });
         }
         // The links on another channel's build with Roblox's live one installed beside it: that one, as Windows would
         // start the links' (roblox_installs::LIVE_BUILD: the other would update and close every Roblox window open).
@@ -341,7 +355,7 @@ fn start_before(uri: &str) -> Res<String> {
     let (exe, args) = match parts {
         Some(p) => p,
         None => {
-            let (exe, mut args) = fallback_launcher().ok_or_else(|| not_found(l::t("Roblox isn't installed. Install it from roblox.com/download, then try again.")))?;
+            let (exe, mut args) = fallback_launcher().ok_or_else(not_installed)?;
             args.push("%1".into());
             (exe, args)
         }

@@ -1,7 +1,7 @@
 //! Background Roblox windows run in Windows' efficiency mode (EcoQoS, leaning on efficiency cores where the CPU has them,
 //! and below-normal priority), giving way to the one in front. Never pinned to the efficiency cores: pinned, 4 windows
-//! filled them while the fast cores idled and one got 2-5 % of a core (the owner's PC, 2026-10-21). Only Windows'
-//! switches: nothing in Roblox is touched.
+//! filled them while the fast cores idled and one got 2-5 % of a core. Only Windows' switches: nothing in Roblox is
+//! touched.
 use std::{ffi::c_void, sync::OnceLock};
 
 use windows_sys::Win32::{

@@ -1,9 +1,9 @@
 // TrayWindow.cs: the tray icon's quick panel (left click) and menu (right click), by the pointer above the taskbar.
 // Drawn by the interface itself (ui-gpui/src/tray.rs) in a window of its own, in the same process. Until 2026-11-19 it
 // was a page (tray.html, ui/src/Tray.tsx) in a WebView2 browser: a browser of its own, so in Task Manager a "WebView2
-// Manager", a GPU process and helpers came and went beside Bloxkeep while the pointer was near the icon (the owner,
-// 2026-11-19: "nó cứ mỗi nơi 1 ngả"), and it took warming up ahead of the click, keeping the browser a minute after,
-// waiting for its page and a stand-in menu for when WebView2 failed. All of that went with the browser.
+// Manager", a GPU process and helpers came and went beside Bloxkeep while the pointer was near the icon, and it took
+// warming up ahead of the click, keeping the browser a minute after, waiting for its page and a stand-in menu for when
+// WebView2 failed. All of that went with the browser.
 //
 // Here stays what decides the tray's behaviour: which part opens and closing it again on the same click, where it goes
 // (by the pointer, next to the taskbar), hiding it once something else is clicked, what it shows (the App's TrayState,

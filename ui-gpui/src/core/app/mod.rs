@@ -23,6 +23,7 @@ pub mod auto_lock;
 pub mod backup;
 pub mod bot_check;
 pub mod claim_check;
+pub mod close_desk;
 pub mod cores;
 pub mod custom_theme;
 pub mod discord;
@@ -92,7 +93,7 @@ pub struct App {
     pub anti_afk: anti_afk::AntiAfkState,
     pub auto_lock: auto_lock::AutoLockState,
     pub backup: backup::BackupState,
-    pub bot_check: bot_check::BotCheckState,
+    pub close_desk: close_desk::CloseDesk,
     pub cores: cores::CoresState,
     pub discord: discord::DiscordState,
     pub discord_presence: discord_presence::DiscordPresenceState,

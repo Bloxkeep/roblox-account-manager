@@ -1,10 +1,10 @@
-//! The logo drawn at the exact pixels it takes on screen. GPUI turns an SVG <img> into a picture twice its own size
-//! (128 px for the logo) and shrinks that on the graphics card, which has no smaller copies to shrink from: at 32 px on
-//! a 150 % screen (48 px) it came out jagged and smudged (owner's screenshot, 2026-11-12). Here resvg draws it at
-//! size × scale once, kept per size; the picture then lands pixel for pixel. And it must stand on whole pixels too: laid
-//! out by the page it can land a fraction of a pixel off (the rail's 68 less its 1 px border leaves the 32 px logo at
-//! 17.5, a quarter pixel off at 150 %), and the graphics card then blends every pixel with its neighbour, the tilted
-//! edges came out bent (owner 2026-11-13: "vẫn bị méo"). `mark` draws it itself, snapped.
+//! The logo drawn at the exact pixels it takes on screen. GPUI turns an SVG <img> into a picture twice its own size (128
+//! px for the logo) and shrinks that on the graphics card, which has no smaller copies to shrink from: at 32 px on a 150
+//! % screen (48 px) it came out jagged and smudged. Here resvg draws it at size × scale once, kept per size; the picture
+//! then lands pixel for pixel. And it must stand on whole pixels too: laid out by the page it can land a fraction of a
+//! pixel off (the rail's 68 less its 1 px border leaves the 32 px logo at 17.5, a quarter pixel off at 150 %), and the
+//! graphics card then blends every pixel with its neighbour, the tilted edges came out bent. `mark` draws it itself,
+//! snapped.
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
 use gpui_kit::*;
@@ -12,12 +12,11 @@ use gpui_kit::*;
 const LOGO: &[u8] = include_bytes!("../assets/logo.svg");
 /// The logo's two blocks alone, without the app icon's dark tile round them, filling the square: what the rail shows.
 /// On the rail's own dark ground the tile was a box in a box, and it left the face 24 px of the 48 (at 150 %): eyes
-/// and smile a few pixels each, tilted, read as bent (owner 2026-11-13). Here the face is half as large again.
+/// and smile a few pixels each, tilted, read as bent. Here the face is half as large again.
 const MARK: &[u8] = br##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="6.5 5 51 51"><g transform="rotate(-8 32 32)"><rect x="25" y="10" width="28" height="28" rx="6" fill="#3b4250"/><rect x="12" y="20" width="32" height="32" rx="7" fill="#f5c933"/><rect x="19.5" y="30" width="4.2" height="6.5" rx="2.1" fill="#15181e"/><rect x="32.3" y="30" width="4.2" height="6.5" rx="2.1" fill="#15181e"/><path d="M20.5 41.5c4.6 4.2 10.4 4.2 15 0" fill="none" stroke="#15181e" stroke-width="2.6" stroke-linecap="round"/></g></svg>"##;
 /// Below this many pixels a side the tilted mark can't be drawn: its eyes (4 of 51) and smile (2.6) come out under a
 /// pixel each, blended with the yellow into brown smudges, and its tilted edges into a blur: the status bar's 14 px mark
-/// read pale and muddy beside the rail's (the owner, 2026-11-19: "logo bloxkeep ở đầu sau nhạt hơn hẳn so với logo
-/// gốc"). There `small_mark` draws it on the pixel grid instead.
+/// read pale and muddy beside the rail's. There `small_mark` draws it on the pixel grid instead.
 const SMALL_BELOW: u32 = 28;
 
 /// The mark for `dots` pixels a side, built on whole pixels (as small icons are hinted): the same two blocks and face,
@@ -77,9 +76,8 @@ fn nearest<V: Clone>(kept: &HashMap<u32, V>, dots: u32) -> Option<V> {
 }
 
 /// The colour of the block behind the face (the logo's slate, 3b4250) made to stand apart from the rail it is drawn
-/// on: on a theme whose rail is near that slate the block sank into it and only the yellow face was left (the owner,
-/// 2026-11-18: "đôi khi chỉ còn mặt cười vàng"). Lightened on a dark rail, darkened on a light one, only as far as
-/// it takes.
+/// on: on a theme whose rail is near that slate the block sank into it and only the yellow face was left. Lightened
+/// on a dark rail, darkened on a light one, only as far as it takes.
 fn back_block() -> u32 {
     use crate::theme::{GROUND, RAIL_BG, c, contrast, over};
     let ground = over(c(RAIL_BG), Hsla { a: 1., ..c(GROUND) });
@@ -191,12 +189,11 @@ fn draw(svg: &[u8], px: u32) -> Option<RenderImage> {
     draw_wh(svg, px, px)
 }
 
-/// Bloxkeep's banner, drawn to fill `w`×`h` logical px on this screen in the theme's own colours: the Home hero of a
-/// vault that has played nothing yet (a game's picture was someone else's; the owner, 2026-11-18). Three windows, each
-/// a scene (a city at dusk, mountains over water, a canyon under the sun in front), Bloxkeep's icon (logo.svg, untouched) at the front one's
-/// corner: the owner's mock-up (2026-11-19, "đây chính là hero banner chính thức") that replaced the dark windows of
-/// faces. Every colour comes from the theme's ground (a picture theme's colour under its picture) and its accent, so it
-/// sits on any theme; checked on Sunset, Dark, Aurora, City, Halloween, Christmas, Rose, Snow and Light.
+/// Bloxkeep's banner, drawn to fill `w`×`h` logical px on this screen in the theme's own colours: the Home hero of a vault that has played
+/// nothing yet (a game's picture was someone else's). Three windows, each a scene (a city at dusk, mountains over water, a canyon under the
+/// sun in front), Bloxkeep's icon (logo.svg, untouched) at the front one's corner; it replaced the dark windows of
+/// faces. Every colour comes from the theme's ground (a picture theme's colour under
+/// its picture) and its accent, so it sits on any theme; checked on Sunset, Dark, Aurora, City, Halloween, Christmas, Rose, Snow and Light.
 pub fn hero(w: f32, h: f32) -> Option<ImageSource> {
     use crate::theme::{FACE, GROUND, c};
     thread_local! {
@@ -295,10 +292,9 @@ fn hero_svg(ground: Hsla, accent: Hsla) -> String {
         }
         let _ = write!(o, r#"<g clip-path="url(#{id})"><rect x="{ix}" y="{iy}" width="{iw}" height="{ih}" fill="{top}"/>{scene}</g>"#);
     }
-    // (No Bloxkeep icon on it: the owner took it off, 2026-11-19, "bỏ logo bloxkeep ở đây luôn đi cũng được"; the
-    // hero's words already carry the mark.)
-    // 16:9 like the banner's box, round all three windows with room to spare (they span x 112–1663, y 82–810): a 2:1
-    // view laid over the 16:9 box cut the side windows off (the owner, 2026-11-19: "sao bạn lại ăn bớt vậy?").
+    // (No Bloxkeep icon on it: a user took it off,; the hero's words already carry the mark.) 16:9 like the banner's
+    // box, round all three windows with room to spare (they span x 112–1663, y 82–810): a 2:1 view laid over the
+    // 16:9 box cut the side windows off.
     format!(r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="52 -24 1671 940">{o}</svg>"#)
 }
 

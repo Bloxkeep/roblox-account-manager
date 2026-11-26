@@ -19,6 +19,7 @@ use super::{
 };
 use crate::core::{
     base::{Cancel, Fail, Guid, Res, Stamp},
+    close_plan::{Cause, Then},
     game_target::GameTarget,
     l, log,
     roblox_api::{self, ServerInfo},
@@ -42,10 +43,6 @@ pub const CROWD_GRACE: Duration = Duration::from_secs(90);
 pub const CROWD_PAGES: i32 = 4;
 
 pub struct ServerHopState {
-    /// Accounts on their way to another server, and since when: their reopening goes there, not to another account's
-    /// server. Taken by that reopening (rejoin); one that never comes (the window closed for good, everything closed)
-    /// counts no more after HOP_TIMEOUT, so /pc switch isn't refused for ever (2026-10-30 review).
-    pub hopping: RefCell<HashMap<Guid, Stamp>>,
     pub next_crowd_check: Cell<Stamp>,
     pub crowd_busy: Cell<bool>,
     /// Games told to have no quiet server, and when: said again only after a while.
@@ -57,7 +54,6 @@ pub struct ServerHopState {
 impl Default for ServerHopState {
     fn default() -> ServerHopState {
         ServerHopState {
-            hopping: RefCell::new(HashMap::new()),
             next_crowd_check: Cell::new(min_stamp()),
             crowd_busy: Cell::new(false),
             no_quiet_server_said: RefCell::new(HashMap::new()),
@@ -129,13 +125,6 @@ pub fn quiet_server<'a>(seen: &'a [ServerInfo], above: i32, avoid: &HashSet<Stri
 }
 
 impl App {
-    /// Some account is still on its way to another server.
-    pub fn hopping(&self) -> bool {
-        let now = Stamp::utc_now();
-        self.server_hop.hopping.borrow_mut().retain(|_, since| !(now.secs_since(*since) > secs(HOP_TIMEOUT) || now < *since));
-        !self.server_hop.hopping.borrow().is_empty()
-    }
-
     /// The accounts' windows in a public server of a game, with that server.
     fn in_public_servers(&self, ids: &[Guid]) -> Vec<Playing> {
         let runs: HashMap<Guid, Run> = running(self).into_iter().collect();
@@ -244,12 +233,12 @@ impl App {
         if current != Some(run.0) {
             return false;
         }
-        self.server_hop.hopping.borrow_mut().insert(id, Stamp::utc_now());
-        self.rejoin.join_refused.borrow_mut().retain(|l| !Rc::ptr_eq(l, &run.1));
-        self.presets.restarts.borrow_mut().insert(id, (GameTarget::new(place_id, Some(job_id.to_string()), None, None), Stamp::utc_now()));
-        self.rejoin.closing_for_rejoin.borrow_mut().insert(run.0);
-        self.close_for_reopen(run.0, self.in_game_now(run.0));
-        true
+        // Reopened as a restart is, where it can be (close_plan.rs A4); marked as moving until it is in its new server.
+        let target = GameTarget::new(place_id, Some(job_id.to_string()), None, None);
+        self.ask_close_with(Some(id), run.0, Cause::Hop, Then::Reopen(target), false, || {
+            self.rejoin.join_refused.borrow_mut().retain(|l| !Rc::ptr_eq(l, &run.1));
+        })
+        .closing()
     }
 
     /// Opens an account's window again into the server it is in (Rejoin from the remote page): a public server by its
@@ -268,13 +257,12 @@ impl App {
                 None => return false,
             },
         };
-        log::note(&format!("Rejoin from the remote page: window {} opens again ({}).", run.0, if same { "same server" } else { "where it was opened into" }));
-        self.server_hop.hopping.borrow_mut().insert(id, Stamp::utc_now());
-        self.rejoin.join_refused.borrow_mut().retain(|l| !Rc::ptr_eq(l, &run.1));
-        self.presets.restarts.borrow_mut().insert(id, (target, Stamp::utc_now()));
-        self.rejoin.closing_for_rejoin.borrow_mut().insert(run.0);
-        self.close_for_reopen(run.0, self.in_game_now(run.0));
-        true
+        // Reopened as a restart is, where it can be (close_plan.rs A4); marked as moving until it is in its server again.
+        self.ask_close_with(Some(id), run.0, Cause::RejoinNow, Then::Reopen(target), false, || {
+            log::note(&format!("Rejoin from the remote page: window {} opens again ({}).", run.0, if same { "same server" } else { "where it was opened into" }));
+            self.rejoin.join_refused.borrow_mut().retain(|l| !Rc::ptr_eq(l, &run.1));
+        })
+        .closing()
     }
 
     /// GameName(placeId) of the C# (renamed: discord_alerts.rs has its own game_name).
@@ -394,7 +382,7 @@ impl App {
         }
         if self.controller.launch_cts.borrow().is_some()
             || self.controller.rejoining.get()
-            || !self.presets.restarts.borrow().is_empty()
+            || self.close_desk.reopening()
             || self.hopping()
             || self.settling()
             || self.roblox_updates.update_reopen_since.get().is_some()
@@ -409,7 +397,7 @@ impl App {
             .into_iter()
             .filter(|w| {
                 now.secs_since(w.2.at) >= secs(CROWD_GRACE)
-                    && !self.rejoin.closing_for_rejoin.borrow().contains(&w.1.0)
+                    && self.close_desk.closing_of(w.1.0).is_none()
                     && !self.preset_for(w.1.1.preset_id).is_some_and(|p| p.server == "job" || p.server == "most")
             })
             .collect();

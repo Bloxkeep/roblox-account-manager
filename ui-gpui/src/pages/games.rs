@@ -38,8 +38,8 @@ pub enum Tab {
     Servers,
     /// Its wiki, read here (pages/wiki.rs).
     Wiki,
-    /// Its codes (giftcodes), working and expired: a tab of its own (the owner, 2026-11-19: on the overview it was
-    /// "bẩn mắt"), there once a list has the game.
+    /// Its codes (giftcodes), working and expired: a tab of its own (on the overview it was), there once a list
+    /// has the game.
     Codes,
 }
 
@@ -53,8 +53,8 @@ pub struct Open {
 
 /// What Games shows: the games, the friends (pages/friends.rs), the avatar (pages/avatar.rs), the profile with its
 /// Robux and communities, the Marketplace (both pages/profile.rs), or the inbox: messages, notifications and the Robux
-/// lines (pages/inbox.rs). One place for what the Roblox app has, so the rail
-/// keeps its few buttons (the owner's call, 2026-11-10); what comes next of Roblox's joins this switch.
+/// lines (pages/inbox.rs). One place for what the Roblox app has, so the rail keeps its few buttons; what comes next
+/// of Roblox's joins this switch.
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub enum View {
     #[default]
@@ -126,18 +126,18 @@ struct LiveBox {
     at: Option<std::time::Instant>,
 }
 
-/// The header's switch between them, as one black capsule in the middle of the header (the owner, 2026-11-14:
-/// "ra giữa", Apple's Dynamic Island for its manner). Plain line icons; the one shown opens into its name, which
-/// slides out as the capsule grows; beside the others, what waits there now (friends in a game, unread messages, a
-/// watched thing that changed). A name shows on hover.
+/// The header's switch between them, as one black capsule in the middle of the header (Apple's Dynamic Island for
+/// its manner). Plain line icons; the one shown opens into its name, which slides out as the capsule grows; beside
+/// the others, what waits there now (friends in a game, unread messages, a watched thing that changed). A name
+/// shows on hover.
 pub fn views(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
     let in_game = match &root.friends.list {
         Some(Ok(l)) => l.iter().filter(|f| f.kind == 2).count(),
         _ => 0,
     };
     // Each count stands in one place only, as on roblox.com: the unread messages here, the notifications on the bell, the
-    // games' unread news on the games; the rail's Roblox button adds them up (shell.rs). The messages used to be
-    // counted on the bell and here at once, and the news only on the rail, found nowhere inside (owner, 2026-11-20).
+    // games' unread news on the games; the rail's Roblox button adds them up (shell.rs). The messages used to be counted
+    // on the bell and here at once, and the news only on the rail, found nowhere inside.
     let unread = root.games.corner.unread.1.max(0) as usize;
     let news = root.state.pointer("/feeds/unread").and_then(Value::as_i64).unwrap_or(0).max(0) as usize;
     let fresh = root.profile.watch.iter().any(|w| w.fresh);
@@ -230,7 +230,7 @@ pub fn views(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
                 .relative()
                 .text_size(px(T_M))
                 .font_weight(FontWeight::SEMIBOLD)
-                // (The view shown: Bloxkeep's yellow, as every chosen pill: the owner, 2026-11-15, "đừng để màu trắng nữa".)
+                // (The view shown: Bloxkeep's yellow, as every chosen pill.)
                 .map(|d| match (on, sliding) {
                     (true, true) => d.tones(ca(WHITE, 0.), ca(WHITE, 0.)).text_color(crate::theme::on_text()),
                     (true, false) => d.tones(c(FACE), c(FACE)).text_color(crate::theme::on_text()),
@@ -253,7 +253,7 @@ pub fn views(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
                 .on_click(move |_, _, cx| {
                     let _ = this.update(cx, |r, cx| {
                         // The inbox's count is its unread messages: it opens on them, not on the chats it was last
-                        // on (the owner, 2026-11-20: "it shows 7 and inside there is nothing", on Chat).
+                        // on.
                         if view == View::Inbox && n > 0 {
                             r.inbox.tab = 1;
                         }
@@ -604,7 +604,7 @@ pub struct Data {
     asked_icons: HashSet<i64>,
     /// The games whose wide picture was asked for, and those drawn wide (art) with none yet, noted while drawing:
     /// ask_covers asks Roblox for them once the frame is made. What is drawn decides: a list kept apart from the drawing
-    /// left games shown wide with their 150 px icon blown up, blurred (Throw a Seed, the owner 2026-11-20 and -21).
+    /// left games shown wide with their 150 px icon blown up, blurred (Throw a Seed, and -21).
     asked_covers: HashSet<i64>,
     need_covers: std::cell::RefCell<HashSet<i64>>,
     /// Their wide pictures, for the board's tiles; and a sharper one for the game that leads a chart.
@@ -819,7 +819,7 @@ fn want_mine(r: &mut Root, universe: i64, cx: &mut Context<Root>) {
 
 /// Favourite (`vote` None) or vote the game up or down as the account looked through: shown at once with its count,
 /// put back with Roblox's reason when it refuses. A click on the thumb already chosen takes the vote back, as Roblox's
-/// own page does (it said "a vote given stays", and nothing could be unliked: the owner, 2026-11-20).
+/// own page does (it said "a vote given stays", and nothing could be unliked).
 fn set_mine(r: &mut Root, place: i64, universe: i64, vote: Option<bool>, cx: &mut Context<Root>) {
     let Some((_, user, cookie)) = crate::pages::friends::signed(r).filter(|(_, _, c)| !c.is_empty()) else {
         r.toast = Some((r.tr("gp.needSign"), "bad".into()));
@@ -1153,9 +1153,8 @@ thread_local! {
 }
 
 /// A game's own logo, as the game draws its name: its wiki's site logo (the wiki's "File:Site-logo.png": Blox Fruits'
-/// is the game's blue and orange lettering on nothing). The owner, 2026-11-15, of the name in the game's colours:
-/// "sai rồi, thiếu vibe, tôi muốn y chang như này", with that logo. Roblox itself gives no logo, only the icon and the
-/// cover. Asked once a run per wiki; None for a game with no wiki, a wiki with no logo, or until the answer comes.
+/// is the game's blue and orange lettering on nothing). Roblox itself gives no logo, only the icon and the cover. Asked
+/// once a run per wiki; None for a game with no wiki, a wiki with no logo, or until the answer comes.
 pub fn logo_of(root: &Root, place: i64, name: &str, cx: &mut Context<Root>) -> Option<String> {
     if !rich() {
         return None;
@@ -1175,8 +1174,8 @@ pub fn logo_of(root: &Root, place: i64, name: &str, cx: &mut Context<Root>) -> O
                 .and_then(|l| l.first())
                 .and_then(|p| p.pointer("/imageinfo/0"))
                 // (A logo too small to read as one, a favicon-sized mark, is left for the name in words; so is one about as
-                // tall as wide, a mascot or an egg rather than lettering: the owner's screenshot of 2026-11-15 had an egg in
-                // place of the game's name, "what ?". A name drawn in letters runs wide.)
+                // tall as wide, a mascot or an egg rather than lettering: a screenshot had an egg in place of the game's
+                // name, "what ?". A name drawn in letters runs wide.)
                 .filter(|i| {
                     let (w, h) = (i.get("width").and_then(Value::as_i64).unwrap_or(0), i.get("height").and_then(Value::as_i64).unwrap_or(0));
                     w >= 120 && h > 0 && w as f64 >= 1.6 * h as f64
@@ -1264,8 +1263,7 @@ fn keep_details(place: i64, v: &Value, cx: &mut Context<Root>) {
 pub fn want_details(r: &mut Root, link: &crate::link::Link, place: i64, cx: &mut Context<Root>) {
     if place > 0 && r.games.asked_details.insert(place) {
         // What Roblox said last time shows at once (Home's words and figures, the page's head), and Roblox's answer
-        // replaces it when it comes: it took a second or more to come each start (the owner, 2026-11-20: "có cách nào
-        // khiến nó tải ngay lập tức không").
+        // replaces it when it comes: it took a second or more to come each start.
         if !r.games.details.contains_key(&place)
             && let Some(v) = details_kept(place)
         {
@@ -1464,9 +1462,9 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
         settle_stays(r, place);
     }
     want_details(r, &link, place, cx);
-    // The countries its servers run in, asked as soon as its page shows, once a run (the owner, 2026-11-20: not only
-    // when the country menu beside Play is opened). Each round shows what it found at once, so the menu fills while
-    // the rest are asked; a failed or cut-short asking is asked again when the menu opens.
+    // The countries its servers run in, asked as soon as its page shows, once a run (not only when the country menu
+    // beside Play is opened). Each round shows what it found at once, so the menu fills while the rest are asked; a
+    // failed or cut-short asking is asked again when the menu opens.
     if place > 0 && r.games.view == View::Games && !r.games.regions.contains_key(&place) {
         load_regions(r, place, cx);
     }
@@ -1499,10 +1497,10 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
         let read = n.get("read").and_then(Value::as_f64).unwrap_or(0.);
         let follow = n.get("followed").and_then(Value::as_bool).unwrap_or(false);
         if r.games.tab == Tab::News && r.games.cards.is_some() {
-            // (Never read before: nothing is New against that, or every post was "New" at once, the owner, 2026-11-15.
-            // The mark goes when the page is left (shell), so a later visit counts from the last read.)
-            // (A game that posts every few minutes had every card "New" while its page stayed open: a card is New for
-            // its first minute on screen.)
+            // (Never read before: nothing is New against that, or every post was "New" at once. The mark
+            // goes when the page is left (shell), so a later visit counts from the last read.) (A game that posts
+            // every few minutes had every card "New" while its page stayed open: a card is New for its first minute on
+            // screen.)
             let stale = r.games.mark.as_ref().is_none_or(|(id, _, at)| *id != open.id || at.elapsed().as_secs() >= 60);
             if stale {
                 let next = if follow && read > 0. { read } else { f64::INFINITY };
@@ -1791,8 +1789,8 @@ fn want_codes(r: &mut Root, place: i64, universe: i64, name: String, cx: &mut Co
     .detach();
 }
 
-/// A code to copy, as About shows it: "Code", the code in the accent, Copy (the owner picked it, 2026-11-19). An
-/// expired one quieter, its code struck out, still copyable.
+/// A code to copy, as About shows it: "Code", the code in the accent, Copy (a user picked it). An expired one
+/// quieter, its code struck out, still copyable.
 fn code_chip(root: &Root, id: (&'static str, usize), code: &str, works: bool, cx: &mut Context<Root>) -> Stateful<Div> {
     let copy = code.to_string();
     div()
@@ -1868,9 +1866,9 @@ fn codes_block(root: &Root, place: i64, cx: &mut Context<Root>) -> Option<Div> {
     let live: Vec<&Value> = list.iter().copied().filter(works).collect();
     let old: Vec<&Value> = list.iter().copied().filter(|c| !works(c)).collect();
     let now = crate::time::now_secs();
-    // A table (the owner, 2026-11-20: "sao ko làm dạng bảng đi", the chips and rewards apart read as two lists): the
-    // code, what it gives, when it was added, Copy; a line between rows, the heads small above them, as the code sites'
-    // tables. The code's column as wide as the longest code needs (about 8.4 px a letter), within reason.
+    // A table (the chips and rewards apart read as two lists): the code, what it gives, when it was added, Copy; a line
+    // between rows, the heads small above them, as the code sites' tables. The code's column as wide as the longest
+    // code needs (about 8.4 px a letter), within reason.
     let longest = list.iter().map(|c| s(c, "code").chars().count()).max().unwrap_or(8) as f32;
     let col = (longest * 8.4 + 70.).clamp(170., 340.);
     const ADDED: f32 = 120.;
@@ -2124,12 +2122,12 @@ fn events_block(root: &Root, place: i64, width: f32, cx: &mut Context<Root>) -> 
         b.disabled(!signed).on_click(cx.listener(move |r, _, _, cx| toggle_going(r, place, id.clone(), cx)))
     };
 
-    // Every event in one look, as Roblox's own page has them (the owner, 2026-11-19, "Kiểu A"): two on at once had
-    // been one big and one small tile alone in half a row ("bạn ko thấy có vấn đề à?"). Only a game with one event
-    // gives it the whole width, its picture beside its words.
+    // Every event in one look, as Roblox's own page has them: two on at once had been one big and one small tile
+    // alone in half a row. Only a game with one event gives it the whole width, its
+    // picture beside its words.
     let shown: Vec<(usize, &roblox::GameEvent)> = list.iter().take(9).enumerate().collect();
-    // "On now · ends in 10d 20h" / "Coming · in 2d": the state in the accent, the time after it (no dot: the owner's
-    // rule against plain status dots).
+    // "On now · ends in 10d 20h" / "Coming · in 2d": the state in the accent, the time after it (no dot: against
+    // plain status dots).
     let status = |e: &roblox::GameEvent, size: f32| {
         let on = e.start <= now;
         let (state, when) = if on {
@@ -2271,7 +2269,7 @@ fn gallery(root: &Root, place: i64, width: f32, cx: &mut Context<Root>) -> Optio
     let items: Vec<CarouselItem> = pics.iter().enumerate().map(|(i, url)| {
         let pic = images::pic_pair(url, w, h, cx);
         // The last picture ends at the row's edge: with a gap after it too, the row had one more 24 px stop past the
-        // last full view, and Next stayed lit there (owner: "cái nút tiến chỉ ảnh cuối mới bị").
+        // last full view, and Next stayed lit there.
         let last = i + 1 == pics.len();
         CarouselItem::new(("gp-shot", i), i, state).w(px(if last { w } else { w + GAP })).pl(px(0.)).pr(px(if last { 0. } else { GAP })).child(
             div().w(px(w)).h(px(h)).rounded(px(R_L)).overflow_hidden().bg(ca(WHITE, 0.045)).when_some(pic, |d, p| {
@@ -2467,8 +2465,8 @@ fn want_roblox(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
         })
         .detach();
     }
-    // Every chart is a row of its own now (the owner's pick, 2026-11-19: rows that step sideways, as Roblox's
-    // charts page has them), so each is asked; the first dozen.
+    // Every chart is a row of its own now (rows that step sideways, as Roblox's charts page has them), so
+    // each is asked; the first dozen.
     let every: Vec<roblox::Sort> = match &r.games.sorts {
         Some(Ok(sorts)) => sorts.iter().enumerate().filter(|(k, s)| *k < CHART_ROWS || r.games.sort_at.as_deref() == Some(s.id.as_str())).map(|(_, s)| s.clone()).collect(),
         _ => Vec::new(),
@@ -2595,8 +2593,8 @@ fn shown_sort(r: &Root) -> Option<roblox::Sort> {
 }
 
 /// Roblox's search as the box is typed in: its words held a moment (a third of a second without a key) are asked,
-/// as Roblox's own search box does, not only on Enter (the owner, 2026-11-15: "nhấn enter mới ra các game"). Until
-/// the answer comes, the page says it is looking, not "Nothing matches".
+/// as Roblox's own search box does, not only on Enter. Until the answer comes, the page says it is looking, not
+/// "Nothing matches".
 pub fn search_soon(r: &mut Root, cx: &mut Context<Root>) {
     let q = r.game_search.read(cx).value().trim().to_string();
     r.games.typed += 1;
@@ -3140,7 +3138,7 @@ fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl I
         .gap(px(10.))
         .child(crate::pages::games::brand(root))
         .relative().child(island(root, cx))
-        // (The "Live from the games' own alerts" line was taken out: "no one needs to know", the owner, 2026-11-13.)
+        // (The "Live from the games' own alerts" line was taken out: "no one needs to know".)
         .child(div().flex_1())
         .child(
             div()
@@ -3269,7 +3267,7 @@ fn friends_strip(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyE
     const CELL: f32 = 92.;
     const GAP_F: f32 = 10.;
     // Join as the account whose friends these are, for one in a game whose server Roblox shows (the Friends page's Join;
-    // Roblox's own row of faces joins from a face, owner 2026-11-12).
+    // Roblox's own row of faces joins from a face).
     let join_as = crate::pages::friends::looking(root).1.and_then(|a| a.get("id").and_then(Value::as_str).map(str::to_string));
     let fit = (((width + GAP_F) / (CELL + GAP_F)).floor() as usize).max(2);
     let face_circle = |inner: AnyElement| div().relative().size(px(FACE)).flex_none().rounded_full().bg(c(RAISED_2)).flex().items_center().justify_center().child(inner);
@@ -3407,12 +3405,11 @@ fn keep_playing(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyEl
     }
     let (cols, w) = home_fit(width);
     let n = all.len();
-    // A wide page: the first game on a spotlight, big and playing its clip, the next ones stacked beside it (the
-    // owner, 2026-11-13: "one layer with cards spread on it … be creative").
+    // A wide page: the first game on a spotlight, big and playing its clip, the next ones stacked beside it.
     let wide = width >= 900.;
     let first = if wide { 4 } else { cols };
-    // The rest were out of reach: the head counted 12 and four showed (the owner, 2026-11-13: "xem full các game đã
-    // play kiểu gì"). "Show all" lays them out under the first ones.
+    // The rest were out of reach: the head counted 12 and four showed. "Show all" lays them out under the first
+    // ones.
     let open = root.games.keep_all && n > first;
     let head = section_head(root.tr("games.keepPlaying"), Some(n)).when(n > first, |d| {
         d.child(
@@ -3465,13 +3462,13 @@ fn played(root: &Root, g: &crate::pages::home::Game) -> (String, bool) {
 }
 
 /// The first game big, its gameplay clip playing on its picture while the mouse rests there, as on every other tile
-/// (muted, pages/clips.rs; it played on its own at first, the owner 2026-11-18: only under the mouse), its name large
-/// on a plate at its foot; the next three stacked at its right, each a picture and its name.
+/// (muted, pages/clips.rs; it played on its own at first: only under the mouse), its name large on a plate at its
+/// foot; the next three stacked at its right, each a picture and its name.
 fn spotlight(root: &Root, all: &[crate::pages::home::Game], width: f32, cx: &mut Context<Root>) -> AnyElement {
     const GAP_S: f32 = 16.;
     // The picture whole: Roblox's cover is 16:9 and says things at its edges (a title, a price), so the art is 16:9 too.
-    // A 3:1 band cut the top and bottom off it (owner 2026-11-15: "banner hiện còn đéo nên hồn"); a 16:9 one as wide
-    // as 64 % of the page stood taller than the window (2026-11-13), so its height is capped and its width follows.
+    // A 3:1 band cut the top and bottom off it; a 16:9 one as wide as 64 % of the page stood taller than the window
+    // (2026-11-13), so its height is capped and its width follows.
     const PLATE_H: f32 = 84.;
     let art_h = ((width - GAP_S) * 0.64 * 9. / 16.).clamp(200., 420.).round();
     let big_w = (art_h * 16. / 9.).round();
@@ -3498,7 +3495,7 @@ fn spotlight(root: &Root, all: &[crate::pages::home::Game], width: f32, cx: &mut
         cx.notify();
     })));
     // One card: the picture whole at the top, its name and buttons on a quiet footer under it (no plate over the
-    // picture; owner 2026-11-14: the words under the picture, "đẹp và luxury hơn").
+    // picture: the words under the picture).
     let plate = div()
         .h(px(PLATE_H))
         .flex_none()
@@ -3660,7 +3657,7 @@ fn recommended(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyEle
     if games.is_empty() {
         return None;
     }
-    // (Four rows before Show all: owner 2026-11-17, "hiện nhiều hơn… cho cái trang nó dài ra tí".)
+    // (Four rows before Show all.)
     let visible = board_fit(width).0 * 4;
     let open = root.games.recommended_all;
     let shown = if open { games.len() } else { visible.min(games.len()) };
@@ -3684,9 +3681,9 @@ const CHART_ROWS: usize = 12;
 /// A square tile's picture (the rows after the first).
 const SQUARE: f32 = 132.;
 
-/// Roblox's charts, each a row of its own that steps sideways with its arrows, as Roblox's charts page has them (the
-/// owner's pick, 2026-11-19, from a page made that way): the first row's games wide, the others' square. A row Roblox
-/// gave nothing for is left out; no sign-in, or the charts failed: one line saying so.
+/// Roblox's charts, each a row of its own that steps sideways with its arrows, as Roblox's charts page has them (from
+/// a page made that way): the first row's games wide, the others' square. A row Roblox gave nothing for is left out;
+/// no sign-in, or the charts failed: one line saying so.
 fn charts(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let sorts = match &root.games.sorts {
         Some(Ok(sorts)) if !sorts.is_empty() => sorts,
@@ -4317,7 +4314,7 @@ fn lead(root: &Root, g: &roblox::Game, w: f32, h: f32, cx: &mut Context<Root>) -
         .flex_none()
         .rounded(px(R_L))
         .cursor_pointer()
-        // (No lift: a band this big rising off its place read as a gap under it, the owner 2026-11-17.)
+        // (No lift: a band this big rising off its place read as a gap under it.)
         .lift(0.)
         .on_click(cx.listener(move |r, _, _, cx| {
             open_place(r, place, &name);
@@ -4377,7 +4374,7 @@ fn radar(root: &Root, place: i64, name: &str) -> Vec<Value> {
 
 /// Those warnings for one game, on its page: what happened, to how many PCs, in how many minutes.
 fn radar_strip(root: &Root, place: i64, name: &str) -> Option<Div> {
-    // (On the game's page the lines stand open under its tabs, no box: one box was all its parts, the owner 2026-11-15.)
+    // (On the game's page the lines stand open under its tabs, no box: one box was all its parts.)
     radar_lines(root, radar(root, place, name), false).map(|d| d.px(px(0.)).py(px(0.)).bg(gpui::transparent_black()).border_0())
 }
 
@@ -4595,8 +4592,7 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
             || (t == Tab::Prices && !has_prices)
             || (matches!(t, Tab::Passes | Tab::Badges | Tab::Servers) && place <= 0)
             || (t == Tab::Wiki && !has_wiki)
-            // (Codes is there at once, as Passes and Servers: it says it is looking, then what it found; the owner,
-            // 2026-11-20: "sao ko cho nó hiện ra trước rồi nội dung trong đó load ra sau".)
+            // (Codes is there at once, as Passes and Servers: it says it is looking, then what it found.)
             || (t == Tab::Codes && place <= 0)
         {
             continue;
@@ -4760,7 +4756,7 @@ pub fn load_regions(r: &mut Root, place: i64, cx: &mut Context<Root>) {
 
 /// One round of `load_regions`: the first asks of a few servers (8, shown at once: some 3 s), each next one of more
 /// while the menu shows what is found, until all are placed or Roblox asks for a pause. Asking all 60 before showing
-/// any took half a minute (the owner, 2026-11-19: "lâu mới hiện server").
+/// any took half a minute.
 fn ask_regions(r: &mut Root, place: i64, round: u32, cx: &mut Context<Root>) {
     let Some(link) = r.link.clone() else { return };
     let ids: Vec<String> = r.games.picking.as_ref().map(|(_, t)| t.iter().cloned().collect()).unwrap_or_else(|| preselected_join_accounts(r).into_iter().collect());
@@ -4800,9 +4796,9 @@ fn ask_regions(r: &mut Root, place: i64, round: u32, cx: &mut Context<Root>) {
     });
 }
 
-/// The country pick beside Play (owner 2026-11-17, after another launcher's flag key beside its Play): the flag and
-/// code of the country Play joins a server in, or Any; its menu lists the countries this game's servers run in now,
-/// how many servers each, found through server_regions.rs.
+/// The country pick beside Play (after another launcher's flag key beside its Play): the flag and code of the
+/// country Play joins a server in, or Any; its menu lists the countries this game's servers run in now, how many
+/// servers each, found through server_regions.rs.
 fn region_button(root: &Root, place: i64, cx: &mut Context<Root>) -> AnyElement {
     let chosen = region_pref();
     let open = root.games.region_menu;
@@ -5148,11 +5144,11 @@ fn tab_button(t: Tab, icon_name: &'static str, label: String, on: bool) -> Hot {
         Tab::Codes => "gt-codes",
     };
     // (The tab shown: a yellow ring on a faint yellow ground, not a solid yellow block: that was Play's colour, and the
-    // two pulled at the eye together, the owner's review 2026-11-15.)
+    // two pulled at the eye together, a user's review.)
     let base = hot(id).h(px(TOOL_H)).px(px(12.)).flex().flex_none().items_center().gap(px(8.)).rounded(px(R_M)).border_1().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).cursor_pointer();
     let base = if on { base.tones(ca(FACE, 0.10), ca(FACE, 0.14)).edge(c(FACE), c(FACE)).text_color(c(TEXT)) } else { base.tones(ca(WHITE, 0.), ca(WHITE, 0.06)).edge(ca(WHITE, 0.), ca(WHITE, 0.)).text_color(c(TEXT_2)) };
-    // (The row's own icons: Lucide's, in assets/icons/tab, the owner's pick 2026-11-19 for this row only; the rail and
-    // the rest of the app keep Bloxkeep's set.)
+    // (The row's own icons: Lucide's, in assets/icons/tab, for this row only; the rail and the rest of the app keep
+    // Bloxkeep's set.)
     let glyph = svg().path(SharedString::from(format!("icons/tab/{icon_name}.svg"))).size(px(15.)).flex_none().text_color(if on { c(FACE) } else { c(MUTED) });
     base.child(glyph).child(label)
 }
@@ -5178,7 +5174,7 @@ fn switcher(root: &Root, all: &[Game], open: &Open, name: &str, width: f32, cx: 
         .ml(px(-6.))
         .rounded(px(R_M))
         .cursor_pointer()
-        // (No "Other games" tip while the list is open: it sat on the list's search box, owner 2026-11-15.)
+        // (No "Other games" tip while the list is open: it sat on the list's search box.)
         .when(!on, |d| d.tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
         .child(title)
         .child(icon(if on { "chevronUp" } else { "chevronDown" }, 20., c(MUTED)))
@@ -5451,12 +5447,11 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
             .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
     });
 
-    // The game's wide picture whole, beside its name (owner 2026-11-13: the old band cut a 16:9 picture to a strip and
-    // darkened it, "khuất"): no crop, no fade, no words on it; the game's colour stands in until it loads.
-    // (Larger than the 136 it was: the picture and the name lead the page, as on Roblox's, the owner's review
-    // 2026-11-15: "ảnh game lại nhỏ, trong khi nửa phải phần đầu còn trống".)
-    // (The owner, 2026-11-15, again: "giống 1 trang html thuần": the picture leads now, near half the width, the
-    // name, Roblox's figures and the buttons fill the other half; on a narrow window the picture goes on top.)
+    // The game's wide picture whole, beside its name (the old band cut a 16:9 picture to a strip and darkened it): no
+    // crop, no fade, no words on it; the game's colour stands in until it loads. (Larger than the 136 it was: the
+    // picture and the name lead the page, as on Roblox's, a user's review.) (The picture leads now, near
+    // half the width, the name, Roblox's figures and the buttons fill the other half; on a narrow window the picture
+    // goes on top.)
     let wide = width >= 755.;
     // (At the tabs' and the parts' edge: 8 px in from them, the page's left edge was ragged.)
     let room = width - 2. * (PAGE_X);
@@ -5558,8 +5553,8 @@ fn figures(root: &Root, details: &Value, place: i64, show_updated: bool, cx: &mu
     let count = |key: &str| details.get(key).and_then(Value::as_i64).filter(|v| *v >= 0);
     let mut engagement = Vec::new();
     let mut activity = Vec::new();
-    // Favourite, Like and Dislike are the account's own, pressed here (they looked like buttons and weren't; the
-    // owner, 2026-11-18: "mấy nút này làm cảnh à"): lit when it has, as Roblox's game page lights them.
+    // Favourite, Like and Dislike are the account's own, pressed here (they looked like buttons and weren't):
+    // lit when it has, as Roblox's game page lights them.
     let universe = int(details, "universe");
     let mine = root.games.mine.get(&universe).copied().unwrap_or_default();
     let no_vote = mine.no_vote;
@@ -5704,10 +5699,10 @@ fn fresh(root: &Root, d: &Value) -> Option<String> {
     Some(root.i18n.tv("gp.fresh", &[("time", &time), ("ago", &crate::time::ago(age, &root.i18n))]))
 }
 
-/// The game's About, as Google Play's "About this game" lays it out (the owner picked it, 2026-11-19, over a plain
-/// paragraph that "only has words"): the description's first line as a lead, the rest three lines high with Show more,
-/// a row of when it was updated, its genre and players a server, then chips: each code the description gives (click
-/// to copy, a thing Roblox's page doesn't do) and Roblox's genre and subgenre.
+/// The game's About, as Google Play's "About this game" lays it out (a user picked it, over a plain paragraph that
+/// "only has words"): the description's first line as a lead, the rest three lines high with Show more, a row of when
+/// it was updated, its genre and players a server, then chips: each code the description gives (click to copy, a thing
+/// Roblox's page doesn't do) and Roblox's genre and subgenre.
 fn about_block(root: &Root, d: &Value, place: i64, about: &str, cx: &mut Context<Root>) -> Div {
     let open = root.games.about;
     let (lead, rest) = about_lead(about);
@@ -5876,9 +5871,8 @@ fn heading_rich(_mark: &'static str, _tone: u32, title: String, sub: Option<Stri
     heading(title, sub)
 }
 
-/// A part's head on the game page: its name, large, and its note in quiet words after it (under it when long).
-/// No icon square and no pill: every block had the same square, name and pill, the owner 2026-11-15: "bố cục trông
-/// nó như nhau, dùng đi dụng lại 1 khung".
+/// A part's head on the game page: its name, large, and its note in quiet words after it (under it when long). No
+/// icon square and no pill: every block had the same square, name and pill.
 fn heading(title: String, sub: Option<String>) -> Div {
     // A long note goes under the title, wrapping in its column ("When it is quiet" in its narrow column ran off the
     // edge on one line).
@@ -5926,8 +5920,8 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
     let d = details.unwrap_or(&Value::Null);
     let narrow = width < 760.;
     // Each account its own row in the block: a faint ground of its own, its face, its name with how it is now under
-    // it, then its week's figures each with its word under it. No column heads or lines between rows ("như exel",
-    // 2026-11-15), and not loose on the page either: without its block the rows floated, "sát rạt trông loạn".
+    // it, then its week's figures each with its word under it. No column heads or lines between rows (it read as a
+    // spreadsheet), and not loose on the page either: without its block the rows floated.
     let mut table = div().flex().flex_col().gap(px(8.));
     let fig = |value: String, word: String| {
         div()
@@ -5990,7 +5984,7 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
     let words = (!about.is_empty()).then(|| about_block(root, d, place, &about, cx));
 
     let yours_head = if rich() { heading_rich("users", ONLINE, root.tr("gp.yours"), Some(root.tr("gp.week"))).into_any_element() } else { heading(root.tr("gp.yours"), Some(root.tr("gp.week"))).into_any_element() };
-    // (In its block again, the owner 2026-11-15: "sao mày bỏ ô của cái tài khoản đi? làm lại ô đẹp hơn".)
+    // (In its block again.)
     let yours = surface().p(px(20.)).flex().flex_col().gap(px(14.)).child(yours_head).child(if accounts.is_empty() {
         div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gp.noneYet"))
     } else {
@@ -6108,8 +6102,8 @@ fn quiet(root: &Root, h: &[Option<f64>]) -> impl IntoElement {
                 place.left(relative(at)).ml(px(-80.)).w(px(160.)).justify_center().child(words)
             }
         };
-        // (Ten hours apart or more they share one line; closer, each has its own line: under 10 hours apart in a
-        // narrow column, "quiet 5,387" at 17h and "busy 8,879" at 22h were drawn over each other, the owner 2026-11-22.)
+        // (Ten hours apart or more they share one line; closer, each has its own line: under 10 hours apart in a narrow
+        // column, "quiet 5,387" at 17h and "busy 8,879" at 22h were drawn over each other.)
         let row = || div().relative().h(px(18.));
         let quiet_mark = mark(l, "gp.quietEnd", c(OK));
         let busy_mark = mark(hi, "gp.busyEnd", c(TEXT));
@@ -6263,7 +6257,7 @@ fn news(root: &Root, feed: Value, width: f32, cx: &mut Context<Root>) -> impl In
     };
     let more = list.len().saturating_sub(cap);
     // In rows, each row's cards as tall as its tallest: dealt into columns, the cards' feet stood at every height and
-    // the page read as a jumble (the owner, 2026-11-15).
+    // the page read as a jumble.
     let mut rows: Vec<Vec<AnyElement>> = Vec::new();
     for (i, card) in list.into_iter().take(cap).enumerate() {
         if i % cols == 0 {

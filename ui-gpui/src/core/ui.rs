@@ -114,7 +114,7 @@ const TRAY_ICO: &[u8] = include_bytes!("../../assets/tray.ico");
 
 /// The app's icon at the small size Windows draws in the notification area and a title bar (16 px, 24 at 150 %).
 /// Not app.ico's small pictures: those are the big logo shrunk (tilted −8°, the grey block behind, blurred), so the
-/// tray looked bent whichever of them was used (the owner's tray, 2026-11-13: "méo vẫn hoàn méo").
+/// tray looked bent whichever of them was used (a user's tray).
 pub fn app_icon_small() -> Option<isize> {
     let h = *APP_ICON_SMALL;
     if h == 0 { app_icon() } else { Some(h) }

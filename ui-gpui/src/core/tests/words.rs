@@ -1,6 +1,6 @@
 // The interface's words (assets/words.json): an English count of one says "1 server", not "1 servers". I18n::tv and
 // tn take a key's "1" form when {n} is 1, so every English "{n} <noun>s" needs one (25 were missing, the server
-// country menu said "1 servers": the owner, 2026-11-20).
+// country menu said "1 servers").
 use super::Checks;
 
 pub async fn run(c: &mut Checks, _dir: &str) {

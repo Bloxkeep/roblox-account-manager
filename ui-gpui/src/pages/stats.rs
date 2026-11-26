@@ -194,10 +194,8 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
 }
 
 /// The figures for the period (and game) picked; a reply to an older request is dropped, a failed one keeps the figures
-/// already shown.
-/// The app sent a new state (a window opened, joined, dropped, closed): Home's newest events are asked again instead
-/// of waiting out their half minute (the owner, 2026-11-18: "recent activity update hơi chậm"), two seconds apart at
-/// the least, as states come in bursts.
+/// already shown. The app sent a new state (a window opened, joined, dropped, closed): Home's newest events are asked
+/// again instead of waiting out their half minute, two seconds apart at the least, as states come in bursts.
 pub fn state_changed(r: &mut Root, cx: &mut Context<Root>) {
     const APART: Duration = Duration::from_secs(2);
     let Some(since) = r.stats.home_at.map(|t| t.elapsed()) else { return };
@@ -252,8 +250,7 @@ pub fn want_home(r: &mut Root, cx: &mut Context<Root>) {
 }
 
 /// Home's foot: the newest events, a line each (when, who, what), and "See all" to Statistics' Activity. Nothing
-/// while there are none: Home ended in an empty half under the presets (the owner, 2026-11-13: "có khoảng trống ở
-/// dưới thì lấp gì vào đi").
+/// while there are none: Home ended in an empty half under the presets.
 pub fn recent(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
     let log = root.stats.home_log.as_ref()?;
     let entries = arr(log, "entries");
@@ -637,7 +634,7 @@ fn name_of(root: &Root, a: &Value) -> String {
 
 /// Who an activity line is about, `w` wide: the account's face and name; for a line about no account (an update, a
 /// backup, the vault) Bloxkeep's own mark and name; an account no longer in the vault gets a plain face. No line
-/// stands without one (the owner, 2026-11-18: "bổ sung icon cho mấy cái ko có icon").
+/// stands without one.
 fn who(root: &Root, e: &Value, w: f32, cx: &mut App) -> Div {
     const FACE: f32 = 20.;
     let account = s(e, "account");
@@ -1049,7 +1046,7 @@ fn tiles(root: &Root, d: &Value, w: f32) -> Div {
             }
         }
         let top = sec.iter().copied().max().unwrap_or(0);
-        // (From 1200 px: on the owner's 1199 px window the bars cut "16 h 24 min" to "16 h 24…", 2026-11-12.)
+        // (From 1200 px: on a user's 1199 px window the bars cut "16 h 24 min" to "16 h 24…".)
         (w >= 1200. && sec.len() >= 2 && top > 0).then(|| {
             let n = sec.len();
             let bar_w = if n > 10 { 6. } else { 12. };

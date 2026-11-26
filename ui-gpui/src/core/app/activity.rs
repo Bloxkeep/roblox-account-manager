@@ -360,10 +360,11 @@ impl App {
     }
 
     /// A client ended for good (not handed over to another process): closed by anyone, by Roblox, or for its preset's restart.
-    pub fn note_session_end(&self, account_id: Guid, launch: &PendingLaunch, last_log: Option<&ClientState>) {
+    /// `reopen`: closed to be opened again (a restart, a server switch).
+    pub fn note_session_end(&self, account_id: Guid, launch: &PendingLaunch, last_log: Option<&ClientState>, reopen: bool) {
         let kind = if self.roblox_updates.closed_by_roblox.borrow().contains(&account_id) {
             "closedByRoblox"
-        } else if self.presets.restarts.borrow().contains_key(&account_id) {
+        } else if reopen {
             "restarted"
         } else {
             "closed"

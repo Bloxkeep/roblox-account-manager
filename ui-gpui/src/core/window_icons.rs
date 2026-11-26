@@ -77,6 +77,8 @@ struct Made {
     own: HashMap<isize, (isize, isize)>,
     /// When its windows were last given the icons or asked whether they still have them (`now`).
     checked: i64,
+    /// Its window lost its icon and, busy, didn't take it back: said once, not at every try until it does.
+    busy_said: bool,
 }
 
 struct Icons {
@@ -111,9 +113,15 @@ pub fn apply(pid: i32, windows: &[isize], key: &str, draw: &dyn Fn() -> Picture,
     if differs {
         let picture = draw();
         let own = s.by_pid.get(&pid).map(|m| m.own.clone()).unwrap_or_default();
-        let mut next = Made { big: icon_of(&picture, 48), small: icon_of(&picture, 24), key: key.to_string(), own, checked: now() };
+        let mut next = Made { big: icon_of(&picture, 48), small: icon_of(&picture, 24), key: key.to_string(), own, checked: now(), busy_said: false };
+        let mut failed = false;
         for &h in windows {
-            put(h, &mut next);
+            failed |= !put(h, &mut next);
+        }
+        // A window busy loading its game didn't take it: asked again at the next check, not CHECK_EVERY later.
+        if failed {
+            next.checked = 0;
+            log::note(&format!("Window icons: a Roblox window of pid {pid} didn't take its icon (busy); tried again shortly."));
         }
         if let Some(made) = s.by_pid.remove(&pid) {
             destroy(&made);
@@ -126,10 +134,24 @@ pub fn apply(pid: i32, windows: &[isize], key: &str, draw: &dyn Fn() -> Picture,
         return;
     }
     if let Some(made) = s.by_pid.get_mut(&pid) {
+        let mut failed = false;
+        // The taskbar shows the big one, the title bar the small one: either can be lost.
         for &h in windows {
-            if get(h, ICON_BIG) != made.big {
-                put(h, made);
+            if get(h, ICON_BIG) != made.big || get(h, ICON_SMALL) != made.small {
+                let ok = put(h, made);
+                failed |= !ok;
+                // A window busy loading is tried again at each check until it takes it: said once, then once put back.
+                if ok || !made.busy_said {
+                    log::note(&format!(
+                        "Window icons: a Roblox window of pid {pid} had lost its icon; {}.",
+                        if ok { "put back" } else { "it didn't take it (busy), tried again shortly" }
+                    ));
+                }
+                made.busy_said = !ok;
             }
+        }
+        if failed {
+            made.checked = 0;
         }
     }
     save(&mut s);
@@ -258,19 +280,21 @@ pub fn pids() -> Vec<i32> {
 }
 
 /// Puts the made icons on a window, noting first the icons it had of its own (once: later it has ours).
-fn put(h: isize, made: &mut Made) {
+/// False when the window didn't answer in time (it may not have them).
+fn put(h: isize, made: &mut Made) -> bool {
     if !made.own.contains_key(&h) {
         made.own.insert(h, (get(h, ICON_BIG), get(h, ICON_SMALL)));
     }
-    set(h, made.big, made.small);
+    set(h, made.big, made.small)
 }
 
-fn set(h: isize, big: isize, small: isize) {
+fn set(h: isize, big: isize, small: isize) -> bool {
     let mut result = 0usize;
     // SAFETY: plain messages with a timeout; a hung window is skipped.
     unsafe {
-        SendMessageTimeoutW(hwnd(h), WM_SETICON, ICON_BIG, big, SMTO_ABORTIFHUNG, 300, &mut result);
-        SendMessageTimeoutW(hwnd(h), WM_SETICON, ICON_SMALL, small, SMTO_ABORTIFHUNG, 300, &mut result);
+        let a = SendMessageTimeoutW(hwnd(h), WM_SETICON, ICON_BIG, big, SMTO_ABORTIFHUNG, 300, &mut result);
+        let b = SendMessageTimeoutW(hwnd(h), WM_SETICON, ICON_SMALL, small, SMTO_ABORTIFHUNG, 300, &mut result);
+        a != 0 && b != 0
     }
 }
 
