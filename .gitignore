@@ -58,3 +58,18 @@ RobloxManager/wwwroot/ui-*.css
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Scratch work and try-outs (never part of the app)
+.beat-check/
+.impeccable/
+/*.mp4
+/*.png
+/*-plan.md
+*.pdb
+*.nupkg
+scripts/_alpha*.bat
+
+# Design and planning notes kept on the PC only
+/DESIGN.md
+/PRODUCT.md
+docs/superpowers/
