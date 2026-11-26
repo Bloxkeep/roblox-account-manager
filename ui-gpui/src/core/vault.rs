@@ -595,6 +595,7 @@ impl Vault {
 
     /// Writes the vault now (lock, exit, a changed password: callers that need it on disk before going on).
     pub fn save(&self) -> Res<()> {
+        write_name_marks(&self.data());
         let mut keys = guard(&self.sync);
         if keys.key.is_empty() {
             return Err(disposed());
@@ -614,7 +615,11 @@ impl Vault {
                 return Err(disposed());
             }
             keys.taken += 1;
-            let plain = to_net_json(&*self.data())?;
+            let plain = {
+                let data = self.data();
+                write_name_marks(&data);
+                to_net_json(&*data)?
+            };
             Pending { number: keys.taken, plain, key: keys.key.clone(), salt: keys.salt.clone(), iterations: keys.iterations, path: self.path.clone() }
         };
         let (done_tx, done_rx) = mpsc::sync_channel(1);
@@ -1058,4 +1063,37 @@ pub fn id_of_path(path: &Path) -> Option<String> {
         }
     }
     if read == header.len() { id_of(&header) } else { None }
+}
+
+/// The file of marks the uninstaller takes names out of error.log by (Installer/Setup/Setup.cs, `Ops.ReadLog`), when
+/// whoever removes Bloxkeep chooses to send the log: each account's names, each word of them and its id, lower-case, as
+/// SHA-256 of "bloxkeep-name:" and the word, one a line. The names themselves never leave the vault: the uninstaller
+/// can't open it.
+pub const NAME_MARKS_FILE: &str = "name-marks.txt";
+
+/// Writes the marks for these accounts (only when they changed).
+fn write_name_marks(data: &VaultData) {
+    let mut words: Vec<String> = Vec::new();
+    for a in &data.accounts {
+        for name in [&a.username, &a.display_name, &a.alias] {
+            let name = name.trim().to_lowercase();
+            words.extend(name.split(|c: char| !(c.is_alphanumeric() || c == '_')).filter(|w| w.chars().count() >= 3).map(str::to_string));
+        }
+        if a.user_id > 0 {
+            words.push(a.user_id.to_string());
+        }
+    }
+    let mut marks: Vec<String> = words.iter().map(|w| format!("{:x}", Sha256::digest(format!("bloxkeep-name:{w}").as_bytes()))).collect();
+    marks.sort();
+    marks.dedup();
+    let text = marks.join("
+");
+    static WRITTEN: Mutex<Option<String>> = Mutex::new(None);
+    let mut last = guard(&WRITTEN);
+    if last.as_deref() == Some(text.as_str()) {
+        return;
+    }
+    if fs::write(data_dir().join(NAME_MARKS_FILE), &text).is_ok() {
+        *last = Some(text);
+    }
 }

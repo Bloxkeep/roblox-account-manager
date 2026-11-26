@@ -514,6 +514,23 @@ impl GithubSource {
         e.to_string()
     }
 
+    /// The newest release's feed read from its download address, which GitHub's API limit doesn't cover; each file is
+    /// then fetched from its own version's release (tagged v and the version). Velopack takes the full package when a
+    /// delta can't be had. The API's refusal stands when this fails too.
+    fn feed_without_api(&self, channel: &str, refused: velopack::Error) -> Result<velopack::VelopackAssetFeed, velopack::Error> {
+        let Ok(text) = velopack::download::download_url_as_string(&format!("{}/releases/latest/download/releases.{channel}.json", self.repo)) else {
+            return Err(refused);
+        };
+        let feed: velopack::VelopackAssetFeed = serde_json::from_str(text.trim_start_matches('\u{feff}'))?;
+        let listed = feed.Assets.iter().map(|a| ((a.FileName.clone(), a.Version.clone()), format!("{}/releases/download/v{}/{}", self.repo, a.Version, a.FileName))).collect();
+        *guard(&self.listed) = listed;
+        static SAID: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        if !SAID.swap(true, std::sync::atomic::Ordering::SeqCst) {
+            log::note("Update: GitHub's hourly limit for this network is used up; the newest release's list was read from its download address instead.");
+        }
+        Ok(feed)
+    }
+
     /// GetAssetUrlFromName: the release's first asset of that name; its browser address (no access token).
     fn asset_url(release: &GithubRelease, name: &str) -> Result<String, velopack::Error> {
         let Some(assets) = release.assets.as_ref().filter(|a| !a.is_empty()) else {
@@ -532,7 +549,13 @@ impl GithubSource {
 impl UpdateSource for GithubSource {
     /// GitBase.GetReleaseFeed: each listed release's releases.{channel}.json, their assets together.
     fn get_release_feed(&self, channel: &str, _app: &velopack::bundle::Manifest, _staged_user_id: &str) -> Result<velopack::VelopackAssetFeed, velopack::Error> {
-        let releases = self.releases(self.prerelease)?;
+        let releases = match self.releases(self.prerelease) {
+            Ok(releases) => releases,
+            // GitHub's API refused this network for the hour: one address is shared by many (a provider's, an internet
+            // café's), and a copy behind one that is always used up never saw a new version.
+            Err(refused) if !self.prerelease && refused.to_string().contains("hourly limit") => return self.feed_without_api(channel, refused),
+            Err(e) => return Err(e),
+        };
         let mut feed = velopack::VelopackAssetFeed { Assets: Vec::new() };
         let mut listed = HashMap::new();
         let releases_file = format!("releases.{channel}.json");

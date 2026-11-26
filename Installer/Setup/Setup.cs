@@ -476,6 +476,112 @@ namespace BloxkeepSetup
             }
         }
 
+        /// <summary>
+        /// The app's error log (the older part too), its last part, ready to send: Roblox cookies, Discord webhooks,
+        /// e-mail addresses, long tokens, this PC's user and machine names, and every word of an account's name, display
+        /// name, alias or id are blanked out. The names are known only by the marks the app keeps beside the vault
+        /// (name-marks.txt, a hash of each word), so without that file there is nothing to send; null then, or if unread.
+        /// </summary>
+        public static string ReadLog()
+        {
+            try
+            {
+                string marksFile = Path.Combine(DataDir, "name-marks.txt");
+                if (!File.Exists(marksFile))
+                    return null;
+                var marks = new HashSet<string>(File.ReadAllLines(marksFile), StringComparer.OrdinalIgnoreCase);
+                var text = new StringBuilder();
+                foreach (string name in new[] { "error.log.1", "error.log" })
+                {
+                    string file = Path.Combine(DataDir, name);
+                    if (!File.Exists(file))
+                        continue;
+                    using (var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                    using (var reader = new StreamReader(stream, Encoding.UTF8))
+                        text.Append(reader.ReadToEnd());
+                }
+                string log = text.ToString();
+                if (log.Trim().Length == 0)
+                    return null;
+                if (log.Length > 190000)
+                {
+                    log = log.Substring(log.Length - 190000);
+                    int line = log.IndexOf('\n');
+                    if (line >= 0)
+                        log = log.Substring(line + 1);
+                }
+                log = Regex.Replace(log, @"_\|WARNING:-DO-NOT-SHARE-THIS[^\s""']*", "[cookie]");
+                log = Regex.Replace(log, @"https?://(?:[a-z]+\.)?discord(?:app)?\.com/api/webhooks/\S+", "[webhook]", RegexOptions.IgnoreCase);
+                log = Regex.Replace(log, @"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", "[email]");
+                using (var sha = System.Security.Cryptography.SHA256.Create())
+                {
+                    log = Regex.Replace(log, @"[\p{L}\p{N}_]{3,}", delegate (Match m)
+                    {
+                        byte[] hash = sha.ComputeHash(Encoding.UTF8.GetBytes("bloxkeep-name:" + m.Value.ToLowerInvariant()));
+                        var hex = new StringBuilder(64);
+                        foreach (byte b in hash)
+                            hex.Append(b.ToString("x2"));
+                        return marks.Contains(hex.ToString()) ? "[account]" : m.Value;
+                    });
+                }
+                foreach (string own in new[] { Environment.UserName, Environment.MachineName })
+                    if (!string.IsNullOrEmpty(own) && own.Length >= 3)
+                        log = Regex.Replace(log, Regex.Escape(own), own == Environment.UserName ? "[user]" : "[pc]", RegexOptions.IgnoreCase);
+                log = Regex.Replace(log, @"[A-Za-z0-9+/=_-]{60,}", "[token]");
+                return log;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>Sends the error log (ReadLog) to Bloxkeep's bug reports, saying it came from an uninstall and why;
+        /// a few seconds at most, nothing if offline.</summary>
+        public static void SendLog(string why, string app, string log)
+        {
+            try
+            {
+                ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072; // TLS 1.2
+                string url = Environment.GetEnvironmentVariable("BLOXKEEP_FEEDBACK_URL");
+                var request = (HttpWebRequest)WebRequest.Create(string.IsNullOrEmpty(url) ? "https://bloxkeep-feedback.bloxkeep-app.workers.dev/feedback" : url);
+                request.Method = "POST";
+                request.ContentType = "application/json";
+                request.Timeout = request.ReadWriteTimeout = 10000;
+                string text = "Bloxkeep was uninstalled (reason: " + (why ?? "none given") + "). Its error log, sent from the uninstaller.";
+                var json = new StringBuilder("{\"kind\":\"bug\",\"text\":").Append(Json(text));
+                if (app != null)
+                    json.Append(",\"app\":").Append(Json(app));
+                json.Append(",\"windows\":").Append(Json("Windows " + Environment.OSVersion.Version));
+                json.Append(",\"language\":").Append(Json(T.Vi ? "vi" : "en"));
+                json.Append(",\"log\":").Append(Json(log)).Append('}');
+                byte[] body = Encoding.UTF8.GetBytes(json.ToString());
+                request.ContentLength = body.Length;
+                using (var stream = request.GetRequestStream())
+                    stream.Write(body, 0, body.Length);
+                using (request.GetResponse()) { }
+            }
+            catch (Exception)
+            {
+                // Offline, or the service not answering: not sent.
+            }
+        }
+
+        static string Json(string s)
+        {
+            var b = new StringBuilder("\"");
+            foreach (char c in s)
+            {
+                if (c == '"' || c == '\\')
+                    b.Append('\\').Append(c);
+                else if (c < ' ')
+                    b.Append("\\u").Append(((int)c).ToString("x4"));
+                else
+                    b.Append(c);
+            }
+            return b.Append('"').ToString();
+        }
+
 #if WEB
         /// <summary>Downloaded while installing (Web.cs).</summary>
         public static bool HasPayload { get { return true; } }
@@ -1165,6 +1271,9 @@ namespace BloxkeepSetup
         string _why;
         /// <summary>How long this PC had Bloxkeep and the version removed, read before uninstalling (which may delete both).</summary>
         string _removedAge, _removedApp;
+        string _log;
+        Check _sendLog;
+        bool _logSent;
         Bar _bar;
         Label _status, _sub;
         /// <summary>The web installer's Cancel, while it downloads.</summary>
@@ -1351,6 +1460,8 @@ namespace BloxkeepSetup
             }
             else if (_activateWait != null)
                 _activateWait.Unregister(null);
+            if (!e.Cancel && _page == "removed")
+                SendLogIfAsked(_why);
             base.OnFormClosing(e);
             if (!e.Cancel && Visible && !_shooting && e.CloseReason != CloseReason.WindowsShutDown && e.CloseReason != CloseReason.TaskManagerClosing)
                 Fade(false);
@@ -1812,6 +1923,7 @@ namespace BloxkeepSetup
             _countsOnline = Ops.CountsOnline;
             _removedAge = Ops.InstallAge();
             _removedApp = Ops.InstalledVersion(_root);
+            _log = _shooting ? null : Ops.ReadLog();
             ShowPage("removing");
             Work(delegate { return Ops.Uninstall(_root, delete); }, delegate (int code)
             {
@@ -1844,6 +1956,13 @@ namespace BloxkeepSetup
                 : _deleteData ? T.S("Your accounts and settings were deleted too.", "Tài khoản và cài đặt cũng đã được xóa.")
                 : T.S("Thanks for using Bloxkeep.", "Cảm ơn bạn đã dùng Bloxkeep."), S(112), Theme.Text);
             Button(T.S("Close", "Đóng"), true, delegate { TellRemoved(_why); Result = 0; Close(); });
+            // The error log, only if they tick it (names taken out); sent as the window closes, with the reason picked.
+            _sendLog = null;
+            if (_log != null || _shooting)
+            {
+                _sendLog = new Check { Text = T.S("Send the error log (no account names)", "Gửi nhật ký lỗi (đã bỏ tên tài khoản)"), ForeColor = Theme.Muted, Bounds = new Rectangle(S(30), S(292), S(500), S(28)) };
+                Add(_sendLog);
+            }
             // Why, if they like (only asked of someone who counts online): one click, then the window closes.
             if (!_countsOnline && !_shooting)
                 return;
@@ -1909,10 +2028,20 @@ namespace BloxkeepSetup
         /// <summary>The removal told once, with its reason if one was picked (the window closing without one: none).</summary>
         void TellRemoved(string why)
         {
+            SendLogIfAsked(why);
             if (_removalTold || !_countsOnline || _shooting)
                 return;
             _removalTold = true;
             Ops.SayRemoved(why, _removedAge, _removedApp);
+        }
+
+        /// <summary>The error log sent once, if its box is ticked.</summary>
+        void SendLogIfAsked(string why)
+        {
+            if (_logSent || _log == null || _sendLog == null || _sendLog.IsDisposed || !_sendLog.Checked)
+                return;
+            _logSent = true;
+            Ops.SendLog(why, _removedApp, _log);
         }
 
         // ---- "Restart to update" ----------------------------------------------------------------------------------

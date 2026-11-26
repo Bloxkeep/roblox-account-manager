@@ -4,11 +4,13 @@
     "date": "2026-11-27",
     "new": {
       "en": [
+        "When uninstalling, you can send the error log (account names taken out).",
         "A CPU limit for resting Roblox windows.",
         "The RAM and CPU limits can cover open windows too.",
         "Clean RAM can run on a timer."
       ],
       "vi": [
+        "Khi gỡ cài đặt, có thể gửi nhật ký lỗi (đã bỏ tên tài khoản).",
         "Giới hạn CPU cho cửa sổ Roblox đang nghỉ.",
         "Giới hạn RAM và CPU áp được cả cho cửa sổ đang mở.",
         "Dọn RAM tự chạy theo giờ."
@@ -16,6 +18,7 @@
     },
     "improved": {
       "en": [
+        "Updates still arrive on a network where GitHub's hourly limit is used up.",
         "When opening many accounts, each waits until the one before it is in its game.",
         "Windows minimize once the game has loaded.",
         "Anti-AFK reads Roblox's own idle signal.",
@@ -24,6 +27,7 @@
         "Close, switch server and rejoin are more reliable."
       ],
       "vi": [
+        "Vẫn nhận được bản cập nhật khi mạng đã hết lượt GitHub trong giờ.",
         "Mở nhiều tài khoản: mỗi tài khoản đợi tài khoản trước vào game xong.",
         "Cửa sổ thu nhỏ sau khi game đã tải xong.",
         "Chống AFK đọc tín hiệu treo máy của chính Roblox.",
