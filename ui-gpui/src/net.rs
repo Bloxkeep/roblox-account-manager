@@ -35,6 +35,44 @@ pub fn builder() -> ureq::AgentBuilder {
     b
 }
 
+/// How many times a read Roblox refused with 429 is asked in all (`wait_cool`).
+pub const RATE_TRIES: u32 = 4;
+
+/// Hosts Roblox is rate-limiting: until when, and how many 429s in a row.
+static COOL: LazyLock<std::sync::Mutex<std::collections::HashMap<String, (std::time::Instant, u32)>>> = LazyLock::new(Default::default);
+
+fn host_of(url: &str) -> String {
+    url.split("://").nth(1).unwrap_or(url).split('/').next().unwrap_or_default().to_ascii_lowercase()
+}
+
+/// Roblox's rate limit (429) holds for a whole host: once a read is refused, every read to that host waits until
+/// the time is up (`cooled`), instead of each being refused in turn while a page asks its many parts. Waits at
+/// most 15 s.
+pub fn wait_cool(url: &str) {
+    let until = COOL.lock().unwrap_or_else(|e| e.into_inner()).get(&host_of(url)).map(|c| c.0);
+    if let Some(left) = until.and_then(|u| u.checked_duration_since(std::time::Instant::now())) {
+        std::thread::sleep(left.min(std::time::Duration::from_secs(15)));
+    }
+}
+
+/// `url`'s host answered 429: it is waited on for what Roblox said (`said`, its x-ratelimit-reset or Retry-After),
+/// else 1.5 s doubling with each 429 in a row; at most 15 s.
+pub fn cooled(url: &str, said: Option<std::time::Duration>) {
+    let mut map = COOL.lock().unwrap_or_else(|e| e.into_inner());
+    let c = map.entry(host_of(url)).or_insert((std::time::Instant::now(), 0));
+    c.1 += 1;
+    let wait = said.unwrap_or_else(|| std::time::Duration::from_millis(1500 << (c.1 - 1).min(3))).min(std::time::Duration::from_secs(15));
+    c.0 = c.0.max(std::time::Instant::now() + wait);
+}
+
+/// `url`'s host answered: its run of 429s is over.
+pub fn calm(url: &str) {
+    let mut map = COOL.lock().unwrap_or_else(|e| e.into_inner());
+    if map.get(&host_of(url)).is_some_and(|c| c.1 > 0) {
+        map.remove(&host_of(url));
+    }
+}
+
 /// A call the interface made that failed, in error.log (every failure a person can meet must be there): what
 /// asked, the address without its query and with ids as "#", and why. The same failure of the same address is
 /// written once every five minutes, so a page polling while offline can't flood the log.

@@ -110,7 +110,7 @@ fn kept_mb(total: f64) -> f64 {
 }
 
 /// What one window takes: as measured here (capacity.rs), else FIRST_EACH_MB.
-fn each_mb(r: &Root, cx: &App) -> f64 {
+pub(crate) fn each_mb(r: &Root, cx: &App) -> f64 {
     r.metrics(cx).pointer("/fit/eachMb").and_then(Value::as_f64).filter(|e| *e >= 50.).unwrap_or(FIRST_EACH_MB)
 }
 

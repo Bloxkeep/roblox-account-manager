@@ -1497,6 +1497,24 @@ pub fn on_frame_step(cx: &mut App, interval: Duration, f: impl FnOnce(&mut App) 
     }
 }
 
+/// Bloxkeep: where frames were asked for since the last `take_frame_asks` (request_animation_frame, redraw, refresh and
+/// an entity's notify), by the line that asked: what keeps a window drawing when nothing seems to move.
+static FRAME_ASKS: std::sync::Mutex<Option<std::collections::HashMap<&'static std::panic::Location<'static>, u64>>> = std::sync::Mutex::new(None);
+
+pub(crate) fn note_frame_ask(at: &'static std::panic::Location<'static>) {
+    let mut asks = FRAME_ASKS.lock().unwrap_or_else(|e| e.into_inner());
+    *asks.get_or_insert_with(Default::default).entry(at).or_default() += 1;
+}
+
+/// The lines that asked for frames since the last call, most first ("file:line", count); starts the count over.
+#[doc(hidden)]
+pub fn take_frame_asks() -> Vec<(String, u64)> {
+    let asks = FRAME_ASKS.lock().unwrap_or_else(|e| e.into_inner()).take().unwrap_or_default();
+    let mut list: Vec<(String, u64)> = asks.into_iter().map(|(at, n)| (format!("{}:{}", at.file(), at.line()), n)).collect();
+    list.sort_by(|a, b| b.1.cmp(&a.1));
+    list
+}
+
 /// What was drawn and presented since the last call (Bloxkeep's error.log line); starts the count over.
 #[doc(hidden)]
 pub fn take_frame_tally() -> FrameTally {
@@ -2865,8 +2883,10 @@ impl Window {
 
     /// Bloxkeep: the window drawn again on the next frame with its cached views kept (`refresh` draws every one anew):
     /// what is drawn outside them (an animated theme's layer) moves while the page under it is reused.
+    #[track_caller]
     pub fn redraw(&mut self) {
         if self.invalidator.not_drawing() {
+            note_frame_ask(std::panic::Location::caller());
             self.invalidator.set_dirty(true);
         }
     }
@@ -2876,9 +2896,10 @@ impl Window {
     /// Bloxkeep: asked while the window is being drawn (a render, a prepaint, a paint) it does nothing, as the frame
     /// is already being made and no next one is asked for: what it follows is to be told where that changes (or the
     /// next frame asked for with `request_animation_frame`). A debug build says so once for each place that does it.
-    #[cfg_attr(debug_assertions, track_caller)]
+    #[track_caller]
     pub fn refresh(&mut self) {
         if self.invalidator.not_drawing() {
+            note_frame_ask(std::panic::Location::caller());
             self.refreshing = true;
             self.invalidator.set_dirty(true);
         } else {
@@ -3231,7 +3252,9 @@ impl Window {
     /// which automatically respects [`App::reduce_motion`]. When using this
     /// method directly for decorative motion, check [`App::reduce_motion`]
     /// and skip the frame request when it is set.
+    #[track_caller]
     pub fn request_animation_frame(&self) {
+        note_frame_ask(std::panic::Location::caller());
         let entity = self.current_view();
         self.on_next_frame(move |_, cx| cx.notify(entity));
     }

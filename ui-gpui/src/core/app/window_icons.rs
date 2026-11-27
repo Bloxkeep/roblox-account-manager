@@ -91,10 +91,10 @@ impl App {
                     }
                     return;
                 }
-                // One client's windows are asked whether they still have their icon at a time, each every half a minute.
-                let check = window_icons::next_to_check(&jobs.iter().map(|j| j.0).collect::<Vec<_>>());
+                // Each client's windows are asked whether they still have their icon every few seconds.
+                let check = window_icons::due_to_check(&jobs.iter().map(|j| j.0).collect::<Vec<_>>());
                 for (pid, list, key, picture, name) in &jobs {
-                    let again = Some(*pid) == check;
+                    let again = check.contains(pid);
                     match picture {
                         Some(picture) => window_icons::apply(*pid, list, key, &|| picture.clone(), again),
                         None => window_icons::apply(*pid, list, key, &|| window_icons::initials(name), again),

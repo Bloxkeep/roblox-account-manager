@@ -4499,7 +4499,7 @@
   "ram.min": "{n} menit",
   "ram.hour": "1 jam",
   "ram.useBest": "Pakai rekomendasi",
-  "ram.useBestTip": "Di atas 90%, dengan area bawaan Mem Reduct",
+  "ram.useBestTip": "Di atas {n}%: saat itu tersisa sekitar {left}, cukup untuk dua jendela Roblox ({each} per jendela di PC ini). Tanpa timer: yang dibersihkan saat RAM masih lega akan terpakai lagi dalam beberapa menit.",
   "ram.fromMemReduct": "Ide dari Mem Reduct",
   "set.onJoin": "Saat jendela masuk game",
   "set.onJoinDesc": "Jendela yang diminimalkan tetap punya tempatnya sesuai pilihan di atas dan terbuka di sana. Jendela rejoin kembali seperti jendela terakhir akun itu.",

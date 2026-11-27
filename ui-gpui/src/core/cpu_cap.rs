@@ -96,9 +96,21 @@ fn creation_time(process: *mut c_void) -> Option<i64> {
     ok.then(|| ((created.dwHighDateTime as i64) << 32) | created.dwLowDateTime as i64)
 }
 
+/// The job's CpuRate (cycles per 10 000 of the whole PC) for `percent` % on a PC with `cpus` logical processors: never
+/// under a quarter of one of them. Held lower, a Roblox window took 18 s for one frame, and other players saw its account
+/// jump about when it caught up.
+pub fn rate_for(percent: i32, cpus: u32) -> u32 {
+    let floor = 2500u32.div_ceil(cpus.max(1));
+    (percent.clamp(1, 100) as u32 * 100).max(floor).min(10_000)
+}
+
+fn cpus() -> u32 {
+    std::thread::available_parallelism().map_or(1, |n| n.get() as u32)
+}
+
 fn set_rate(job: *mut c_void, percent: Option<i32>) -> Result<(), u32> {
     let info = match percent {
-        Some(p) => RateControl { control_flags: JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP, cpu_rate: p.clamp(1, 100) as u32 * 100 },
+        Some(p) => RateControl { control_flags: JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP, cpu_rate: rate_for(p, cpus()) },
         None => RateControl::default(), // flags 0: rate control off
     };
     // SAFETY: the struct and its size; a job handle this module made.

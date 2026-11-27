@@ -3692,17 +3692,13 @@ impl Root {
         // (A figure: its tag (the word on its own colour, as the FPS-monitoring HUD's RAM / GPU / CPU tags, Dribbble
         // 27365272), then the number, then a smaller, dimmer "%" just after it.)
         let chip_label_w = |s: &str| tw(&s.to_uppercase(), BAR_CHIP, FontWeight::BOLD) + 2. * BAR_CHIP_PAD;
-        // (Every number has two digits, a faint leading zero under 10 ("06%"), as a game's FPS counter: in tabular
-        // digits 06 and 88 take the same room, so number, "%" and everything after them stay put as figures change, and
-        // nothing leaves a hole. Room kept for a missing digit had to sit somewhere: before the number it opened a gap
-        // after the tag, after the "%" the "%" moved, shared between the groups their gaps went uneven. Only a 100
-        // widens its figure.)
-        let widest = if cpu >= 100 || ram >= 100 || gpu.is_some_and(|g| g >= 100) { "100" } else { "88" };
-        // Each digit on its own, as capsule::roll draws them (a box per character): one run of text is a few pixels
-        // narrower, and over three figures the shortfall pushed the close button against the pill's edge.
-        let number_w: f32 = widest.chars().map(|ch| tw(&ch.to_string(), BAR_FIGURE, FontWeight::SEMIBOLD)).sum();
-        let pct_w = number_w + 1. + tw("%", BAR_UNIT, FontWeight::MEDIUM);
-        let pair_w = |l: &str, v: f32| chip_label_w(l) + 6. + v;
+        // A figure's number stands in room of one width whatever it shows: two of the widest digit (`digit_w`; a faint
+        // leading zero under 10, "06%", as a game's FPS counter) and the "%". Its digits sit close as the font sets
+        // them, against the tag; what a narrow digit leaves over is after the "%". A 100 drops its "%" for its third
+        // digit in the same room. So no figure, the close button or the pill ever moves as the numbers change.
+        let digit_w = ('0'..='9').map(|d| tw(&d.to_string(), BAR_FIGURE, FontWeight::SEMIBOLD)).fold(0f32, f32::max);
+        let pct_w = 2. * digit_w + 1. + tw("%", BAR_UNIT, FontWeight::MEDIUM);
+        let pair_w = |l: &str| chip_label_w(l) + 6. + pct_w;
         let row_gap = |items: &[f32], pad_l: f32, pad_r: f32, gap: f32| {
             let shown: Vec<f32> = items.iter().copied().filter(|w| *w > 0.).collect();
             pad_l + pad_r + shown.iter().sum::<f32>() + gap * shown.len().saturating_sub(1) as f32
@@ -3710,19 +3706,25 @@ impl Root {
         let row = |items: &[f32], pad_l: f32, pad_r: f32| row_gap(items, pad_l, pad_r, BAR_PILL_GAP);
         // (No "ROBLOX" word and no lines between the groups: its mark says it, as the right pill's do.)
         let head_w = 13. + 6. + value_w(&words);
-        let cpu_w = pair_w("CPU", pct_w);
-        let ram_w = pair_w("RAM", pct_w);
-        let gpu_w = gpu.map_or(0., |_| pair_w("GPU", pct_w));
+        let cpu_w = pair_w("CPU");
+        let ram_w = pair_w("RAM");
+        let gpu_w = gpu.map_or(0., |_| pair_w("GPU"));
         let progress_w = self.progress.as_deref().map_or(0., |p| tw(p, BAR_VALUE, FontWeight::NORMAL));
         let no_roblox_w = if no_roblox { 14. + 6. + tw(&self.tr("side.noRoblox"), BAR_VALUE, FontWeight::NORMAL) } else { 0. };
         let privacy_w = if privacy.is_some() { 14. + 6. + tw(&self.tr("gpv.chip"), BAR_VALUE, FontWeight::NORMAL) } else { 0. };
-        // (The close button's round ground makes its own room: a narrower end when it is last. Words after it, a join's
-        // "Opening…", end at the usual room: they sat against the pill's edge.)
-        let left_pad_r = if windows > 0 && progress_w == 0. && no_roblox_w == 0. && privacy_w == 0. { 6. } else { BAR_PAD };
-        let left_w = |l: u8| {
+        // The close button, when it is last, sits in the pill's round end: its round ground just inside the end's curve,
+        // 1 px from the rim. Words after it, a join's "Opening…", end at the usual room: they sat against the pill's edge.
+        let close_last = windows > 0 && progress_w == 0. && no_roblox_w == 0. && privacy_w == 0.;
+        let left_pad_r = if close_last { 1. } else { BAR_PAD };
+        let left_guess = |l: u8| {
             let (c, r, g) = (if l < 2 { cpu_w } else { 0. }, if l < 10 { ram_w } else { 0. }, if windows > 0 && l < 2 { gpu_w } else { 0. });
             row_gap(&[head_w, c, r, g, if windows > 0 { BAR_KEY - BAR_CLOSE_IN } else { 0. }, progress_w, no_roblox_w, privacy_w], BAR_PAD, left_pad_r, BAR_GROUP_GAP)
         };
+        // The pill is as wide as its things are when laid out: the measure above is put right by what the last frame
+        // drew (`BAR_LEFT_FIX`, the laid-out row against the measure), so nothing is left over to open a gap before the
+        // close button or push it off the end, whatever the font, the digits or the tags come to.
+        let left_fix = BAR_LEFT_FIX.with(|f| f.get());
+        let left_w = |l: u8| left_guess(l) + left_fix;
         let (title_w, artist_w, cover) = match &song {
             Some((s, _)) => (
                 value_w(&s.title),
@@ -3769,6 +3771,7 @@ impl Root {
         let need = |l: u8| left_w(l) + right_room(l) + if live_song { music_w(l) + 2. * BAR_GAP } else { BAR_GAP };
         let level = (0..=BAR_LEVELS).find(|l| need(*l) <= room).unwrap_or(BAR_LEVELS);
         let pill_w = chip_w(level);
+        let left_guess_now = left_guess(level);
         let (lw, mw, rw) = (left_w(level), music_w(level), right_room(level));
         // (Made wider than its content: the groups spread over it, no empty end.)
         let spread = rw > right_w(level) + 0.5;
@@ -3802,7 +3805,7 @@ impl Root {
         let value = |s: String| div().flex_none().text_size(px(BAR_VALUE)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(s);
         // (A figure that changes rolls its digits, as Apple's numericText does.)
         // (Each figure's tag in its own colour, the expanded card's (capsule.rs): CPU blue, RAM violet, GPU green.)
-        let figure = |id: &'static str, name: &str, chip_tone: u32, pct: i64, tip: String, window: &mut Window| {
+        let figure = |id: &'static str, name: &str, chip_tone: u32, pct: i64, tip: String, window: &mut Window, cx: &mut App| {
             let tip: SharedString = tip.into();
             let tone = if pct as f64 >= LOAD_BUSY { load_colour(pct as f64) } else { c(TEXT) };
             div()
@@ -3827,13 +3830,20 @@ impl Root {
                 )
                 .child(
                     div()
+                        .w(px(pct_w))
                         .flex()
                         .flex_none()
                         .items_baseline()
                         .gap(px(1.))
                         .text_color(tone)
-                        .child(div().flex_none().text_size(px(BAR_FIGURE)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(capsule::roll(id, format!("{:02}", pct.clamp(0, 999)), 17., window)))
-                        .child(div().flex_none().text_size(px(BAR_UNIT)).font_weight(FontWeight::MEDIUM).opacity(0.5).child("%")),
+                        .child(div().flex_none().text_size(px(BAR_FIGURE)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(capsule::roll(
+                            id,
+                            if pct >= 100 { "100".into() } else { format!("{:02}", pct.max(0)) },
+                            17.,
+                            window,
+                            cx,
+                        )))
+                        .when(pct < 100, |d| d.child(div().flex_none().text_size(px(BAR_UNIT)).font_weight(FontWeight::MEDIUM).opacity(0.5).child("%"))),
                 )
                 .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
         };
@@ -3848,18 +3858,29 @@ impl Root {
             });
             let free = m.get("availableMb").and_then(Value::as_f64).map(|mb| crate::lang::cur().mb(mb)).unwrap_or_default();
             let (show_cpu, show_ram) = (level < 2, level < 10);
-            let cpu_el = show_cpu.then(|| figure("bar-cpu", "CPU", capsule::TONES[0], cpu, self.i18n.tv("bar.cpuTip", &[("pct", &cpu.to_string())]), window));
-            let ram_el = show_ram.then(|| figure("bar-ram", "RAM", capsule::TONES[1], ram, self.i18n.tv("sys.used", &[("pct", &ram.to_string()), ("free", &free)]), window));
-            let gpu_el = gpu.filter(|_| show_cpu && windows > 0).map(|g| figure("bar-gpu", "GPU", capsule::TONES[2], g, self.tr("sys.usageTip"), window));
+            let cpu_el = show_cpu.then(|| figure("bar-cpu", "CPU", capsule::TONES[0], cpu, self.i18n.tv("bar.cpuTip", &[("pct", &cpu.to_string())]), window, cx));
+            let ram_el = show_ram.then(|| figure("bar-ram", "RAM", capsule::TONES[1], ram, self.i18n.tv("sys.used", &[("pct", &ram.to_string()), ("free", &free)]), window, cx));
+            let gpu_el = gpu.filter(|_| show_cpu && windows > 0).map(|g| figure("bar-gpu", "GPU", capsule::TONES[2], g, self.tr("sys.usageTip"), window, cx));
             div()
-                .flex_1()
-                .min_w_0()
+                .relative()
                 .flex()
+                .flex_none()
                 .items_center()
-                // (The spare room smaller figures leave is shared out between the groups, the close button among them:
-                // at the end alone it left the close button far from the figures.)
-                .justify_between()
                 .gap(px(BAR_GROUP_GAP))
+                // (The row's own width as laid out, against the measure the pill was given: kept for the next frame.)
+                .child(
+                    canvas(
+                        move |b, window, _| {
+                            let fix = f32::from(b.size.width) + BAR_PAD + left_pad_r - left_guess_now;
+                            if BAR_LEFT_FIX.with(|f| (f.replace(fix) - fix).abs() > 0.5) {
+                                window.request_animation_frame();
+                            }
+                        },
+                        |_, _, _, _| {},
+                    )
+                    .absolute()
+                    .inset_0(),
+                )
                 .child(
                     div()
                         .id("sys-windows")
@@ -4264,6 +4285,8 @@ const BAR_LEVELS: u8 = 10;
 
 thread_local! {
     static BAR_W: std::cell::Cell<f32> = const { std::cell::Cell::new(0.) };
+    /// The left pill's laid-out row against its measure (`status`): what its next width is put right by.
+    static BAR_LEFT_FIX: std::cell::Cell<f32> = const { std::cell::Cell::new(0.) };
     static BAR_LEAVE_ASKED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static BAR_TWEENS: std::cell::RefCell<std::collections::HashMap<&'static str, BarTween>> = std::cell::RefCell::new(std::collections::HashMap::new());
     static BAR_SONG: std::cell::RefCell<Option<(crate::media::Playing, Option<std::time::Instant>)>> = const { std::cell::RefCell::new(None) };

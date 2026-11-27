@@ -3169,7 +3169,9 @@ impl App {
     }
 
     /// Tell GPUI that an entity has changed and observers of it should be notified.
+    #[track_caller]
     pub fn notify(&mut self, entity_id: EntityId) {
+        crate::window::note_frame_ask(std::panic::Location::caller());
         let window_invalidators = mem::take(
             self.window_invalidators_by_entity
                 .entry(entity_id)
@@ -3222,13 +3224,29 @@ impl App {
     /// This is a no-op if the image is not in the sprite atlas.
     pub fn drop_image(&mut self, image: Arc<RenderImage>, current_window: Option<&mut Window>) {
         // remove the texture from all other windows
-        for window in self.windows.values_mut().flatten() {
-            _ = window.drop_image(image.clone());
+        let mut lent = false;
+        for window in self.windows.values_mut() {
+            match window {
+                Some(window) => _ = window.drop_image(image.clone()),
+                None => lent = true,
+            }
         }
 
         // remove the texture from the current window
         if let Some(window) = current_window {
-            _ = window.drop_image(image);
+            _ = window.drop_image(image.clone());
+        }
+
+        // Bloxkeep: a window being updated is out of the list while it is (lent to its update). Asked from inside that
+        // update without it (None: a view's render dropping its old picture), the picture stayed in that window's
+        // atlas for good: a hidden Roblox window's picture, renewed every few seconds, kept 4 MB more on the graphics
+        // card each time (1 GB an hour with five). It is dropped there too once the update is over.
+        if lent {
+            self.defer(move |cx| {
+                for window in cx.windows.values_mut().flatten() {
+                    _ = window.drop_image(image.clone());
+                }
+            });
         }
     }
 

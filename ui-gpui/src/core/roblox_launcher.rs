@@ -457,8 +457,14 @@ fn shell_open(uri: &str) -> Res<()> {
 }
 
 fn start(exe: &str, args: &[&str]) -> Res<()> {
+    let dir = dir_name(exe).unwrap_or_default();
+    // (Under the desktop's process, not Bloxkeep's: in Task Manager a Roblox window is its own app, its memory not
+    // counted as Bloxkeep's. See start_beside_shell.)
+    if let Some(started) = crate::core::win_kit::start_beside_shell(exe, args, &dir) {
+        return started.map(drop).map_err(|e| fail_of("Win32Exception", e));
+    }
     let mut cmd = Command::new(exe);
-    cmd.args(args).current_dir(dir_name(exe).unwrap_or_default());
+    cmd.args(args).current_dir(dir);
     // The child is not waited for; dropping it leaves it running.
     cmd.spawn().map(drop).map_err(|e| fail_of("Win32Exception", e))
 }

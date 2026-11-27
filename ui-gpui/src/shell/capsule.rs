@@ -50,6 +50,8 @@ thread_local! {
     static RAM_HISTORY: RefCell<HashMap<String, (Instant, VecDeque<f32>)>> = RefCell::new(HashMap::new());
     static TICK_ASKED: Cell<bool> = const { Cell::new(false) };
     static ROLLS: RefCell<HashMap<&'static str, Roll>> = RefCell::new(HashMap::new());
+    /// A rolling figure's next frame is asked for (once for all of them).
+    static ROLL_ASKED: Cell<bool> = const { Cell::new(false) };
     #[cfg(feature = "shot")]
     static SHOT_OPENED: Cell<bool> = const { Cell::new(false) };
 }
@@ -111,14 +113,18 @@ struct Roll {
 }
 
 const ROLL_DUR: f32 = 0.42;
+/// A roll's frames: 60 a second on the shared clock (motion.rs), not one every display refresh (240 a second here,
+/// a roll's 0.67 s was 160 frames of the bar).
+const ROLL_STEP: Duration = Duration::from_nanos(1_000_000_000 / 60);
 /// How strong a figure's leading zero is drawn ("06%"): there, but not read.
 const LEAD_ZERO: f32 = 0.28;
 
 /// The figures' own colours, here and on the bar's tags: CPU, RAM, GPU, then a fourth.
 pub(super) const TONES: [u32; 4] = [0x4db8ff, 0xb388ff, 0x3ddc84, 0xffb547];
 
-/// `text` drawn with its changed digits rolling (`key` is the figure's own; one row high, `h`).
-pub(super) fn roll(key: &'static str, text: String, h: f32, window: &mut Window) -> Div {
+/// `text` drawn with its changed digits rolling (`key` is the figure's own; one row high, `h`). Its digits sit close
+/// as the font sets them; whoever draws it keeps the room it stands in the same.
+pub(super) fn roll(key: &'static str, text: String, h: f32, window: &mut Window, cx: &mut App) -> Div {
     let now = Instant::now();
     let (old, t, up) = ROLLS.with(|m| {
         let mut m = m.borrow_mut();
@@ -148,7 +154,13 @@ pub(super) fn roll(key: &'static str, text: String, h: f32, window: &mut Window)
         }
         return row;
     }
-    window.request_animation_frame();
+    if !ROLL_ASKED.with(|a| a.replace(true)) {
+        let view = window.current_view();
+        on_frame_step(cx, ROLL_STEP, move |cx| {
+            ROLL_ASKED.with(|a| a.set(false));
+            cx.notify(view);
+        });
+    }
     let p = apple_spring(t, ROLL_DUR, 0.18);
     let dir = if up { 1. } else { -1. };
     for (i, (o, n)) in old.chars().zip(text.chars()).enumerate() {

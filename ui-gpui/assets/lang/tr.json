@@ -4373,7 +4373,7 @@
   "ram.min": "{n} dk",
   "ram.hour": "1 saat",
   "ram.useBest": "Önerileni kullan",
-  "ram.useBestTip": "%90 üstü, Mem Reduct'ın varsayılan alanlarıyla",
+  "ram.useBestTip": "%{n} üstünde: o zaman yaklaşık {left} kalır, iki Roblox penceresine yeter (bu PC'de her biri {each}). Zamanlayıcı yok: RAM boşken temizlenen birkaç dakikada geri dolar.",
   "ram.fromMemReduct": "Fikir Mem Reduct'tan",
   "set.onJoin": "Bir pencere oyuna girince",
   "set.onJoinDesc": "Küçültülmüş pencere, yukarıdaki seçime göre yerini korur ve orada açılır. Yeniden katılan pencere, hesabın son penceresi nasılsa öyle döner.",

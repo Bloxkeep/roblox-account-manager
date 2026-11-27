@@ -4262,7 +4262,7 @@
   "ram.min": "{n} min",
   "ram.hour": "1 jam",
   "ram.useBest": "Guna yang disyorkan",
-  "ram.useBestTip": "Melebihi 90%, dengan kawasan lalai Mem Reduct",
+  "ram.useBestTip": "Melebihi {n}%: ketika itu tinggal kira-kira {left}, cukup untuk dua tetingkap Roblox ({each} setiap satu pada PC ini). Tiada pemasa: apa yang dibersihkan ketika RAM masih lapang akan dipakai semula dalam beberapa minit.",
   "ram.fromMemReduct": "Idea daripada Mem Reduct",
   "set.onJoin": "Apabila tetingkap menyertai permainan",
   "set.onJoinDesc": "Tetingkap yang diminimumkan masih mengambil tempatnya mengikut pilihan di atas, sedia apabila anda membukanya. Tetingkap yang menyertai semula kembali seperti tetingkap terakhir akaun itu.",

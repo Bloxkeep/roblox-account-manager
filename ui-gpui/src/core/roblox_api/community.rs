@@ -5,12 +5,38 @@ use crate::core::{base::{Cancel, Fail, Res}, l};
 
 const HOST: &str = "https://groups.roblox.com";
 
+/// Reads without a sign-in, kept a minute: a community's page and the account's buttons on it ask the same ones.
+static KEPT: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, (std::time::Instant, Value)>>> = std::sync::LazyLock::new(Default::default);
+const KEEP: std::time::Duration = std::time::Duration::from_secs(60);
+
 fn read(url: &str, cookie: Option<&str>, ct: &Cancel) -> Res<Value> {
-    let response = send(&request("GET", url, cookie, false, realm::GLOBAL), ct)?;
-    if response.is_success() {
-        parse_json(&response.text())
-    } else {
-        Err(refused("Roblox community", response.status, &response.text(), response.status == 401))
+    if cookie.is_none()
+        && let Some(v) = KEPT.lock().unwrap_or_else(|e| e.into_inner()).get(url).filter(|k| k.0.elapsed() < KEEP).map(|k| k.1.clone())
+    {
+        return Ok(v);
+    }
+    let mut tries = 0;
+    loop {
+        // A 429 (Roblox's rate limit) waits the time out with every read to that host and asks again (net::wait_cool).
+        crate::net::wait_cool(url);
+        let response = send(&request("GET", url, cookie, false, realm::GLOBAL), ct)?;
+        tries += 1;
+        if response.status == 429 && tries < crate::net::RATE_TRIES && !ct.is_cancelled() {
+            let said = super::lookups::first_number(&response, "x-ratelimit-reset").or_else(|| super::lookups::retry_after_secs(&response));
+            crate::net::cooled(url, said.map(|s| std::time::Duration::from_secs(s.max(1) as u64)));
+            continue;
+        }
+        if !response.is_success() {
+            return Err(refused("Roblox community", response.status, &response.text(), response.status == 401));
+        }
+        crate::net::calm(url);
+        let v = parse_json(&response.text())?;
+        if cookie.is_none() {
+            let mut kept = KEPT.lock().unwrap_or_else(|e| e.into_inner());
+            kept.retain(|_, k| k.0.elapsed() < KEEP);
+            kept.insert(url.to_string(), (std::time::Instant::now(), v.clone()));
+        }
+        return Ok(v);
     }
 }
 
@@ -44,7 +70,10 @@ pub fn read_group(group: i64, viewer: Option<(i64, &str)>, ct: &Cancel) -> Res<V
 }
 
 pub fn change_group(group: i64, user: i64, cookie: &str, join: bool, ct: &Cancel) -> Res<Value> {
+    // (Asked fresh, and nothing kept from before the change: membership is what changes.)
+    KEPT.lock().unwrap_or_else(|e| e.into_inner()).clear();
     let mut details = read_group(group, Some((user, cookie)), ct)?;
+    KEPT.lock().unwrap_or_else(|e| e.into_inner()).clear();
     if details["state"] == "owner" && !join {
         return Err(Fail::user(l::t("Transfer community ownership before leaving.")));
     }

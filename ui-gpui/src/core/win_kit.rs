@@ -500,3 +500,110 @@ pub fn pids_by_name(name: &str) -> Option<Vec<i32>> {
 pub fn local_app_data() -> std::path::PathBuf {
     std::env::var_os("LOCALAPPDATA").map(std::path::PathBuf::from).unwrap_or_default()
 }
+
+/// `exe` with `args`, in `dir`, started as a child of the desktop's own process (Explorer, the shell window's), not of
+/// Bloxkeep: Task Manager groups a program under the app that started it and counts its memory there, so every Roblox
+/// window Bloxkeep opened showed inside Bloxkeep (2 GB "Bloxkeep" while a window loaded its game). Started this way it
+/// is an app of its own, as when the person opens Roblox. Bloxkeep's own environment; the rights are Explorer's (the
+/// same person's, not raised). Its pid and creation time; None when there is no shell to start it under (then the
+/// caller starts it itself).
+pub fn start_beside_shell(exe: &str, args: &[&str], dir: &str) -> Option<std::io::Result<(u32, i64)>> {
+    use windows_sys::Win32::{
+        Foundation::FILETIME,
+        System::Threading::{
+            CreateProcessW, DeleteProcThreadAttributeList, EXTENDED_STARTUPINFO_PRESENT, GetProcessTimes, InitializeProcThreadAttributeList, LPPROC_THREAD_ATTRIBUTE_LIST, OpenProcess,
+            PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, PROCESS_CREATE_PROCESS, PROCESS_INFORMATION, STARTUPINFOEXW, UpdateProcThreadAttribute,
+        },
+        UI::WindowsAndMessaging::{GetShellWindow, GetWindowThreadProcessId},
+    };
+    // Windows' own quoting of a command line (CommandLineToArgvW's rules), as std::process::Command quotes it.
+    let quote = |a: &str| -> String {
+        if !a.is_empty() && !a.contains([' ', '\t', '"']) {
+            return a.to_string();
+        }
+        let mut out = String::from("\"");
+        let mut slashes = 0;
+        for ch in a.chars() {
+            match ch {
+                '\\' => slashes += 1,
+                '"' => {
+                    out.push_str(&"\\".repeat(slashes * 2 + 1));
+                    out.push('"');
+                    slashes = 0;
+                }
+                _ => {
+                    out.push_str(&"\\".repeat(slashes));
+                    out.push(ch);
+                    slashes = 0;
+                }
+            }
+        }
+        out.push_str(&"\\".repeat(slashes * 2));
+        out.push('"');
+        out
+    };
+    let mut line = format!("\"{exe}\"");
+    for a in args {
+        line.push(' ');
+        line.push_str(&quote(a));
+    }
+    // SAFETY: every pointer is to a local that outlives its call; the attribute list is sized by Windows and aligned
+    // for usize; the handles opened here are closed here.
+    unsafe {
+        let shell = GetShellWindow();
+        if shell.is_null() {
+            return None;
+        }
+        let mut shell_pid = 0u32;
+        GetWindowThreadProcessId(shell, &mut shell_pid);
+        if shell_pid == 0 {
+            return None;
+        }
+        let parent = OpenProcess(PROCESS_CREATE_PROCESS, 0, shell_pid);
+        if parent.is_null() {
+            return None;
+        }
+        let mut size = 0usize;
+        InitializeProcThreadAttributeList(std::ptr::null_mut(), 1, 0, &mut size);
+        let mut room = vec![0usize; size.div_ceil(size_of::<usize>()).max(1)];
+        let list: LPPROC_THREAD_ATTRIBUTE_LIST = room.as_mut_ptr().cast();
+        let mut result = None;
+        if InitializeProcThreadAttributeList(list, 1, 0, &mut size) != 0 {
+            let parent_slot = parent;
+            if UpdateProcThreadAttribute(list, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS as usize, (&raw const parent_slot).cast(), size_of::<isize>(), std::ptr::null_mut(), std::ptr::null()) != 0 {
+                let mut si: STARTUPINFOEXW = std::mem::zeroed();
+                si.StartupInfo.cb = size_of::<STARTUPINFOEXW>() as u32;
+                si.lpAttributeList = list;
+                let mut pi: PROCESS_INFORMATION = std::mem::zeroed();
+                let app = wide(exe);
+                let mut cmd = wide(&line);
+                let cwd = wide(dir);
+                let ok = CreateProcessW(
+                    app.as_ptr(),
+                    cmd.as_mut_ptr(),
+                    std::ptr::null(),
+                    std::ptr::null(),
+                    0,
+                    EXTENDED_STARTUPINFO_PRESENT,
+                    std::ptr::null(),
+                    if dir.is_empty() { std::ptr::null() } else { cwd.as_ptr() },
+                    &si.StartupInfo,
+                    &mut pi,
+                ) != 0;
+                result = Some(if ok {
+                    let zero = FILETIME { dwLowDateTime: 0, dwHighDateTime: 0 };
+                    let (mut created, mut exited, mut kernel, mut user) = (zero, zero, zero, zero);
+                    GetProcessTimes(pi.hProcess, &mut created, &mut exited, &mut kernel, &mut user);
+                    CloseHandle(pi.hThread);
+                    CloseHandle(pi.hProcess);
+                    Ok((pi.dwProcessId, ((created.dwHighDateTime as i64) << 32) | created.dwLowDateTime as i64))
+                } else {
+                    Err(std::io::Error::last_os_error())
+                });
+            }
+            DeleteProcThreadAttributeList(list);
+        }
+        CloseHandle(parent);
+        result
+    }
+}

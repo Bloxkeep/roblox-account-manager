@@ -54,10 +54,10 @@ const WM_SETICON: u32 = 0x80;
 const ICON_SMALL: usize = 0;
 const ICON_BIG: usize = 1;
 
-/// How often a client's windows are asked whether they still have their icon, one client at a time. Asking
-/// waits for Roblox's window (up to 300 ms, Bloxkeep's window frozen meanwhile): asking all at every 1.5 s check let
-/// six windows loading a game hold Bloxkeep up to 1.8 s. (TimeSpan.FromSeconds(30), in ms.)
-const CHECK_EVERY_MS: i64 = 30_000;
+/// How often a client's windows are asked whether they still have their icon. Roblox puts its own back now and then
+/// (a teleport, a reset): every half a minute, its logo stood on the taskbar for up to 30 s. Asking waits for a busy
+/// window (up to 300 ms) on the shared pool, not on Bloxkeep's window, so every client due is asked in the same pass.
+const CHECK_EVERY_MS: i64 = 3_000;
 
 /// The checks' clock (Tests/Bloxkeep.Tests): when set, it stands in for Environment.TickCount64. The app never sets it.
 pub static CLOCK: Mutex<Option<fn() -> i64>> = Mutex::new(None);
@@ -139,6 +139,9 @@ pub fn apply(pid: i32, windows: &[isize], key: &str, draw: &dyn Fn() -> Picture,
         for &h in windows {
             if get(h, ICON_BIG) != made.big || get(h, ICON_SMALL) != made.small {
                 let ok = put(h, made);
+                if ok {
+                    redraw_button(h);
+                }
                 failed |= !ok;
                 // A window busy loading is tried again at each check until it takes it: said once, then once put back.
                 if ok || !made.busy_said {
@@ -157,31 +160,20 @@ pub fn apply(pid: i32, windows: &[isize], key: &str, draw: &dyn Fn() -> Picture,
     save(&mut s);
 }
 
-/// The client checked longest ago, once CHECK_EVERY has passed (None when none is due), noted as
-/// checked now. One per process check, so a busy Roblox holds Bloxkeep up once at most.
-pub fn next_to_check(pids: &[i32]) -> Option<i32> {
+/// The clients whose windows are due to be asked (CHECK_EVERY_MS since the last time), noted as checked now.
+pub fn due_to_check(pids: &[i32]) -> Vec<i32> {
     let now = now();
     let mut s = icons();
-    let mut next: Option<i32> = None;
-    let mut oldest: Option<i64> = None;
+    let mut due = Vec::new();
     for &pid in pids {
-        if let Some(made) = s.by_pid.get(&pid) {
-            if oldest.is_none_or(|o| made.checked < o) {
-                oldest = Some(made.checked);
-                next = Some(pid);
-            }
+        if let Some(made) = s.by_pid.get_mut(&pid)
+            && now - made.checked >= CHECK_EVERY_MS
+        {
+            made.checked = now;
+            due.push(pid);
         }
     }
-    let (Some(oldest), Some(next)) = (oldest, next) else {
-        return None;
-    };
-    if now - oldest < CHECK_EVERY_MS {
-        return None;
-    }
-    if let Some(made) = s.by_pid.get_mut(&next) {
-        made.checked = now;
-    }
-    Some(next)
+    due
 }
 
 /// The windows' own icons back (the setting turned off, Bloxkeep closing).
@@ -281,6 +273,25 @@ pub fn pids() -> Vec<i32> {
 
 /// Puts the made icons on a window, noting first the icons it had of its own (once: later it has ours).
 /// False when the window didn't answer in time (it may not have them).
+/// The window's taskbar button drawn again with the icon it has now. A new icon alone doesn't redraw it: Roblox puts
+/// its own back, the window's title is set (Bloxkeep's "Roblox - name (PID)"), the taskbar reads the icon then, Roblox's,
+/// and the account's put back after it ("put back" in the log) left Roblox's logo on the button. The title set again
+/// as it is makes the taskbar read the window again.
+fn redraw_button(h: isize) {
+    const WM_GETTEXT: u32 = 0x0D;
+    const WM_SETTEXT: u32 = 0x0C;
+    let mut text = [0u16; 512];
+    let mut got = 0usize;
+    // SAFETY: plain messages with a timeout; the text buffer outlives both and ends in a NUL (its last place kept 0).
+    unsafe {
+        if SendMessageTimeoutW(hwnd(h), WM_GETTEXT, text.len() - 1, text.as_mut_ptr() as isize, SMTO_ABORTIFHUNG, 300, &mut got) == 0 {
+            return;
+        }
+        text[got.min(text.len() - 1)] = 0;
+        SendMessageTimeoutW(hwnd(h), WM_SETTEXT, 0, text.as_ptr() as isize, SMTO_ABORTIFHUNG, 300, &mut got);
+    }
+}
+
 fn put(h: isize, made: &mut Made) -> bool {
     if !made.own.contains_key(&h) {
         made.own.insert(h, (get(h, ICON_BIG), get(h, ICON_SMALL)));

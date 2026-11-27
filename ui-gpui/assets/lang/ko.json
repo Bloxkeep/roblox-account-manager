@@ -4373,7 +4373,7 @@
   "ram.min": "{n}분",
   "ram.hour": "1시간",
   "ram.useBest": "추천 설정 쓰기",
-  "ram.useBestTip": "90% 초과, Mem Reduct 기본 영역",
+  "ram.useBestTip": "{n}% 초과 시: 남은 메모리는 약 {left}로 Roblox 창 2개 분량입니다 (이 PC에서 창 하나당 {each}). 타이머 없음: RAM이 여유로울 때 정리하면 몇 분 안에 다시 차오릅니다.",
   "ram.fromMemReduct": "Mem Reduct에서 온 아이디어",
   "set.onJoin": "창이 게임에 들어가면",
   "set.onJoinDesc": "최소화된 창도 위 설정대로 자리를 유지하며, 열면 그 자리에 나타납니다. 재접속한 창은 그 계정의 이전 창 상태로 돌아옵니다.",

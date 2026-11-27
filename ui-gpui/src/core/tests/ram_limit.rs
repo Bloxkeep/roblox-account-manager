@@ -12,8 +12,8 @@ use serde_json::json;
 use super::{call, cores::memory_priority, unlock, user_error, window::quiet_app as app, Checks, PASSWORD};
 use crate::core::{
     app::memory::{
-        auto_cap, cpu_plan, ram_plan, settling, AutoRam, CpuAsk, CpuCap, CpuMemory, Game, RamAsk, RamCap, RamFacts, RamMemory, RamSetting, CPU_LIMIT_CHOICES,
-        MOVING_LIMIT_MB,
+        auto_cap, cpu_plan, ram_plan, settling, AutoRam, CpuAsk, CpuCap, CpuMemory, Game, RamAsk, RamCap, RamFacts, RamMemory, RamSetting, RamWanted, CPU_LIMIT_CHOICES,
+        TRIM_GAP_FIRST, TRIM_GAP_LONGEST,
     },
     base::Stamp,
     cpu_cap::{self, JOB_OBJECT_CPU_RATE_CONTROL_ENABLE, JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP},
@@ -81,9 +81,7 @@ fn ask_before(f: &RamFacts) -> Option<Option<i64>> {
     let moving = put_away && f.game.settling(f.now);
     let resting = put_away && !moving;
     let auto = if setting == -1 { f.memory.auto.clone() } else { None };
-    let want = if moving {
-        Some(MOVING_LIMIT_MB.max(setting).max(auto.as_ref().map_or(0, |a| a.cap_mb)))
-    } else if !resting {
+    let want = if !resting {
         None
     } else if setting == -1 {
         auto_cap(&mut auto.clone(), f).0
@@ -133,6 +131,7 @@ fn plan_table(c: &mut Checks) {
         Game::Joining { at: ago(360.0) },
         Game::InGame { at: ago(5.0), teleport: None },
         Game::InGame { at: ago(13.0), teleport: None },
+        Game::InGame { at: ago(61.0), teleport: None },
         Game::InGame { at: ago(300.0), teleport: None },
         Game::InGame { at: ago(300.0), teleport: Some(ago(30.0)) },
         Game::InGame { at: ago(300.0), teleport: Some(ago(360.0)) },
@@ -158,7 +157,7 @@ fn plan_table(c: &mut Checks) {
                                         rows += 1;
                                         let w = ram_plan(&f);
                                         let (empty, since, was_emptied) = empty_before(&f);
-                                        let moving = f.game.settling(now) && !matches!(w.cap, RamCap::Lift | RamCap::Leave);
+                                        let moving = !lent && w.why == "moving to a server";
                                         let auto_kept = if lent {
                                             f.memory.auto.is_some()
                                         } else if setting != RamSetting::Auto {
@@ -212,8 +211,12 @@ fn plan_cases(c: &mut Checks) {
     c.check("plan: minimized, 1 GB chosen, in its game 5 min: limited to 1024 MB (chosen)", w.ask == Some(Some(1024)) && w.why == "chosen", (w.ask, w.why));
     let w = plan(&|f| f.memory.held = Some(1024));
     c.check("plan: …already held there: nothing asked", w.ask.is_none() && w.cap == RamCap::Mb(1024), (w.ask, w.cap));
-    let w = plan(&|f| f.game = Game::InGame { at: ago(5.0), teleport: None });
-    c.check("plan: just joined (5 s): 2048 MB (moving to a server)", w.ask == Some(Some(2048)) && w.why == "moving to a server", (w.ask, w.why));
+    let w = plan(&|f| (f.memory.held, f.game) = (Some(1024), Game::InGame { at: ago(5.0), teleport: None }));
+    c.check("plan: just joined (5 s): lifted while it loads (moving to a server)", w.ask == Some(None) && w.why == "moving to a server", (w.ask, w.why));
+    let w = plan(&|f| f.game = Game::InGame { at: ago(10.0), teleport: None });
+    c.check("plan: …still nothing at 10 s", w.ask.is_none() && w.cap == RamCap::Lift, (w.ask, w.cap));
+    let w = plan(&|f| f.game = Game::InGame { at: ago(16.0), teleport: None });
+    c.check("plan: …16 s in: limited", w.ask == Some(Some(1024)), w.ask);
     let w = plan(&|f| (f.memory.held, f.minimised) = (Some(1024), false));
     c.check("plan: shown again: lifted", w.ask == Some(None) && w.why == "shown, in front, or the option off", (w.ask, w.why));
     let w = plan(&|f| (f.memory.held, f.front) = (Some(1024), true));
@@ -308,12 +311,12 @@ fn plan_cases(c: &mut Checks) {
     f.game = Game::InGame { at: ago(300.0), teleport: Some(ago(2.0)) };
     let moving = ram_plan(&f);
     c.check(
-        "plan: Auto: moving to a server: 2048 MB, Auto's limit kept",
-        moving.ask == Some(Some(2048)) && moving.memory.auto.as_ref().is_some_and(|a| a.cap_mb == 1152 && a.faults == -1),
+        "plan: Auto: moving to a server: lifted, Auto's limit kept",
+        moving.ask == Some(None) && moving.memory.auto.as_ref().is_some_and(|a| a.cap_mb == 1152 && a.faults == -1),
         (moving.ask, moving.memory.auto.as_ref().map(|a| a.cap_mb)),
     );
-    f.memory = RamMemory { held: Some(2048), ..moving.memory };
-    f.now = now.plus_secs(20.0);
+    f.memory = RamMemory { held: None, ..moving.memory };
+    f.now = now.plus_secs(70.0);
     f.game = Game::InGame { at: now.plus_secs(5.0), teleport: None };
     let settled = ram_plan(&f);
     c.check("plan: …settled on the new server: back to its 1152 MB at once (auto)", settled.ask == Some(Some(1152)) && settled.why == "auto", (settled.ask, settled.why));
@@ -504,6 +507,11 @@ async fn cpu_on_own_process(c: &mut Checks, app: &std::rc::Rc<crate::core::app::
     let set = cpu_cap::set(me, Some(20));
     c.check("CPU cap: set to 20 %: Windows holds the job at 2000 of 10 000 cycles, a hard cap", set.is_ok() && cpu_cap::read(me) == Some((ON, 2000)), (set, cpu_cap::read(me)));
     let set = cpu_cap::set(me, Some(10));
+    c.check(
+        "CPU cap: never under a quarter of one processor (1 % on 8 of them: 313, on 64: 100; 10 % on 2: 1250)",
+        cpu_cap::rate_for(1, 8) == 313 && cpu_cap::rate_for(1, 64) == 100 && cpu_cap::rate_for(10, 2) == 1250 && cpu_cap::rate_for(20, 16) == 2000,
+        (cpu_cap::rate_for(1, 8), cpu_cap::rate_for(1, 64), cpu_cap::rate_for(10, 2)),
+    );
     c.check("CPU cap: changed to 10 %: the same job, at 1000", set.is_ok() && cpu_cap::read(me) == Some((ON, 1000)), (set, cpu_cap::read(me)));
 
     // Held to it: a few threads spinning 2 s under a 5 % cap use at most about 5 % of all the PC's processors. Uncapped
@@ -615,6 +623,12 @@ pub async fn run(c: &mut Checks, _dir: &str) {
         roblox_processes::limit_ram(me, Some(512)) && roblox_processes::has_ram_limit(me) && roblox_processes::limit_ram(me, None) && !roblox_processes::has_ram_limit(me),
         (),
     );
+    roblox_processes::limit_ram(me, Some(512));
+    c.check(
+        "a limit is kept with no hard cap: one left by an older Bloxkeep is taken off",
+        roblox_processes::keep_ram_under(me, 64) && !roblox_processes::has_ram_limit(me),
+        roblox_processes::has_ram_limit(me),
+    );
     // A user's 4 minimized windows held at 512 MB froze in a teleport and all dropped (2026-11-24): no limit while moving.
     let now = Stamp::utc_now();
     let ago = |s: f64| now.plus_secs(-s);
@@ -654,11 +668,13 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     for (what, lines, at, want) in [
         ("log: in a game 5 min: limited", &in_game[..], 300.0, false),
         ("log: just joined: not limited", &in_game[..], 5.0, true),
-        ("log: in its game 13 s: limited", &in_game[..], 13.4, false),
+        ("log: in its game 10 s: not limited yet (still loading)", &in_game[..], 10.0, true),
+        ("log: in its game 16 s: limited", &in_game[..], 16.0, false),
         ("log: a teleport begun: not limited", &teleport[..2 + 1], 600.1, true),
         ("log: joining the next server: not limited", &teleport[..2 + 4], 602.5, true),
         ("log: 5 s on the new server: not limited", &teleport[..], 608.1, true),
-        ("log: 13 s on the new server: limited again", &teleport[..], 616.2, false),
+        ("log: 10 s on the new server: not limited", &teleport[..], 613.1, true),
+        ("log: 16 s on the new server: limited again", &teleport[..], 619.2, false),
         ("log: a teleport that never went on, 4 min: not limited", &teleport[..2 + 1], 840.0, true),
         ("log: …6 min: limited again", &teleport[..2 + 1], 960.0, false),
         ("log: a join that hangs 6 min: limited again", &teleport[..2 + 4], 962.5, false),
@@ -686,6 +702,45 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     let limited = || roblox_processes::has_ram_limit(me);
 
     c.skip("off by default: a minimized window isn't limited", "needs a window");
+
+    // Grown past its limit again: emptied again, the waits doubling up to the longest, started over by a new limit.
+    let t = Stamp::utc_now();
+    let big = PlayerProcess { pid: me, working_set: 4096 * MB, ..Default::default() };
+    let held = |ask: Option<Option<i64>>| RamWanted {
+        cap: RamCap::Mb(64),
+        ask,
+        why: "chosen",
+        empty_once: false,
+        memory: RamMemory { held: Some(64), ..Default::default() },
+        note: None,
+    };
+    let gap = || app.memory.ram_trimmed.borrow().get(&me).map(|(at, g, _)| (*at, *g));
+    let first = TRIM_GAP_FIRST.as_secs_f64();
+    app.trim_again(&big, &held(Some(Some(64))), false, t);
+    c.check("a new limit starts the waits (its ask empties it)", gap() == Some((t, first)), gap());
+    app.trim_again(&big, &held(None), false, t.plus_secs(first - 1.0));
+    c.check("…grown past it again: not emptied before the first wait", gap() == Some((t, first)), gap());
+    app.trim_again(&big, &held(None), false, t.plus_secs(first + 1.0));
+    c.check("…after it: emptied again, the next wait twice as long", gap() == Some((t.plus_secs(first + 1.0), first * 2.0)), gap());
+    let mut at = first + 1.0;
+    for _ in 0..10 {
+        at += gap().map_or(0.0, |(_, g)| g) + 1.0;
+        app.trim_again(&big, &held(None), false, t.plus_secs(at));
+    }
+    c.check("…the wait stops growing at the longest", gap().map(|(_, g)| g) == Some(TRIM_GAP_LONGEST.as_secs_f64()), gap());
+    let small = PlayerProcess { pid: me, working_set: 32 * MB, ..Default::default() };
+    let before = gap();
+    app.trim_again(&small, &held(None), false, t.plus_secs(at + 99_999.0));
+    c.check("…under its limit: left alone", gap() == before, gap());
+    let away = t.plus_secs(at + 100_000.0);
+    app.trim_again(&big, &held(None), true, away);
+    c.check("…minimized: emptied at once, though its wait isn't over", gap() == Some((away, first)), gap());
+    app.trim_again(&big, &held(None), true, away.plus_secs(first - 1.0));
+    c.check("…away: not again before half a minute", gap() == Some((away, first)), gap());
+    app.trim_again(&big, &held(None), true, away.plus_secs(first + 1.0));
+    c.check("…away: again after it, the wait not growing", gap() == Some((away.plus_secs(first + 1.0), first)), gap());
+    app.trim_again(&big, &RamWanted { cap: RamCap::Lift, ..held(Some(None)) }, false, t.plus_secs(at + 199_999.0));
+    c.check("…lifted: the waits forgotten", gap().is_none(), gap());
 
     let refused = call(&app, "setSettings", json!({ "ramLimitMb": 777 })).await;
     c.check(

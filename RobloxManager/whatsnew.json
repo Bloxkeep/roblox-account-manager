@@ -1,5 +1,41 @@
 [
   {
+    "version": "1.1.7",
+    "date": "2026-11-27",
+    "improved": {
+      "en": [
+        "The RAM limit empties a window's memory instead of capping it; minimized windows are emptied at once, then every 30 s.",
+        "Clean RAM's recommended level is worked out for your PC.",
+        "Play with a game set also sends the accounts already open.",
+        "In Task Manager, Clean RAM sits under Bloxkeep, and Roblox's memory is no longer counted as Bloxkeep's.",
+        "Account pictures come back on the taskbar within seconds.",
+        "The status bar's numbers no longer push things around as they change.",
+        "Communities wait and try again when Roblox is busy."
+      ],
+      "vi": [
+        "Giới hạn RAM dọn bộ nhớ của cửa sổ thay vì chặn trần; cửa sổ thu nhỏ được dọn ngay, rồi 30 giây một lần.",
+        "Mức Dọn RAM đề xuất được tính theo máy của bạn.",
+        "Bấm Chơi khi đã chọn game cũng đưa các tài khoản đang mở vào game.",
+        "Trong Task Manager, Dọn RAM nằm dưới Bloxkeep, RAM của Roblox không còn tính vào Bloxkeep.",
+        "Ảnh tài khoản trên thanh taskbar hiện lại sau vài giây.",
+        "Số trên thanh trạng thái không còn đẩy các thứ xung quanh khi thay đổi.",
+        "Cộng đồng tự đợi và thử lại khi Roblox đang bận."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Bloxkeep's own memory could climb past 1 GB.",
+        "A window held by the CPU limit could freeze for seconds.",
+        "Communities sometimes said \"Couldn't load the community (Roblox 429)\"."
+      ],
+      "vi": [
+        "RAM của chính Bloxkeep có lúc tăng quá 1 GB.",
+        "Cửa sổ bị giới hạn CPU có lúc đứng hình vài giây.",
+        "Cộng đồng đôi khi báo \"Không tải được cộng đồng (Roblox 429)\"."
+      ]
+    }
+  },
+  {
     "version": "1.1.6",
     "date": "2026-11-27",
     "new": {

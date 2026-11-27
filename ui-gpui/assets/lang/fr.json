@@ -4613,7 +4613,7 @@
   "ram.min": "{n} min",
   "ram.hour": "1 heure",
   "ram.useBest": "Réglage conseillé",
-  "ram.useBestTip": "Au-delà de 90 %, avec les zones par défaut de Mem Reduct",
+  "ram.useBestTip": "Au-dessus de {n} % : il reste alors environ {left}, de quoi ouvrir deux fenêtres Roblox ({each} chacune sur ce PC). Pas de minuteur : ce qui est nettoyé quand la RAM est libre revient en quelques minutes.",
   "ram.fromMemReduct": "Idée de Mem Reduct",
   "set.onJoin": "Quand une fenêtre rejoint un jeu",
   "set.onJoinDesc": "Une fenêtre réduite garde sa place selon le choix ci-dessus et s’y ouvre. Après un rejoin, la fenêtre revient comme était la dernière du compte.",

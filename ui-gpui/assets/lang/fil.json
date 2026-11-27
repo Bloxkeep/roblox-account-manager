@@ -4262,7 +4262,7 @@
   "ram.min": "{n} min",
   "ram.hour": "1 oras",
   "ram.useBest": "Gamitin ang inirerekomenda",
-  "ram.useBestTip": "Lampas 90%, gamit ang default na lilinisin ng Mem Reduct",
+  "ram.useBestTip": "Lampas {n}%: mga {left} na lang ang natitira, kasya ang dalawang Roblox window ({each} bawat isa sa PC na ito). Walang timer: ang nalinis habang may bakanteng RAM ay nababawi sa loob ng ilang minuto.",
   "ram.fromMemReduct": "Ideya mula sa Mem Reduct",
   "set.onJoin": "Kapag sumali sa laro ang isang window",
   "set.onJoinDesc": "Kahit naka-minimize, kukunin pa rin ng window ang puwesto nito ayon sa napili sa itaas, handa kapag binuksan mo. Babalik ang na-rejoin na window gaya ng huling window ng account.",

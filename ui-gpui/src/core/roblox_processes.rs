@@ -1540,6 +1540,24 @@ pub fn limit_ram(pid: i32, mb: Option<i64>) -> bool {
     }
 }
 
+/// Keeps the client near `mb` without a hard cap: any hard cap is taken off, and its RAM is emptied if it holds more.
+/// It may grow past `mb` again when its game needs it; nothing stops it.
+pub fn keep_ram_under(pid: i32, mb: i64) -> bool {
+    if has_ram_limit(pid) && !limit_ram(pid, None) {
+        return false;
+    }
+    let Some(h) = ProcHandle::open(PROCESS_QUERY_LIMITED_INFORMATION, pid) else {
+        return false;
+    };
+    let mut c = ProcessMemoryCountersEx { cb: std::mem::size_of::<ProcessMemoryCountersEx>() as u32, ..Default::default() };
+    // SAFETY: cb is set to the struct's size.
+    if unsafe { GetProcessMemoryInfo(h.0, &mut c, c.cb) } == 0 {
+        return false;
+    }
+    drop(h);
+    (c.working_set_size as i64) <= mb * 1024 * 1024 || empty_ram(pid)
+}
+
 /// Takes the client's pages out of RAM now: what it still uses comes back as it touches it, nothing is lost.
 pub fn empty_ram(pid: i32) -> bool {
     let Some(h) = ProcHandle::open(PROCESS_SET_QUOTA | PROCESS_QUERY_INFORMATION, pid) else {

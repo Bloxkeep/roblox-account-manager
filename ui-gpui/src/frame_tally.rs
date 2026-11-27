@@ -12,6 +12,7 @@ const EVERY: Duration = Duration::from_secs(600);
 /// Starts the count's timer on the UI thread (its CPU time is the UI thread's).
 pub fn start(cx: &mut App) {
     let _ = gpui_kit::take_frame_tally();
+    let _ = gpui_kit::take_frame_asks();
     let mut cpu_before = ui_thread_cpu();
     // Window messages Windows handed over while the app was inside an update (GPUI's `when_free`: done after it, where
     // they used to crash the start): said once the start is over, then with each count.
@@ -21,11 +22,9 @@ pub fn start(cx: &mut App) {
     })
     .detach();
     cx.spawn(async move |cx| {
-        // (A shot's count, BLOXKEEP_SHOT_TALLY=<s>: every s seconds, to compare builds.)
-        #[cfg(feature = "shot")]
-        let every = std::env::var("BLOXKEEP_SHOT_TALLY").ok().and_then(|v| v.parse().ok()).map_or(EVERY, Duration::from_secs);
-        #[cfg(not(feature = "shot"))]
-        let every = EVERY;
+        // (A shot's count, BLOXKEEP_SHOT_TALLY=<s>: every s seconds, to compare builds; the app's own the same way with
+        // BLOXKEEP_TALLY=<s>, to measure a run.)
+        let every = std::env::var("BLOXKEEP_SHOT_TALLY").or_else(|_| std::env::var("BLOXKEEP_TALLY")).ok().and_then(|v| v.parse().ok()).map_or(EVERY, Duration::from_secs);
         loop {
             cx.background_executor().timer(every).await;
             late_messages("in the last 10 min");
@@ -53,6 +52,32 @@ pub fn start(cx: &mut App) {
         }
     })
     .detach();
+    // Which lines asked for frames, most first, each minute they asked for more than 20 a second: a page that keeps
+    // drawing while nothing moves names itself here.
+    cx.spawn(async move |cx| {
+        loop {
+            cx.background_executor().timer(ASKS_EVERY).await;
+            let asks = gpui_kit::take_frame_asks();
+            let all: u64 = asks.iter().map(|(_, n)| n).sum();
+            if all < 20 * ASKS_EVERY.as_secs() {
+                continue;
+            }
+            let top: Vec<String> = asks.iter().take(8).map(|(at, n)| format!("{} ×{n}", short_path(at))).collect();
+            write(&format!("UI frames asked, last minute: {all}; most by {}.", top.join(", ")));
+        }
+    })
+    .detach();
+}
+
+const ASKS_EVERY: Duration = Duration::from_secs(60);
+
+/// "…\src\pages\accounts.rs:120" as "pages/accounts.rs:120"; a library's file by its crate folder and name.
+fn short_path(at: &str) -> String {
+    let at = at.replace('\\', "/");
+    match at.rfind("/src/") {
+        Some(i) if !at.contains("/vendor/") && !at.contains("/registry/") => at[i + 5..].to_string(),
+        _ => at.rsplit('/').take(3).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("/"),
+    }
 }
 
 fn late_messages(when: &str) {

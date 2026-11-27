@@ -90,7 +90,16 @@ pub(crate) fn signed(cookie: &str) -> String {
 }
 
 fn get(url: &str, cookie: Option<&str>) -> Result<Value, String> {
-    let mut out = get_once(url, cookie);
+    // A 429 (Roblox's rate limit) waits the time out with every read to that host and asks again (net::wait_cool):
+    // a page asks its parts at once, and the first refused one failed the page.
+    let mut out = Err(String::new());
+    for _ in 0..crate::net::RATE_TRIES {
+        crate::net::wait_cool(url);
+        out = get_once(url, cookie);
+        if out.as_ref().is_ok() || out.as_ref().is_err_and(|why| why != "Roblox 429") {
+            break;
+        }
+    }
     // Roblox's servers fail a read now and then (500, 502, 503, 504) that a second ask a moment later answers; a read
     // is safe to ask again, so it gets one more try before the page shows the failure.
     if out.as_ref().is_err_and(|why| matches!(why.as_str(), "Roblox 500" | "Roblox 502" | "Roblox 503" | "Roblox 504")) {
@@ -163,9 +172,15 @@ fn get_once(url: &str, cookie: Option<&str>) -> Result<Value, String> {
     }
     match req.call() {
         Ok(r) => {
+            crate::net::calm(url);
             let mut text = String::new();
             r.into_reader().take(8 << 20).read_to_string(&mut text).map_err(|e| e.to_string())?;
             serde_json::from_str(&text).map_err(|e| e.to_string())
+        }
+        Err(ureq::Error::Status(429, r)) => {
+            let said = ["x-ratelimit-reset", "Retry-After"].iter().find_map(|h| r.header(h).and_then(|v| v.split(',').next()?.trim().parse::<u64>().ok()));
+            crate::net::cooled(url, said.map(|s| std::time::Duration::from_secs(s.max(1))));
+            Err(refused(url, 429, r))
         }
         Err(ureq::Error::Status(code, r)) => Err(refused(url, code, r)),
         Err(e) => Err(crate::net::unreachable("Roblox tab", url, &e.to_string())),

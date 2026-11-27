@@ -26,12 +26,19 @@ use std::{
 
 use windows_sys::Win32::{
     Foundation::{CloseHandle, ERROR_CANCELLED, GetLastError, HANDLE, INVALID_HANDLE_VALUE, LUID, WAIT_OBJECT_0},
-    Security::{AdjustTokenPrivileges, LUID_AND_ATTRIBUTES, LookupPrivilegeValueW, SE_PRIVILEGE_ENABLED, TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES, TOKEN_QUERY},
+    Security::{
+        AdjustTokenPrivileges, DuplicateTokenEx, LUID_AND_ATTRIBUTES, LookupPrivilegeValueW, SE_PRIVILEGE_ENABLED, SecurityImpersonation, TOKEN_ADJUST_PRIVILEGES, TOKEN_ALL_ACCESS, TOKEN_ASSIGN_PRIMARY,
+        TOKEN_DUPLICATE, TOKEN_PRIVILEGES, TOKEN_QUERY, TokenPrimary,
+    },
     Storage::FileSystem::{CreateFileW, FILE_SHARE_READ, FILE_SHARE_WRITE, FlushFileBuffers, GetDriveTypeW, GetLogicalDrives, OPEN_EXISTING},
     System::{
         LibraryLoader::{GetModuleHandleW, GetProcAddress},
         SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX},
-        Threading::{CreateEventW, EVENT_MODIFY_STATE, GetCurrentProcess, GetExitCodeProcess, OpenEventW, OpenProcessToken, SetEvent, WaitForSingleObject},
+        Threading::{
+            CreateEventW, CreateProcessAsUserW, DeleteProcThreadAttributeList, EVENT_MODIFY_STATE, EXTENDED_STARTUPINFO_PRESENT, GetCurrentProcess, GetExitCodeProcess,
+            InitializeProcThreadAttributeList, LPPROC_THREAD_ATTRIBUTE_LIST, OpenEventW, OpenProcess, OpenProcessToken, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, PROCESS_CREATE_PROCESS,
+            PROCESS_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW, STARTUPINFOEXW, SetEvent, UpdateProcThreadAttribute, WaitForSingleObject,
+        },
     },
     UI::{
         Shell::{SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW, ShellExecuteExW},
@@ -59,8 +66,14 @@ pub const ALL_AREAS: u32 = 0xFF;
 /// Mem Reduct's defaults: all but the modified list and the whole standby list.
 pub const DEFAULT_AREAS: u32 = ALL_AREAS & !MODIFIED_LIST & !STANDBY_ALL;
 
-/// The recommended RAM level for auto clean (Mem Reduct's own default for cleaning above a level).
-pub const BEST_AT: i64 = 90;
+/// Auto clean's recommended level on this PC (`total_mb` of RAM, `each_mb` what one of this person's Roblox windows
+/// takes, capacity.rs): the highest choice at which RAM still has room for two more of them, a window starting or one
+/// loading its next place. Under it a clean frees nothing that lasts: the windows read back what was taken within
+/// minutes (cleaned every 5 minutes at under 40 % in use, 1 to 4 GB "freed" each time and back by the next).
+pub fn best_at(total_mb: f64, each_mb: f64) -> i64 {
+    let level = 100. * (1. - 2. * each_mb / total_mb.max(1.));
+    [95, 90, 85, 80].into_iter().find(|n| *n as f64 <= level).unwrap_or(80)
+}
 
 /// The task's name in Task Scheduler (its root folder, so nothing is left behind once it is deleted).
 const TASK: &str = "Bloxkeep Clean RAM";
@@ -112,7 +125,19 @@ type NtSetSystemInformation = unsafe extern "system" fn(i32, *mut c_void, u32) -
 /// The cleaning copy (started with `ARG`, as an administrator, by the button or by the task): cleans the areas asked
 /// for, or removes the task, tells a waiting Bloxkeep it is done and answers what failed (its exit code).
 pub fn run_as_admin() -> i32 {
-    let order = std::env::args().nth(2).unwrap_or_else(|| std::fs::read_to_string(mark("ask")).unwrap_or_default());
+    let order = match std::env::args().nth(2) {
+        Some(order) => order,
+        None => {
+            // Started by the task: its parent is Task Scheduler's service, so Task Manager showed it on its own, apart
+            // from Bloxkeep. It runs again under the Bloxkeep that asked (the same rights, the order as an argument)
+            // and leaves; done here only when that can't be.
+            let order = std::fs::read_to_string(mark("ask")).unwrap_or_default();
+            if again_under_bloxkeep(order.trim()) {
+                return 0;
+            }
+            order
+        }
+    };
     let order = order.trim();
     let code = if order == "remove" { remove_task() } else { clean_areas(order.parse::<u32>().map_or(DEFAULT_AREAS, |a| a & ALL_AREAS)) };
     let name = wide(DONE_EVENT);
@@ -124,6 +149,92 @@ pub fn run_as_admin() -> i32 {
         }
     }
     code as i32
+}
+
+/// This copy started again, with `order`, as a child of the Bloxkeep whose pid is in `mark("by")` (checked to be a
+/// Bloxkeep.exe): with this copy's own rights (its token, duplicated), only its parent changed, as Windows' own
+/// "run as administrator" does it. Whether it started.
+fn again_under_bloxkeep(order: &str) -> bool {
+    let Some(pid) = std::fs::read_to_string(mark("by")).ok().and_then(|s| s.trim().parse::<u32>().ok()) else { return false };
+    let Ok(exe) = std::env::current_exe() else { return false };
+    if order.is_empty() || !order.bytes().all(|b| b.is_ascii_alphanumeric()) {
+        return false;
+    }
+    unsafe {
+        let parent = OpenProcess(PROCESS_CREATE_PROCESS | PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+        if parent.is_null() {
+            return false;
+        }
+        let started = is_bloxkeep(parent) && start_under(parent, &exe, order);
+        CloseHandle(parent);
+        started
+    }
+}
+
+/// Whether process `p` runs a Bloxkeep.exe.
+unsafe fn is_bloxkeep(p: HANDLE) -> bool {
+    let mut buf = [0u16; 1024];
+    let mut n = buf.len() as u32;
+    if unsafe { QueryFullProcessImageNameW(p, 0, buf.as_mut_ptr(), &mut n) } == 0 {
+        return false;
+    }
+    String::from_utf16_lossy(&buf[..n as usize]).rsplit('\\').next().is_some_and(|f| f.eq_ignore_ascii_case("Bloxkeep.exe"))
+}
+
+/// `exe` started with `ARG order`, a child of `parent`, with this process's own token.
+unsafe fn start_under(parent: HANDLE, exe: &std::path::Path, order: &str) -> bool {
+    unsafe {
+        let mut own: HANDLE = std::ptr::null_mut();
+        if OpenProcessToken(GetCurrentProcess(), TOKEN_DUPLICATE | TOKEN_QUERY | TOKEN_ASSIGN_PRIMARY, &mut own) == 0 {
+            return false;
+        }
+        let mut token: HANDLE = std::ptr::null_mut();
+        let made = DuplicateTokenEx(own, TOKEN_ALL_ACCESS, std::ptr::null(), SecurityImpersonation, TokenPrimary, &mut token) != 0;
+        CloseHandle(own);
+        if !made {
+            return false;
+        }
+        let mut size = 0usize;
+        InitializeProcThreadAttributeList(std::ptr::null_mut(), 1, 0, &mut size);
+        // (usize-aligned room for the list.)
+        let mut room = vec![0usize; size.div_ceil(size_of::<usize>()).max(1)];
+        let list: LPPROC_THREAD_ATTRIBUTE_LIST = room.as_mut_ptr().cast();
+        let mut started = false;
+        if InitializeProcThreadAttributeList(list, 1, 0, &mut size) != 0 {
+            let parent_slot = parent;
+            if UpdateProcThreadAttribute(list, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS as usize, (&raw const parent_slot).cast(), size_of::<HANDLE>(), std::ptr::null_mut(), std::ptr::null()) != 0 {
+                let mut si: STARTUPINFOEXW = std::mem::zeroed();
+                si.StartupInfo.cb = size_of::<STARTUPINFOEXW>() as u32;
+                si.lpAttributeList = list;
+                let mut pi: PROCESS_INFORMATION = std::mem::zeroed();
+                let app: Vec<u16> = {
+                    use std::os::windows::ffi::OsStrExt;
+                    exe.as_os_str().encode_wide().chain([0]).collect()
+                };
+                let mut line = wide(&format!("\"{}\" {ARG} {order}", exe.display()));
+                started = CreateProcessAsUserW(
+                    token,
+                    app.as_ptr(),
+                    line.as_mut_ptr(),
+                    std::ptr::null(),
+                    std::ptr::null(),
+                    0,
+                    EXTENDED_STARTUPINFO_PRESENT | CREATE_NO_WINDOW,
+                    std::ptr::null(),
+                    std::ptr::null(),
+                    &si.StartupInfo,
+                    &mut pi,
+                ) != 0;
+                if started {
+                    CloseHandle(pi.hThread);
+                    CloseHandle(pi.hProcess);
+                }
+            }
+            DeleteProcThreadAttributeList(list);
+        }
+        CloseHandle(token);
+        started
+    }
 }
 
 fn clean_areas(areas: u32) -> u32 {
@@ -331,6 +442,15 @@ pub enum Cleaned {
     Gone,
 }
 
+/// What only a copy that runs its clean under Bloxkeep holds (`again_under_bloxkeep`): a copy without it is older.
+#[used]
+static COPY_MARK: [u8; 31] = *b"bloxkeep-clean-ram-copy/under-1";
+
+/// Whether the task's copy in Program Files is one made before `COPY_MARK` (read off the UI thread).
+fn copy_is_old() -> bool {
+    std::fs::read(program_dir().join("BloxkeepCleanRam.exe")).is_ok_and(|b| !b.windows(COPY_MARK.len()).any(|w| w == COPY_MARK))
+}
+
 /// Whether auto clean's task is there.
 fn task_there() -> bool {
     schtasks(&["/query", "/tn", TASK])
@@ -345,6 +465,8 @@ fn run_task(order: &str) -> Result<(), Cleaned> {
     if std::fs::write(mark("ask"), order).is_err() {
         return Err(Cleaned::Failed("the order couldn't be written".into()));
     }
+    // (Which Bloxkeep asked: the task's copy runs its clean under it, in Task Manager with Bloxkeep's own.)
+    let _ = std::fs::write(mark("by"), std::process::id().to_string());
     let name = wide(DONE_EVENT);
     let done = unsafe { CreateEventW(std::ptr::null(), 0, 0, name.as_ptr()) };
     if done.is_null() {
@@ -368,6 +490,10 @@ fn clean_by_task(areas: u32) -> Cleaned {
 /// The button's clean (run off the UI thread): through the task when auto clean is on, else a copy started as an
 /// administrator (Windows' question first).
 fn clean(areas: u32) -> Cleaned {
+    if task_there() && copy_is_old() {
+        // (Refused or failed: the old copy still cleans.)
+        let _ = elevated(SETUP_ARG);
+    }
     match clean_by_task(areas) {
         Cleaned::Gone => {}
         got => return got,
@@ -619,7 +745,7 @@ pub fn open(_r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         let r = root.read(cx);
         let title = r.tr("ram.clean");
         let close = r.tr("common.close");
-        let body = body(r, &this);
+        let body = body(r, &this, crate::pages::easy_setup::each_mb(r, cx));
         let foot = foot(r, &this);
         // (Closed by its ×, the dialog's on_close isn't called: close_dialog skips it, so both say it is closed.)
         framed(dialog, title, close, |_, w, cx| {
@@ -651,7 +777,7 @@ pub fn shot_open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
 }
 
 /// The figures, auto clean and the areas.
-fn body(r: &Root, this: &WeakEntity<Root>) -> Div {
+fn body(r: &Root, this: &WeakEntity<Root>, each_mb: f64) -> Div {
     let (ram, virt, cache) = meters();
     let freed = FREED.with(std::cell::Cell::get);
 
@@ -746,13 +872,13 @@ fn body(r: &Root, this: &WeakEntity<Root>) -> Div {
         .child(hero)
         .child(others)
         .child(div().h(px(1.)).bg(c(LINE)))
-        .child(auto_part(r, this))
+        .child(auto_part(r, this, ram.total as f64 / (1u64 << 20) as f64, each_mb))
         .child(areas_part(r, this))
 }
 
 /// Auto clean, as Mem Reduct has it: above a RAM level, every so many minutes, or both. Turning one on asks Windows
 /// once (choose_auto).
-fn auto_part(r: &Root, this: &WeakEntity<Root>) -> Div {
+fn auto_part(r: &Root, this: &WeakEntity<Root>, total_mb: f64, each_mb: f64) -> Div {
     let at = r.state.pointer("/settings/autoCleanAt").and_then(serde_json::Value::as_i64).unwrap_or(0);
     let every = r.state.pointer("/settings/autoCleanEvery").and_then(serde_json::Value::as_i64).unwrap_or(0);
     let areas = areas(&r.state);
@@ -780,8 +906,15 @@ fn auto_part(r: &Root, this: &WeakEntity<Root>) -> Div {
     let line = |label: String, ctl: Segmented| {
         div().flex().flex_wrap().items_center().justify_between().gap_x(px(12.)).gap_y(px(8.)).child(div().flex_none().whitespace_nowrap().text_size(px(T_M)).text_color(c(TEXT_2)).child(label)).child(ctl)
     };
-    // The recommended setting in one press (Mem Reduct's own default: above 90 %, its default areas).
-    let best = at == BEST_AT && every == 0 && areas == DEFAULT_AREAS;
+    // The recommended setting in one press, worked out for this PC (best_at): no timer, Mem Reduct's default areas
+    // (the standby cache, Windows' copy of what was read lately, kept). Its tip says why, in this PC's own figures.
+    let best_at = best_at(total_mb, each_mb);
+    let best = at == best_at && every == 0 && areas == DEFAULT_AREAS;
+    let mb = |v: f64| crate::lang::cur().mb(v);
+    let best_tip = r.i18n.tv(
+        "ram.useBestTip",
+        &[("n", &best_at.to_string()), ("left", &mb(total_mb * (100 - best_at) as f64 / 100.)), ("each", &mb(each_mb))],
+    );
     let me = this.clone();
     let head = div()
         .flex()
@@ -790,10 +923,10 @@ fn auto_part(r: &Root, this: &WeakEntity<Root>) -> Div {
         .h(px(28.))
         .child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(r.tr("ram.auto")))
         .when(!best, |d| {
-            d.child(Button::new("ram-best", r.tr("ram.useBest")).small().quiet().tip(r.tr("ram.useBestTip")).on_click(move |_, _, cx| {
+            d.child(Button::new("ram-best", r.tr("ram.useBest")).small().quiet().tip(best_tip).on_click(move |_, _, cx| {
                 let _ = me.update(cx, |r, cx| {
                     r.ask("setSettings", serde_json::json!({ "cleanAreas": DEFAULT_AREAS }), cx, |_, _| {});
-                    choose_auto(r, cx, BEST_AT, 0);
+                    choose_auto(r, cx, best_at, 0);
                 });
             }))
         });

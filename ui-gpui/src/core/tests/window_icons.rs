@@ -19,22 +19,25 @@ pub async fn run(c: &mut Checks, _dir: &str) {
 
     c.skip("the account's picture is put on its window", "needs a window");
     c.skip("…and kept, not drawn again, while it is the same", "needs a window");
-    c.skip("a window isn't asked about its icon again within half a minute", "needs a window");
+    c.skip("a window isn't asked about its icon again within 3 s", "needs a window");
     c.skip("a window that dropped it gets it again at its next check", "needs a window");
     c.skip("a new picture (the avatar has loaded) replaces the initials", "needs a window");
 
-    // Two clients due at once: one is asked a process check, the one asked longest ago first, then the other. As in the
-    // C#, 4242 was last given its picture at 1 030 000 and 4244 a second later.
+    // 4242 was given its picture at 1 030 000, 4244 a second later: 2.5 s on, only 4242 is due; both are 3 s on, and
+    // then none until 3 s after that.
     NOW.store(1_030_000, Ordering::SeqCst);
     window_icons::apply(4242, none, "https://tr.rbxcdn.com/avatar.png", &|| window_icons::initials("Avatar"), false);
     NOW.fetch_add(1_000, Ordering::SeqCst);
     window_icons::apply(4244, none, "initials:Account 3", &|| window_icons::initials("Account 3"), false);
-    NOW.fetch_add(30_000, Ordering::SeqCst);
-    let turns = [window_icons::next_to_check(&[4242, 4244]), window_icons::next_to_check(&[4242, 4244]), window_icons::next_to_check(&[4242, 4244])];
+    NOW.fetch_add(2_000, Ordering::SeqCst);
+    let first = window_icons::due_to_check(&[4242, 4244]);
+    NOW.fetch_add(1_000, Ordering::SeqCst);
+    let second = window_icons::due_to_check(&[4242, 4244]);
+    let third = window_icons::due_to_check(&[4242, 4244]);
     c.check(
-        "one client checked at a time, the one checked longest ago first, then the other",
-        turns == [Some(4242), Some(4244), None],
-        turns,
+        "every client due is checked in the same pass, each every 3 s",
+        first == [4242] && second == [4244] && third.is_empty(),
+        (first, second, third),
     );
 
     window_icons::remove(4242, none);

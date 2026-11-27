@@ -139,6 +139,20 @@ impl RobloxHomeSession {
 
     pub fn start(&mut self, client: &str) -> Res<()> {
         let (mut cmd, alias) = self.create_start_info(client)?;
+        // (Under the desktop's process, as roblox_launcher's start: its own app in Task Manager, not inside Bloxkeep.)
+        let exe = Path::new(&alias).join("RobloxPlayerBeta.exe").to_string_lossy().into_owned();
+        if let Some(started) = crate::core::win_kit::start_beside_shell(&exe, &[], &alias) {
+            return match started {
+                Ok((pid, created)) => {
+                    self.client_paths.insert((pid as i32, created), true);
+                    Ok(())
+                }
+                Err(ex) => {
+                    delete_alias(Path::new(&alias));
+                    Err(fail_of("Win32Exception", ex))
+                }
+            };
+        }
         match cmd.spawn() {
             Ok(child) => {
                 // The snapshot and launch-path query will identify it if it is still running.

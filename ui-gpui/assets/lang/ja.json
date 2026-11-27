@@ -4366,7 +4366,7 @@
   "ram.min": "{n} 分",
   "ram.hour": "1 時間",
   "ram.useBest": "おすすめを使う",
-  "ram.useBestTip": "90% 超、Mem Reduct の既定の領域",
+  "ram.useBestTip": "{n}% を超えたとき: 残りは約 {left}、Roblox のウィンドウ 2 つ分です (この PC では 1 つ {each})。タイマーなし: RAM に余裕があるときに解放しても、数分で元に戻ります。",
   "ram.fromMemReduct": "Mem Reduct のアイデア",
   "set.onJoin": "ウィンドウがゲームに入ったとき",
   "set.onJoinDesc": "最小化したウィンドウも上の設定どおりの位置を保ち、開くとそこに表示されます。再参加したウィンドウはそのアカウントの前のウィンドウと同じ状態に戻ります。",

@@ -3658,13 +3658,16 @@ fn bar(root: &Root, picked: &[Value], width: f32, cx: &mut Context<Root>) -> imp
     // Short of room (a window about 1180 wide): the bar's tools keep their icons, their words the tips.
     let compact = width < 1300.;
     let n = picked.len();
-    let playable: Vec<String> = picked.iter().filter(|a| can_play(a)).map(id_of).collect();
     let dropped: Vec<Value> = picked.iter().filter(|a| is_kicked(a)).cloned().collect();
     let open: Vec<String> = picked.iter().filter(|a| is_local(a) || launching(a)).map(id_of).collect();
     let profile = (n == 1).then(|| picked[0].get("userId").and_then(Value::as_i64)).flatten().filter(|u| *u > 0);
     let game = root.game.as_ref().filter(|g| g.get("ok").and_then(Value::as_bool) == Some(true));
     let gpic = game.and_then(|g| g.get("iconUrl").and_then(Value::as_str)).filter(|u| !u.is_empty()).and_then(|u| images::pic_sq(u, 34., cx));
     let has_game = !root.place.read(cx).value().trim().is_empty();
+    // Into a game, the open ones go too: one on Roblox's home screen (a launch stopped halfway) is sent into it, one in
+    // another game switches (the launch asks first), one already there is left as it is. To the home screen, only the
+    // ones not open.
+    let playable: Vec<String> = picked.iter().filter(|a| can_play(a) || (has_game && is_local(a) && can_join_game(a))).map(id_of).collect();
     let current = game.and_then(|g| g.get("placeId").and_then(Value::as_i64));
     let recents: Vec<Value> = root
         .state

@@ -38,16 +38,16 @@ const AUTO_CLEAN_SAID_MB: u64 = 200;
 /// A window moving to a server (a teleport, a join) loads the new place and needs its whole RAM back for a while: 4
 /// minimized windows held at 512 MB froze 17–27 s in a teleport and all 4 dropped with "Disconnected from game,
 /// please reconnect" (a real log; back at 1.4–1.5 GB each after the rejoin). From the teleport's start until
-/// `SETTLE_AFTER_JOIN` after the new server is reached its limit is `MOVING_LIMIT_MB` (or the chosen one, if higher) and
-/// it isn't emptied; a join that hangs longer than `SETTLE_LONGEST` is left to the chosen limit again.
-/// Its own time, not the 30 s a window is given before it is minimised (`presets::ON_JOIN_LOADING`): tied to that, a
-/// window's memory came down only in the second it was minimised, as if the limit needed that. 12 s: a game's own
-/// scripts began 12 s after the join line in a real log, the place loaded by then.
-pub const SETTLE_AFTER_JOIN: Duration = Duration::from_secs(12);
+/// `SETTLE_AFTER_JOIN` after the new server is reached it has no RAM or CPU limit and isn't emptied; a join that hangs
+/// longer than `SETTLE_LONGEST` is limited again. 15 s: with no hard cap a window emptied early only reads back what
+/// it still needs; the hard cap 12 s after the join line (1.1.6) is what stalled windows on a 16 GB laptop.
+pub const SETTLE_AFTER_JOIN: Duration = Duration::from_secs(15);
 pub const SETTLE_LONGEST: Duration = Duration::from_secs(5 * 60);
-/// A moving window's limit: room for the new place, but not all the RAM it likes. Above the 1.4–1.5 GB those 4 windows
-/// held after joining, the most measured there.
-pub const MOVING_LIMIT_MB: i64 = 2048;
+/// A limited window that grew past its limit again is emptied again no sooner than this after the last time, the wait
+/// doubling each time up to `TRIM_GAP_LONGEST`, back to the first once it is no longer limited: a game that keeps
+/// needing more than the limit isn't emptied over and over (emptied every 2 minutes, windows stuttered, 2026-10-21).
+pub const TRIM_GAP_FIRST: Duration = Duration::from_secs(30);
+pub const TRIM_GAP_LONGEST: Duration = Duration::from_secs(32 * 60);
 
 /// Whether a window is moving to a server, or reached one under `SETTLE_AFTER_JOIN` ago (see that).
 pub fn settling(state: Option<&ClientState>, now: Stamp) -> bool {
@@ -195,8 +195,7 @@ pub struct RamWanted {
 /// No Win32 and no clock of its own: the same facts give the same answer.
 ///
 /// Limited when not in front, not a main account's, it has a window, and it is minimized or hidden (or, with "Limit open
-/// windows too", in view with its log read). While it moves to a server its limit is `MOVING_LIMIT_MB` (or the chosen
-/// one, or Auto's, if higher). Anything else lifts what Bloxkeep set. A lent window keeps what it has. Save RAM empties a
+/// windows too", in view with its log read), and not moving to a server. Anything else lifts what Bloxkeep set. A lent window keeps what it has. Save RAM empties a
 /// window once a rest, after it rested `EMPTY_RAM_RESTED` minimized or hidden, not in front, not a main account's, and
 /// not moving.
 pub fn ram_plan(f: &RamFacts) -> RamWanted {
@@ -238,14 +237,13 @@ pub fn ram_plan(f: &RamFacts) -> RamWanted {
     let moving = put_away && f.game.settling(f.now);
     let mut note = None;
     let (cap, why) = if moving {
-        // Auto's own limit, raised for a game that needed more, stays if it is higher. Auto's limit is kept for after the
-        // move, its faults counted afresh: loading a place faults a lot, which says nothing of the limit.
-        let auto = m.auto.as_ref().map_or(0, |a| a.cap_mb);
+        // Auto's limit is kept for after the move, its faults counted afresh: loading a place faults a lot, which says
+        // nothing of the limit.
         if let Some(a) = m.auto.as_mut() {
             (a.faults, a.hard_faults) = (-1, -1);
             a.rates.clear();
         }
-        (RamCap::Mb(MOVING_LIMIT_MB.max(f.setting.chosen_mb()).max(auto)), "moving to a server")
+        (RamCap::Lift, "moving to a server")
     } else if !put_away {
         m.auto = None; // shown, in front, a main account's: Auto starts over, waiting its minute
         (RamCap::Lift, "shown, in front, or the option off")
@@ -490,6 +488,9 @@ pub struct MemoryState {
     pub resting_since: RefCell<HashMap<i32, Stamp>>,
     pub ram_emptied: RefCell<HashSet<i32>>,
     pub auto_ram: RefCell<HashMap<i32, AutoRam>>,
+    /// Windows under a RAM limit: when each was last emptied for it, the wait before the next time (seconds), and
+    /// whether it was resting (minimized or hidden) when last seen.
+    pub ram_trimmed: RefCell<HashMap<i32, (Stamp, f64, bool)>>,
     /// Windows Windows refused a limit for, and a lift for, said once each in the log.
     pub ram_limit_refused: RefCell<HashSet<i32>>,
     pub ram_lift_refused: RefCell<HashSet<i32>>,
@@ -798,8 +799,9 @@ impl App {
         }
     }
 
-    /// RAM limit for resting windows: a Roblox window that isn't drawing (minimized, or hidden by Bloxkeep) keeps at most the
-    /// chosen RAM (or Auto's, `RAM_LIMIT_AUTO`), the rest waiting in compressed memory or virtual memory, so more accounts fit on
+    /// RAM limit for resting windows: a Roblox window that isn't drawing (minimized, or hidden by Bloxkeep) is emptied down to
+    /// the chosen RAM (or Auto's, `RAM_LIMIT_AUTO`) when it holds more, with no hard cap (`trim_again`), the rest waiting in
+    /// compressed memory or virtual memory, so more accounts fit on
     /// one PC (a resting game uses little of what it holds: about 1 of its 3 GB, measured 2026-10-29). Lifted once the window
     /// shows, comes to the front, or the option is off. Not for one in view: it still draws, and limited it took twice the CPU;
     /// unless "Limit open windows too" (`ram_limit_open`) asks for that, the window in front and a main account's still left out.
@@ -809,6 +811,7 @@ impl App {
         let alive = |pid: &i32| players.iter().any(|p| p.pid == *pid);
         self.memory.ram_asks.borrow_mut().retain(|pid, _| alive(pid));
         self.memory.auto_ram.borrow_mut().retain(|pid, _| alive(pid));
+        self.memory.ram_trimmed.borrow_mut().retain(|pid, _| alive(pid));
         self.memory.ram_limit_refused.borrow_mut().retain(|pid| alive(pid));
         self.memory.ram_lift_refused.borrow_mut().retain(|pid| alive(pid));
         self.memory.ram_seen.borrow_mut().retain(|pid| alive(pid));
@@ -817,24 +820,6 @@ impl App {
         self.memory.cpu_lift_refused.borrow_mut().retain(|pid| alive(pid));
         self.adopt_ram_limits(players);
         self.sync_ram_limited();
-        // A limit held as set is read back from Windows: a process put in a job (the CPU limit's) loses its hard limit
-        // without a word (its maximum still reads the same, the flag is off), and the record went on saying "held" while
-        // the window grew past it. One found gone is asked again by the pass below.
-        let lost: Vec<i32> = self
-            .memory
-            .ram_asks
-            .borrow()
-            .iter()
-            .filter(|(_, a)| a.asked.is_none() && a.held.is_some_and(|mb| mb > 0))
-            .map(|(pid, _)| *pid)
-            .filter(|pid| !roblox_processes::has_ram_limit(*pid) && !roblox_processes::ended(*pid))
-            .collect();
-        for pid in lost {
-            if let Some(a) = self.memory.ram_asks.borrow_mut().get_mut(&pid) {
-                a.held = None;
-            }
-            log::note(&format!("RAM limit: Roblox window {pid} had lost its limit (Windows drops it when a CPU limit is set); set again."));
-        }
         self.sync_ram_limited();
         // PORT: `_vault!` threw when locked; the caller runs it only while unlocked.
         let Ok((setting, open_too, trim_background, cpu_percent)) =
@@ -853,7 +838,7 @@ impl App {
             if let Some(note) = &w.note {
                 log::note(note);
             }
-            match w.memory.auto {
+            match w.memory.auto.clone() {
                 Some(a) => self.memory.auto_ram.borrow_mut().insert(p.pid, a),
                 None => self.memory.auto_ram.borrow_mut().remove(&p.pid),
             };
@@ -861,9 +846,53 @@ impl App {
             if let Some(limit) = w.ask.filter(|_| !roblox_processes::is_closing(p.pid)) {
                 self.ask_ram_limit(p.pid, limit, w.why, p.ram() / MB);
             }
+            self.trim_again(p, &w, (f.minimised || f.hidden) && !f.front, now);
         }
         self.sync_ram_limited();
         self.limit_resting_cpu(&facts, now);
+    }
+
+    /// A window kept under its RAM limit that grew past it again is emptied again, the wait between two doubling from
+    /// `TRIM_GAP_FIRST` up to `TRIM_GAP_LONGEST`; a new limit (its ask empties it) starts the waits over, and a window no
+    /// longer limited forgets them.
+    ///
+    /// A window put away (minimized or hidden) is emptied at once, and every `TRIM_GAP_FIRST` while it stays away: a
+    /// game away keeps running and reads back what it uses, so without a hard cap only a short wait keeps it down.
+    pub fn trim_again(&self, p: &PlayerProcess, w: &RamWanted, resting: bool, now: Stamp) {
+        let RamCap::Mb(mb) = w.cap else {
+            if w.cap != RamCap::Leave {
+                self.memory.ram_trimmed.borrow_mut().remove(&p.pid);
+            }
+            return;
+        };
+        let first = secs(TRIM_GAP_FIRST);
+        if w.ask.is_some() {
+            self.memory.ram_trimmed.borrow_mut().insert(p.pid, (now, first, resting));
+            return;
+        }
+        let mut trimmed = self.memory.ram_trimmed.borrow_mut();
+        let (last, gap, was_resting) = *trimmed.entry(p.pid).or_insert((now, first, false));
+        let put_away = resting && !was_resting;
+        if w.memory.held != Some(mb) || p.working_set <= mb * MB || roblox_processes::is_closing(p.pid) || !put_away && now.secs_since(last) < gap {
+            trimmed.insert(p.pid, (last, gap, resting));
+            return;
+        }
+        let next = if resting { first } else { (gap * 2.0).min(secs(TRIM_GAP_LONGEST)) };
+        trimmed.insert(p.pid, (now, next, resting));
+        drop(trimmed);
+        // (Away, emptied every half minute: said when it was put away, not each time after.)
+        let said = !resting || put_away;
+        let (pid, held_mb) = (p.pid, p.working_set / MB);
+        let answer = self.in_ram_turn(move || roblox_processes::empty_ram(pid));
+        rt::spawn(async move {
+            if answer.await && said {
+                log::note(&if resting {
+                    format!("RAM limit: Roblox window {pid} put away holding {held_mb} MB, over its {mb} MB: emptied, and every {next:.0} s while it is away.")
+                } else {
+                    format!("RAM limit: Roblox window {pid} held {held_mb} MB, over its {mb} MB: emptied (again no sooner than {:.0} min).", next / 60.0)
+                });
+            }
+        });
     }
 
     /// CPU limit for resting windows: a Roblox window that isn't drawing (minimized, or hidden by Bloxkeep; or open, with
@@ -1080,8 +1109,13 @@ impl App {
         async move { rx.await.unwrap_or(false) }
     }
 
+    /// A limit is no hard cap (one froze games that needed more for seconds at a time): the window's RAM is emptied if it
+    /// holds more than `mb`, and any hard cap an older Bloxkeep left is taken off. A lift takes a hard cap off.
     pub fn limit_ram_in_turn(&self, pid: i32, mb: Option<i64>) -> impl Future<Output = bool> + 'static {
-        self.in_ram_turn(move || roblox_processes::limit_ram(pid, mb))
+        self.in_ram_turn(move || match mb {
+            Some(mb) => roblox_processes::keep_ram_under(pid, mb),
+            None => roblox_processes::limit_ram(pid, None),
+        })
     }
 
     pub fn empty_ram_in_turn(&self, pid: i32, held_mb: i64) {
