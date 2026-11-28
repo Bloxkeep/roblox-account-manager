@@ -757,9 +757,6 @@ fn preset_row(root: &Root, p: &Value, i: usize, group: u8, ids: &[String], by_id
     } else if let Some(a) = by_id.get(with) {
         summary.push(root.i18n.tv("pv.optWith", &[("name", &crate::pages::accounts::label(a))]));
     }
-    if s(p, "profile") == "afk" {
-        summary.push(root.tr("pv.optLight"));
-    }
     if int(p, "restartHours") > 0 && !place_input.is_empty() {
         summary.push(root.i18n.tv("pv.optRestart", &[("n", &int(p, "restartHours").to_string())]));
     }

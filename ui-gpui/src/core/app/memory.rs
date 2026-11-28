@@ -23,7 +23,7 @@ use crate::core::{
     models::stamp_min,
     roblox_log_watcher::ClientState,
     roblox_processes::{self, PlayerProcess},
-    rt,
+    roblox_sound, rt,
     system_memory::MemoryStatus,
 };
 
@@ -514,7 +514,20 @@ pub struct MemoryState {
     pub cpu_lift_refused: RefCell<HashSet<i32>>,
     /// When the jobs of ended clients were last closed (cpu_cap::tidy).
     pub cpu_tidied: Cell<Option<Stamp>>,
+    /// "Mute background windows": each window's sound as Bloxkeep last set it (true: muted), only for ones whose sound
+    /// session Windows found.
+    pub sound_set: RefCell<HashMap<i32, bool>>,
+    /// The Roblox window played (the last one in front), 0 none yet.
+    pub sound_played: Cell<i32>,
+    /// An ask on its way (what it asks), and when the last one was sent.
+    pub sound_asked: RefCell<Option<Vec<(i32, bool)>>>,
+    pub sound_tried: Cell<Option<Stamp>>,
+    /// Windows whose first mute was written to the log.
+    pub sound_said: RefCell<HashSet<i32>>,
 }
+
+/// A window with no sound session yet (or one Windows didn't set) is asked again after this, not every tick.
+const SOUND_RETRY_SECS: f64 = 3.0;
 
 /// One client's CPU limit as asked and as Windows answered (the shape of `RamAsk`).
 #[derive(Clone, Debug, Default)]
@@ -593,7 +606,7 @@ impl App {
     pub fn guard_resources(&self, players: &[PlayerProcess], memory: &MemoryStatus, now: Stamp) {
         // PORT: `_vault!.Data.Settings` threw when locked; the caller runs it only while unlocked, so locked does nothing.
         let Ok((memory_warnings, trim_background)) = self.vault(|d| (d.settings.memory_warnings, d.settings.trim_background)) else { return };
-        self.auto_clean(memory, now);
+        self.auto_clean(players, memory, now);
         let warned_lately = now.secs_since(self.controller.last_memory_warning.get()) <= secs(MEMORY_WARNING_INTERVAL);
         if memory_warnings && !players.is_empty() && memory.load_percent >= MEMORY_WARNING_LOAD && !warned_lately {
             self.controller.last_memory_warning.set(now);
@@ -1128,10 +1141,15 @@ impl App {
     }
 
     /// Auto clean RAM (clean_ram.rs), as Mem Reduct cleans by itself: above the RAM level picked, at most every
-    /// `AUTO_CLEAN_GAP`, and every so many minutes if that is picked too.
-    fn auto_clean(&self, memory: &MemoryStatus, now: Stamp) {
+    /// `AUTO_CLEAN_GAP`, and every so many minutes if that is picked too. Only while a Roblox window runs: with none,
+    /// the PC's RAM is the person's other programs', and the minutes count again from the first window opened.
+    fn auto_clean(&self, players: &[PlayerProcess], memory: &MemoryStatus, now: Stamp) {
         let Ok((at, every, areas)) = self.vault(|d| (d.settings.auto_clean_at, d.settings.auto_clean_every, d.settings.clean_areas)) else { return };
         let c = &self.controller;
+        if players.is_empty() {
+            c.auto_clean_since.set(stamp_min());
+            return;
+        }
         if every <= 0 {
             c.auto_clean_since.set(stamp_min());
         } else if c.auto_clean_since.get() == stamp_min() {
@@ -1187,6 +1205,86 @@ impl App {
         for pid in pids {
             roblox_processes::set_memory_priority(pid, false);
         }
+    }
+
+    /// "Mute background windows": only the Roblox window played makes sound. The one played is the last Roblox window
+    /// in front (going to another program keeps it), else a main account's. A window's sound is set when its part
+    /// changes, and asked again for one Windows had no sound session for yet (Roblox makes it at its first sound). Off,
+    /// only the windows Bloxkeep muted get their sound back: one the person muted in the Volume mixer stays muted.
+    pub fn guard_sound(&self, players: &[PlayerProcess], now: Stamp) {
+        let Ok(on) = self.vault(|d| d.settings.mute_background) else { return };
+        let alive = |pid: i32| pid != 0 && players.iter().any(|p| p.pid == pid);
+        self.memory.sound_set.borrow_mut().retain(|pid, _| alive(*pid));
+        self.memory.sound_said.borrow_mut().retain(|pid| alive(*pid));
+        if self.memory.sound_asked.borrow().is_some() {
+            return;
+        }
+        let was = self.memory.sound_played.get();
+        let mut played = 0;
+        if on {
+            let (front, mains) = self.ram_look(now);
+            played = if alive(front) {
+                front
+            } else if alive(was) {
+                was
+            } else {
+                players.iter().map(|p| p.pid).find(|pid| mains.contains(pid)).unwrap_or(0)
+            };
+        }
+        self.memory.sound_played.set(played);
+        let wants: Vec<(i32, bool)> = {
+            let set = self.memory.sound_set.borrow();
+            if played == 0 {
+                // Off, or no window played yet: the ones Bloxkeep muted get their sound back.
+                set.iter().filter(|(_, muted)| **muted).map(|(pid, _)| (*pid, false)).collect()
+            } else {
+                players.iter().map(|p| (p.pid, p.pid != played)).filter(|(pid, muted)| set.get(pid) != Some(muted)).collect()
+            }
+        };
+        if wants.is_empty() || (played == was && self.memory.sound_tried.get().is_some_and(|t| now.secs_since(t) < SOUND_RETRY_SECS)) {
+            return;
+        }
+        self.memory.sound_tried.set(Some(now));
+        *self.memory.sound_asked.borrow_mut() = Some(wants.clone());
+        rt::spawn(async move {
+            let asked = wants.clone();
+            let found = rt::blocking(move || roblox_sound::set_muted(&wants)).await;
+            App::with(|app| app.sound_answered(&asked, &found));
+        });
+    }
+
+    fn sound_answered(&self, asked: &[(i32, bool)], found: &[i32]) {
+        self.memory.sound_asked.borrow_mut().take();
+        let mut set = self.memory.sound_set.borrow_mut();
+        for &(pid, muted) in asked.iter().filter(|(pid, _)| found.contains(pid)) {
+            set.insert(pid, muted);
+            if muted && self.memory.sound_said.borrow_mut().insert(pid) {
+                log::note(&format!("Mute background windows: Roblox window {pid} muted (only the window played makes sound)."));
+            }
+        }
+    }
+
+    /// Every window Bloxkeep muted gets its sound back (Bloxkeep closing or locking): Windows keeps a program's mute for
+    /// the next time it opens, so one left muted would stay silent without Bloxkeep. Waits at most 2 s.
+    pub fn give_sound_back(&self) {
+        let mut wants: Vec<(i32, bool)> = self.memory.sound_set.borrow_mut().drain().filter(|(_, muted)| *muted).map(|(pid, _)| (pid, false)).collect();
+        // One being muted right now is unmuted too.
+        if let Some(asked) = self.memory.sound_asked.borrow_mut().take() {
+            for (pid, muted) in asked {
+                if muted && !wants.iter().any(|(p, _)| *p == pid) {
+                    wants.push((pid, false));
+                }
+            }
+        }
+        self.memory.sound_played.set(0);
+        if wants.is_empty() {
+            return;
+        }
+        let (tx, rx) = mpsc::channel();
+        crate::threads::run(move || {
+            let _ = tx.send(roblox_sound::set_muted(&wants));
+        });
+        let _ = rx.recv_timeout(Duration::from_secs(2));
     }
 
     /// Every client's RAM limit lifted (Bloxkeep closing or locking: none is left limited without it). The record goes

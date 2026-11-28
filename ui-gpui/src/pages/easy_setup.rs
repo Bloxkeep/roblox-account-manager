@@ -11,9 +11,8 @@ use crate::{kit::*, shell::Root, theme::*};
 
 #[derive(Default)]
 pub struct Data {
-    /// The mode picked in the box over the suggested one, and the leanest drawing switched by hand; None: as planned.
+    /// The mode picked in the box over the suggested one; None: as planned.
     picked: Option<&'static str>,
-    flags: Option<bool>,
     /// How many accounts at once the settings are tuned for.
     target: i64,
     open: bool,
@@ -92,7 +91,6 @@ struct Plan {
     /// The mode suggested, and the one used (the person's pick in the box, else the suggested).
     best: &'static str,
     mode: &'static str,
-    flags: bool,
     patch: Value,
     rows: Vec<String>,
     /// About how many fit now, when the target is more than that.
@@ -156,15 +154,7 @@ fn plan(r: &Root, target: i64, cx: &App) -> Plan {
         patch = set;
         rows.push(r.i18n.tv("es.do.mode", &[("m", &r.tr(&format!("rc.level.{mode}")))]));
     }
-    // The leanest drawing when the target is near or past the number, on a mode that changes Roblox at all.
-    let flags_now = st.get("fastFlags").and_then(Value::as_bool).unwrap_or(false);
-    let flags = mode != "off" && r.easy.flags.unwrap_or(over.is_some() || (tight && total_gb > 0. && total_gb < 16.) || flags_now);
-    if flags != flags_now || (mode == "off" && flags_now) {
-        patch["fastFlags"] = json!(flags);
-        if flags {
-            rows.push(r.tr("es.do.flags"));
-        }
-    }
+    // (The leanest drawing comes with the mode: AFK farming has it on, Roblox as is off.)
     // Windows opening further apart on a smaller PC or for many accounts (a load at once is where joins fail); never
     // shortened from what the person set.
     let delay = st.get("launchDelaySeconds").and_then(Value::as_i64).unwrap_or(8);
@@ -181,7 +171,7 @@ fn plan(r: &Root, target: i64, cx: &App) -> Plan {
         rows.push(r.i18n.tv("es.do.restart", &[("v", &crate::pages::accounts::mb_text(at as f64))]));
     }
     let multi_off = target > 1 && st.get("multiInstance").and_then(Value::as_bool) == Some(false);
-    Plan { best, mode, flags, patch, rows, over, multi_off }
+    Plan { best, mode, patch, rows, over, multi_off }
 }
 
 /// What the first run's PC step shows: the same measures and plan as the box (its suggested mode).
@@ -302,7 +292,6 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                 let _ = this.update(cx, |r, cx| {
                     r.easy.target = (r.easy.target + by).clamp(1, most(r, cx));
                     r.easy.picked = None;
-                    r.easy.flags = None;
                 });
                 w.refresh();
             })
@@ -370,29 +359,6 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                     }),
             );
         }
-        let flags_row = {
-            let this = this.clone();
-            div()
-                .flex()
-                .items_center()
-                .gap(px(12.))
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .flex()
-                        .flex_col()
-                        .gap(px(2.))
-                        .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(r.tr("rc.flags")))
-                        .child(div().text_size(px(T_S)).line_height(px(17.)).text_color(c(MUTED)).child(r.tr("rc.flagsDesc"))),
-                )
-                .child(Switch::new("es-flags", p.flags).disabled(p.mode == "off").on_toggle(move |on, w, cx| {
-                    let on = *on;
-                    let _ = this.update(cx, |r, _| r.easy.flags = Some(on));
-                    w.refresh();
-                }))
-        };
-
         // What Apply changes, one line each.
         let mut changes = div().flex().flex_col().gap(px(6.));
         if p.rows.is_empty() {
@@ -417,7 +383,6 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             .child(want)
             .when_some(p.over, |d, n| d.child(div().text_size(px(T_S)).line_height(px(17.)).text_color(c(WARN)).child(r.i18n.tv("es.over", &[("n", &n.to_string())]))))
             .child(modes)
-            .child(flags_row)
             .child(div().h(px(6.)))
             .child(label(r.tr("es.plan")))
             .child(changes)

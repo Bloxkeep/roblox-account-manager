@@ -549,8 +549,10 @@ impl App {
             // (Missing in the C# too, whose page kept its own copy: the chips here read the state, and went back to Off.)
             "hopAbovePlayers": s.hop_above_players,
             "rejoinWaitSeconds": s.rejoin_wait_seconds,
+            "rejoinSameServer": s.rejoin_same_server,
             "memoryWarnings": s.memory_warnings,
             "trimBackground": s.trim_background,
+            "muteBackground": s.mute_background,
             "cleanAreas": s.clean_areas,
             "autoCleanAt": s.auto_clean_at,
             "autoCleanEvery": s.auto_clean_every,

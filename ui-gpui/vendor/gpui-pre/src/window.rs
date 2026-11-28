@@ -1465,6 +1465,11 @@ pub fn fine_timers(cx: &mut App) {
 }
 
 thread_local! {
+    /// The views with an animation frame asked for and not yet drawn.
+    static ANIMATION_ASKED: RefCell<FxHashSet<EntityId>> = RefCell::new(Default::default());
+}
+
+thread_local! {
     /// What waits for the next step of the shared clock, by its step (µs).
     static FRAME_STEPS: std::cell::RefCell<FxHashMap<u64, Vec<Box<dyn FnOnce(&mut App)>>>> = std::cell::RefCell::new(FxHashMap::default());
 }
@@ -3256,7 +3261,15 @@ impl Window {
     pub fn request_animation_frame(&self) {
         note_frame_ask(std::panic::Location::caller());
         let entity = self.current_view();
-        self.on_next_frame(move |_, cx| cx.notify(entity));
+        // Bloxkeep: at the display's own rate (motion stays smooth on fast screens), but once a frame for a view
+        // however many of its springs, spinners, rolling figures and measures ask: each used to queue a notify of
+        // its own for the same frame.
+        if ANIMATION_ASKED.with(|a| a.borrow_mut().insert(entity)) {
+            self.on_next_frame(move |_, cx| {
+                ANIMATION_ASKED.with(|a| a.borrow_mut().remove(&entity));
+                cx.notify(entity);
+            });
+        }
     }
 
     /// Runs all callbacks scheduled via [`Self::on_next_frame`], returning how many ran.

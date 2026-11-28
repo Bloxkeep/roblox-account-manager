@@ -177,6 +177,28 @@ pub fn rejoin_target(launch: &PendingLaunch, last_log: Option<&ClientState>) -> 
     launch.home_screen.then(|| GameTarget { place_id: place, ..Default::default() })
 }
 
+/// Roblox's codes for a server that closed (shutting down, by the developer, for maintenance, by moderation): going back
+/// to it would only meet "This experience has ended".
+const SERVER_CLOSED: [i32; 6] = [271, 274, 275, 287, SERVER_SHUTDOWN, 309];
+
+/// The server a dropped window was in, when its rejoin goes back there first (Settings' "Rejoin the same server"): a
+/// public server of the very place the rejoin goes to, left by a drop or a crash. Not one that closed, not one the game
+/// sent it out of in words (a kick: the server restarting, an anti-cheat), and not the one it was just rejoined into and
+/// dropped from again before settling (`again`): that one goes to the game. A server that has ended or is full by the
+/// time the window opens is met as any chosen one is (never_got_in, server_gone): the window goes to the game.
+pub fn same_server(target: &GameTarget, launch: &PendingLaunch, last_log: Option<&ClientState>, again: bool) -> Option<String> {
+    if target.job_id.is_some() || target.is_private() || target.share_code.is_some() || target.follow.is_some() {
+        return None;
+    }
+    let log = last_log?;
+    let job = log.job_id.as_deref().map(str::trim).filter(|j| !j.is_empty())?;
+    let left_by_drop = log.status == "disconnected" || log.status == "ingame";
+    let closed = log.reason.is_some_and(|c| SERVER_CLOSED.contains(&c));
+    let sent_out = log.banned_by_game || log.kick_message.as_deref().is_some_and(|m| !m.trim().is_empty());
+    let same_again = again && launch.target.as_ref().and_then(|t| t.job_id.as_deref()).is_some_and(|j| j.eq_ignore_ascii_case(job));
+    (left_by_drop && log.place_id == Some(target.place_id) && !closed && !sent_out && !same_again).then(|| job.to_string())
+}
+
 pub fn playability_why(answer: &Playability) -> String {
     match answer.status {
         Some(2) => l::t("Roblox doesn't take this account's sign-in"),
@@ -258,7 +280,11 @@ impl App {
         self.join_player.follow_wait_told.borrow_mut().remove(&account_id); // a new drop: waiting for its followed player is said again
         let wait = REJOIN_DELAY;
         // A followed player is looked up again (follow_target).
-        let target = rejoin_target(launch, last_log).unwrap_or_default();
+        let mut target = rejoin_target(launch, last_log).unwrap_or_default();
+        let same = self.vault(|d| d.settings.rejoin_same_server).unwrap_or(true).then(|| same_server(&target, launch, last_log, in_a_row > 0)).flatten();
+        if let Some(job) = &same {
+            target.job_id = Some(job.clone());
+        }
         self.controller.rejoin_queue.borrow_mut().push(RejoinRequest {
             account_id,
             target: target.clone(),
@@ -269,11 +295,12 @@ impl App {
             open_retries: 0,
         });
         log::note(&format!(
-            "Rejoin: account {} queued in {} s, drop {} in a row, place {}{}{} (last log: {}{}).",
+            "Rejoin: account {} queued in {} s, drop {} in a row, place {}{}{}{} (last log: {}{}).",
             short(account_id),
             wait.as_secs(),
             in_a_row + 1,
             target.place_id,
+            if same.is_some() { ", the same server first" } else { "" },
             if target.follow.is_some() { ", following a player" } else { "" },
             if out_of_memory { ", ran out of memory" } else { "" },
             last_log.map(|l| l.status.as_str()).unwrap_or("none"),

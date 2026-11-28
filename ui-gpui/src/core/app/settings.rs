@@ -247,6 +247,9 @@ impl App {
                 s.trim_background = trim;
                 fx.trim_reset = true;
             }
+            if let Some(mute) = opt_bool(a, "muteBackground") {
+                s.mute_background = mute;
+            }
             if let Some(auto_update) = opt_bool(a, "autoUpdateRoblox") {
                 s.auto_update_roblox = auto_update;
             }
@@ -289,6 +292,9 @@ impl App {
             }
             if has(a, "rejoinWaitSeconds", JsonKind::Number) {
                 s.rejoin_wait_seconds = long_of(a, "rejoinWaitSeconds").clamp(0, 300) as i32;
+            }
+            if let Some(same) = opt_bool(a, "rejoinSameServer") {
+                s.rejoin_same_server = same;
             }
             if has(a, "launchDelaySeconds", JsonKind::Number) {
                 s.launch_delay_seconds = long_of(a, "launchDelaySeconds").clamp(0, 120) as i32;
@@ -491,6 +497,7 @@ impl App {
         step(|| self.lift_cpu_limits());
         step(|| self.lift_ram_limits());
         step(|| self.give_memory_priority_back()); // no Roblox window stays at low RAM priority without Bloxkeep to raise it again
+        step(|| self.give_sound_back()); // nor muted: Windows would keep it muted the next time Roblox opens
         // A launch cut short: the next Roblox opened by hand gets the person's own file. Also one that couldn't be put
         // back earlier (held, read-only): still noted, tried once more.
         step(|| {

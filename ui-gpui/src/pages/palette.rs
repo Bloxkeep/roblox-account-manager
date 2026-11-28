@@ -473,7 +473,7 @@ fn perform(r: &mut Root, run: Run, window: &mut Window, cx: &mut Context<Root>) 
         }
         Run::StopMacros => r.ask("stopMacros", json!({}), cx, |r, _| r.toast = Some((r.tr("macro.stoppedAll"), "ok".into()))),
         Run::Backup(true) => r.ask("backupNow", json!({}), cx, |r, _| r.toast = Some((r.tr("bk.done"), "ok".into()))),
-        Run::Backup(false) => perform(r, Run::Settings(Part::Backup), window, cx),
+        Run::Backup(false) => perform(r, Run::Settings(Part::Security), window, cx),
         Run::Updates => {
             perform(r, Run::Settings(Part::Updates), window, cx);
             r.ask("checkUpdates", json!({}), cx, |_, _| {});

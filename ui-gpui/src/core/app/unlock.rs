@@ -367,6 +367,7 @@ impl App {
         self.lift_ram_limits();
         self.memory.auto_ram.borrow_mut().clear();
         self.give_memory_priority_back();
+        self.give_sound_back();
         let old = self.controller.vault.borrow_mut().take();
         if let Some(old) = old {
             old.dispose();

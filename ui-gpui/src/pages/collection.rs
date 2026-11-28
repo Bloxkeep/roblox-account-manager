@@ -170,8 +170,7 @@ fn kind_word(root: &Root, kind: &str) -> String {
 }
 
 fn open_game(r: &mut Root, place: i64, name: &str) {
-    r.games.view = crate::pages::games::View::Games;
-    crate::pages::games::open_place(r, place, name);
+    crate::pages::games::open_place_from(r, place, name);
 }
 
 /// A game's picture, square, `size` px, rounded; its name's letter on a colour while none is had.

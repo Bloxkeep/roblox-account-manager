@@ -554,6 +554,8 @@ pub struct Data {
     seen_sent: bool,
     read_sent: Option<String>,
     pub open: Option<Open>,
+    /// The view the open game was opened from (the Marketplace's New free, a profile's board): its Back goes there.
+    pub back_to: Option<View>,
     pub tab: Tab,
     pub about: bool,
     /// Each game's codes (game_codes.rs: Roblox Den and its wiki), by place: None while asked. Whether every working
@@ -659,6 +661,8 @@ pub struct Data {
     pub more_sorts: bool,
     /// Keep playing shows every game, not only the first ones.
     pub keep_all: bool,
+    /// The game page whose "Your accounts here" shows every account, not only the first `YOURS_FIRST`.
+    pub yours_all: Option<i64>,
     home_games: Option<(i64, roblox::HomeGames)>,
     home_asked: Option<(i64, std::time::Instant)>,
     recommended_all: bool,
@@ -1225,9 +1229,18 @@ pub fn open_place(r: &mut Root, place: i64, name: &str) {
         .map(|g| Open { id: g.id.clone(), place: if g.place > 0 { g.place } else { place }, name: g.name.clone() })
         .unwrap_or_else(|| Open { id: format!("place:{place}"), place, name: clean(name) });
     r.games.open = Some(open);
+    r.games.back_to = None;
     r.games.tab = Tab::Overview;
     r.games.about = false;
     r.go(Page::Games);
+}
+
+/// A game's page opened from another view of these pages (the Marketplace, a profile): its Back returns to that view.
+pub fn open_place_from(r: &mut Root, place: i64, name: &str) {
+    let from = (r.page == Page::Games && r.games.view != View::Games).then_some(r.games.view);
+    r.games.view = View::Games;
+    open_place(r, place, name);
+    r.games.back_to = from;
 }
 
 /// Where a game's details from last time are kept (Roblox's public words on it; never the accounts' names): the cache
@@ -2354,7 +2367,18 @@ fn settle_stays(r: &mut Root, place: i64) {
             json!({ "job": v.job, "place": v.place, "at": v.at, "now": v.now(), "accounts": accounts })
         })
         .collect();
+    // (Cleared here: the ones from before then are left out, the one an account is in now stays.)
+    let cleared = crate::prefs::get("recentCleared").and_then(|v| v.get(place.to_string()).and_then(Value::as_i64)).unwrap_or(0);
+    let recent: Vec<Value> = recent.into_iter().filter(|v| v.get("now").and_then(Value::as_bool) == Some(true) || int(v, "at") > cleared).collect();
     r.games.recent_servers.insert(place, recent);
+}
+
+/// Recent servers' Clear: the game's servers up to now are no longer shown there (its play history is kept).
+pub fn clear_recent_servers(r: &mut Root, place: i64) {
+    let mut all = crate::prefs::get("recentCleared").filter(Value::is_object).unwrap_or_else(|| json!({}));
+    all[place.to_string()] = json!(crate::time::now_secs() * 1000);
+    crate::prefs::set("recentCleared", all);
+    settle_stays(r, place);
 }
 
 impl Data {
@@ -3378,10 +3402,21 @@ fn friends_strip(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyE
 /// Keep playing shows open and recently played local games before supplementing them with Roblox's Continue list.
 fn keep_list(root: &Root) -> Vec<crate::pages::home::Game> {
     use crate::pages::home::{clean, Game as HomeGame};
-    let here = crate::pages::home::games(root);
+    let mut here = crate::pages::home::games(root);
+    // The hours are the account looked through's own (its list is Roblox's Continue for it): every account's stays
+    // summed counted five windows of an evening as five evenings.
+    let mine = account_played(root);
     let hours = |place: i64| -> (f64, f64) {
-        root.played.iter().flatten().find(|p| p.get("place").and_then(Value::as_i64) == Some(place)).map_or((0., 0.), |p| (p.get("hours").and_then(Value::as_f64).unwrap_or(0.), p.get("last").and_then(Value::as_f64).unwrap_or(0.)))
+        match &mine {
+            Some(list) => list.iter().find(|p| p.0 == place).map_or((0., 0.), |p| (p.1, p.2)),
+            None => root.played.iter().flatten().find(|p| p.get("place").and_then(Value::as_i64) == Some(place)).map_or((0., 0.), |p| (p.get("hours").and_then(Value::as_f64).unwrap_or(0.), p.get("last").and_then(Value::as_f64).unwrap_or(0.))),
+        }
     };
+    if mine.is_some() {
+        for g in &mut here {
+            g.hours = hours(g.place).0;
+        }
+    }
     let Some(home) = active_home_games(root) else { return here };
     let (mut out, rest): (Vec<HomeGame>, Vec<HomeGame>) = here.into_iter().partition(|g| !g.accounts.is_empty() || g.last > 0.);
     for g in &home.continued {
@@ -3446,6 +3481,29 @@ fn keep_playing(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyEl
     };
     let rest: Vec<AnyElement> = if open { all.iter().enumerate().skip(first).map(|(i, g)| tile(i, g, cx)).collect() } else { Vec::new() };
     Some(div().flex().flex_col().gap(px(12.)).child(head).child(top).when(open, |d| d.child(crate::kit::grid(GRID_GAP).children(rest))).into_any_element())
+}
+
+/// The games the account looked through played (its stays alone, from the play history): place, hours, last start.
+/// Worked out once for each history and account. None while no account is looked through or the history isn't in.
+fn account_played(root: &Root) -> Option<std::rc::Rc<Vec<(i64, f64, f64)>>> {
+    thread_local! {
+        static MINE: std::cell::RefCell<Option<(u64, String, std::rc::Rc<Vec<(i64, f64, f64)>>)>> = const { std::cell::RefCell::new(None) };
+    }
+    let (app, _, _) = crate::pages::friends::signed(root)?;
+    let raw = root.games.history.as_ref()?;
+    MINE.with(|m| {
+        if let Some((ver, who, list)) = &*m.borrow()
+            && *ver == root.played_ver
+            && *who == app
+        {
+            return Some(list.clone());
+        }
+        let (sessions, known, now) = crate::history::read(raw);
+        let own: Vec<crate::history::Session> = sessions.into_iter().filter(|s| s.account == app).collect();
+        let list = std::rc::Rc::new(crate::history::recently_played(&own, &known, now).into_iter().map(|g| (g.place, g.hours, g.last as f64)).collect::<Vec<_>>());
+        *m.borrow_mut() = Some((root.played_ver, app, list.clone()));
+        Some(list)
+    })
 }
 
 /// What a game in Keep playing says under its name: its windows now, else its hours, else "lately".
@@ -5490,12 +5548,19 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
         .pt(px(14.))
         .pb(px(12.))
         .child(
-            div().flex().child(Button::new("gm-back", root.tr(match root.games.home_library {
-                Some(HomeTab::Games) => "ui.myGames",
-                Some(HomeTab::Community) => "ui.community",
-                None => "news.title",
+            div().flex().child(Button::new("gm-back", root.tr(match (root.games.back_to, root.games.home_library) {
+                (Some(View::Shop), _) => "nav.shop",
+                (Some(View::Profile), _) => "nav.profile",
+                (Some(View::Friends), _) => "nav.friends",
+                (Some(View::Communities), _) => "nav.communities",
+                (_, Some(HomeTab::Games)) => "ui.myGames",
+                (_, Some(HomeTab::Community)) => "ui.community",
+                _ => "news.title",
             })).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {
                 r.games.open = None;
+                if let Some(view) = r.games.back_to.take() {
+                    r.games.view = view;
+                }
                 cx.notify();
             }))),
         )
@@ -5909,6 +5974,9 @@ fn social_media(root: &Root, universe: i64) -> Option<Div> {
         .child(div().flex().flex_wrap().gap(px(8.)).children(buttons)))
 }
 
+/// How many accounts "Your accounts here" shows before its Show all (the most played first).
+const YOURS_FIRST: usize = 8;
+
 /// Your accounts in it over 7 days, the hours it is quiet, and what it is.
 fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let accounts = root.games.stays.get(&place);
@@ -5933,7 +6001,8 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
             .child(div().text_size(px(15.)).font_weight(FontWeight::BOLD).font_features(tnum()).truncate().child(value))
             .child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(word))
     };
-    for a in accounts {
+    let yours_open = root.games.yours_all == Some(place);
+    for a in accounts.iter().take(if yours_open { usize::MAX } else { YOURS_FIRST }) {
         let minutes = int(a, "minutes");
         let played = if minutes >= 60 {
             root.i18n.tv("gp.hours", &[("n", &((minutes as f64 / 60.).round() as i64).to_string())])
@@ -5985,6 +6054,18 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
 
     let yours_head = if rich() { heading_rich("users", ONLINE, root.tr("gp.yours"), Some(root.tr("gp.week"))).into_any_element() } else { heading(root.tr("gp.yours"), Some(root.tr("gp.week"))).into_any_element() };
     // (In its block again.)
+    let yours_head = div().flex().items_center().justify_between().gap(px(12.)).child(yours_head).when(accounts.len() > YOURS_FIRST, |d| {
+        d.child(
+            Button::new("gp-yours-all", if yours_open { root.tr("gp.less") } else { format!("{} ({})", root.tr("games.keepAll"), accounts.len()) })
+                .icon_end(if yours_open { "chevronUp" } else { "chevronDown" })
+                .quiet()
+                .small()
+                .on_click(cx.listener(move |r, _, _, cx| {
+                    r.games.yours_all = if r.games.yours_all == Some(place) { None } else { Some(place) };
+                    cx.notify();
+                })),
+        )
+    });
     let yours = surface().p(px(20.)).flex().flex_col().gap(px(14.)).child(yours_head).child(if accounts.is_empty() {
         div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gp.noneYet"))
     } else {

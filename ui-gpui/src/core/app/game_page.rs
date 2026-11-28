@@ -17,7 +17,7 @@ use crate::core::{
     base::{Cancel, Fail, Guid, Res, Stamp},
     game_hours, l, prefs,
     models::PlaySession,
-    roblox_api, rt,
+    roblox_api::{self, JoinChallenge}, rt,
 };
 
 pub const GAME_HOURS_EVERY: Duration = Duration::from_secs(30 * 60);
@@ -49,7 +49,7 @@ pub struct GameStay {
 }
 
 impl App {
-    pub async fn game_community(&self, group: i64, id: Guid, action: &str) -> Res<Value> {
+    pub async fn game_community(self: &Rc<Self>, group: i64, id: Guid, action: &str) -> Res<Value> {
         self.vault(|_| ())?;
         if group <= 0 {
             return Err(Fail::user(l::t("Invalid Roblox community.")));
@@ -68,15 +68,20 @@ impl App {
         if change.is_some() && viewer.is_none() {
             return Err(Fail::user(l::t("Select a signed-in Roblox Global account.")));
         }
-        rt::blocking(move || {
-            let ct = Cancel::new();
-            let viewer = viewer.as_ref().map(|a| (a.user_id, a.cookie.as_str()));
-            if let (Some(join), Some((user, cookie))) = (change, viewer) {
-                roblox_api::community::change_group(group, user, cookie, join, &ct)
-            } else {
-                roblox_api::community::read_group(group, viewer, &ct)
-            }
-        }).await
+        let (Some(join), Some(account)) = (change, viewer.clone()) else {
+            return rt::blocking(move || roblox_api::community::read_group(group, viewer.as_ref().map(|a| (a.user_id, a.cookie.as_str())), &Cancel::new())).await;
+        };
+        let change = |answered: Option<JoinChallenge>| {
+            let (user, cookie) = (account.user_id, account.cookie.clone());
+            rt::blocking(move || roblox_api::community::change_group(group, user, &cookie, join, answered.as_ref(), &Cancel::new()))
+        };
+        let (details, check) = change(None).await?;
+        let Some(check) = check else { return Ok(details) };
+        // Held for a check, as a friend request can be: solved in Bloxkeep's own window, then asked again with it.
+        let Some(passed) = self.pass_check(&account, &check).await? else {
+            return Err(Fail::user(l::t("Roblox requires verification to change this membership.")));
+        };
+        Ok(change(Some(passed)).await?.0)
     }
 
     pub async fn game_social_links(&self, universe: i64, account: Guid) -> Res<Value> {

@@ -1097,9 +1097,6 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     if with_on && !with_sel.is_empty() {
         opt_notes.push(root.tr("ps.opt.withNote"));
     }
-    if f.profile == "afk" {
-        opt_notes.push(root.tr("ps.opt.lightNote"));
-    }
     if f.restart > 0 {
         opt_notes.push(root.tr(if place_set || server == "follow" { "ps.opt.restartNote" } else { "ps.opt.restartNoGame" }));
     }
@@ -1119,16 +1116,9 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         .child(setting(root.tr("ps.opt.afk"), stacked, true, tri(root, cx, "ps-afk", f.afk, follow_set(afk_on), |f, v| f.afk = v)))
         .child(setting(root.tr("ps.opt.rejoin"), stacked, false, tri(root, cx, "ps-rejoin", f.rejoin, root.tr("ps.opt.followAcc"), |f, v| f.rejoin = v)))
         .when(with_on, |d| d.child(setting(root.tr("ps.opt.rejoinWith"), stacked, false, with_box)))
-        .child(setting(
-            root.tr("ps.opt.profile"),
-            stacked,
-            false,
-            chips(cx, "ps-profile", vec![("".into(), root.tr("ps.opt.normal"), false), ("afk".into(), root.tr("ps.opt.light"), false)], &f.profile, |f, v| f.profile = v.to_string()),
-        ))
         .child(setting(root.tr("ps.opt.restart"), stacked, false, restart_box))
         .child(setting(root.tr("ps.opt.arrange"), stacked, false, tri(root, cx, "ps-arrange", f.arrange, follow_set(tile_on), |f, v| f.arrange = v)))
-        // (A light-AFK preset minimises its windows anyway.)
-        .when(f.profile != "afk", |d| {
+        .map(|d| {
             let set_word = root.tr(&format!("set.onJoin.{}", if s(&root.state["settings"], "onJoin") == "minimise" { "minimise" } else { "keep" }));
             let follow = root.i18n.tv("ps.opt.followSet", &[("state", &set_word.to_lowercase())]);
             d.child(setting(

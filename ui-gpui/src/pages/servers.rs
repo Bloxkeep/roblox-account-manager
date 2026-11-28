@@ -12,6 +12,7 @@
 // time. Joining is the app's launch, into the server by its access code.
 use std::time::{Duration, Instant};
 
+use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::{prelude::*, *};
 use serde_json::{json, Value};
 use crate::val::s;
@@ -58,6 +59,8 @@ pub struct Data {
     vip_opening: bool,
     vip_owner: Option<String>,
     vip_error: Option<String>,
+    /// The private servers' search box (by name, owner or account), made the first time the tab is shown.
+    search: Option<Entity<InputState>>,
     /// Create Private Server in the app, as Roblox's own box has it: the account it is bought for, the game's universe
     /// and price a month (None while asked; Some(None): the game sells none), Buy clicked once (a second click buys),
     /// a buying on its way.
@@ -81,6 +84,8 @@ pub struct Data {
     facts_blocked: bool,
     facts_paused: bool,
     country: Option<String>,
+    /// Private servers whose every account is shown (past the first few, "+N" opens them).
+    priv_open: std::collections::HashSet<i64>,
 }
 
 struct Buy {
@@ -453,6 +458,21 @@ pub fn want(r: &mut Root, place: i64, cx: &mut Context<Root>) {
     .detach();
 }
 
+/// The private servers' search box, made once the servers tab has a game; typing redraws the list.
+pub fn settle(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    if r.servers.search.is_some() || r.servers.place <= 0 {
+        return;
+    }
+    let e = cx.new(|cx| InputState::new(window, cx).placeholder(r.tr("srv.privateSearch")));
+    cx.subscribe(&e, |_: &mut Root, _, ev: &InputEvent, cx| {
+        if matches!(ev, InputEvent::Change) {
+            cx.notify();
+        }
+    })
+    .detach();
+    r.servers.search = Some(e);
+}
+
 /// Where the accounts' friends are in this game (the app asks with three accounts' own sign-ins, the picked ones
 /// first): their servers, to join.
 fn want_friends(r: &mut Root, place: i64, cx: &mut Context<Root>) {
@@ -735,7 +755,12 @@ fn recent(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) -> O
             .flex()
             .flex_col()
             .gap(px(12.))
-            .child(section_head(root.tr("srv.recentTitle"), Some(list.len())))
+            .child(section_head(root.tr("srv.recentTitle"), Some(list.len())).child(
+                Button::new("srv-recent-clear", root.tr("srv.recentClear")).small().quiet().icon("trash").on_click(cx.listener(move |r, _, _, cx| {
+                    crate::pages::games::clear_recent_servers(r, place);
+                    cx.notify();
+                })),
+            ))
             .child(grid(GRID_GAP).children(cards))
             .into_any_element(),
     )
@@ -793,7 +818,11 @@ pub fn view(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) ->
         .children(recent(root, root_place, width, cx))
         // Private before public: the public list runs long with more pages on demand, and the private servers
         // under it were out of sight.
-        .child(div().flex().flex_col().gap(px(12.)).child(private_head).children(picker).children(buying).children(error).child(private(root, width, cx)))
+        .child(div().flex().flex_col().gap(px(12.)).child(private_head)
+            .when(n_private.is_some_and(|n| n > 8) || root.servers.search.as_ref().is_some_and(|e| !crate::kit::input_text(e, cx).is_empty()), |d| {
+                d.children(root.servers.search.as_ref().map(|e| div().max_w(px(320.)).w_full().child(field(e, Some("search")).h(px(34.)))))
+            })
+            .children(picker).children(buying).children(error).child(private(root, width, cx)))
         .child(public(root, width, cx))
         .into_any_element()
 }
@@ -1059,8 +1088,62 @@ fn private(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         let failed = answer.get("failed").and_then(Value::as_bool) == Some(true);
         return said(root.tr(if failed { "ps.failed" } else { "ps.none" }), false).into_any_element();
     }
+    // The accounts in use first (see in_use below). Their own servers lead, then the servers
+    // they can join, then the other accounts' own servers (Roblox's order within each); then only the ones the search
+    // words are found in: the name, the owner or an account that can join.
+    let mine: std::collections::HashSet<i64> = root.accounts().iter().filter_map(|a| a.get("userId").and_then(Value::as_i64)).filter(|u| *u > 0).collect();
+    let own = |v: &Value| v.get("ownerId").and_then(Value::as_i64).is_some_and(|o| mine.contains(&o));
+    // (The account whose Roblox tab is shown first: these servers are seen in it. Then the ones open in Roblox, then
+    // the ones picked.)
+    let tab_account = root.tabs.list.get(root.tabs.at).and_then(|t| t.account.clone());
+    let in_tab: Vec<&Value> = root.accounts().iter().filter(|a| tab_account.as_deref() == Some(s(a, "id"))).collect();
+    let open_now: Vec<&Value> = root.accounts().iter().filter(|a| crate::pages::accounts::is_local(a)).collect();
+    let in_use: Vec<&Value> = if !in_tab.is_empty() {
+        in_tab
+    } else if !open_now.is_empty() {
+        open_now
+    } else {
+        root.accounts().iter().filter(|a| root.selected.contains(s(a, "id"))).collect()
+    };
+    let use_ids: std::collections::HashSet<String> = in_use.iter().map(|a| s(a, "id").to_string()).collect();
+    let use_users: std::collections::HashSet<i64> = in_use.iter().filter_map(|a| a.get("userId").and_then(Value::as_i64)).filter(|u| *u > 0).collect();
+    let via_use = |v: &Value| v.get("viaIds").and_then(Value::as_array).is_some_and(|l| l.iter().filter_map(Value::as_str).any(|id| use_ids.contains(id)));
+    let rank = |v: &Value| {
+        if v.get("ownerId").and_then(Value::as_i64).is_some_and(|o| use_users.contains(&o)) {
+            0
+        } else if via_use(v) {
+            1
+        } else if own(v) {
+            2
+        } else {
+            3
+        }
+    };
+    let mut list = list;
+    list.sort_by_key(|v| rank(v));
+    // On each card the accounts in use come first among those that can join.
+    for v in &mut list {
+        let (Some(ids), Some(names)) = (v.get("viaIds").and_then(Value::as_array).cloned(), v.get("via").and_then(Value::as_array).cloned()) else { continue };
+        let mut pairs: Vec<(Value, Value)> = ids.into_iter().zip(names).collect();
+        pairs.sort_by_key(|(id, _)| !id.as_str().is_some_and(|id| use_ids.contains(id)));
+        let (ids, names): (Vec<Value>, Vec<Value>) = pairs.into_iter().unzip();
+        v["viaIds"] = Value::Array(ids);
+        v["via"] = Value::Array(names);
+    }
+    let words = sv.search.as_ref().map(|e| crate::kit::input_text(e, cx).to_lowercase()).unwrap_or_default();
+    if !words.is_empty() {
+        list.retain(|v| {
+            let via = v.get("via").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str);
+            [s(v, "name"), s(v, "owner"), s(v, "ownerName")].into_iter().chain(via).any(|t| t.to_lowercase().contains(&words))
+        });
+        if list.is_empty() {
+            return said(root.tr("srv.privateNoMatch"), false).into_any_element();
+        }
+    }
     let place = sv.place;
-    let (_, card_w) = grid_fit(width, 340., GRID_GAP);
+    let (_, card_w) = grid_fit(width, 300., GRID_GAP);
+    // How many accounts a card shows before "+N".
+    const JOINS_SHOWN: usize = 3;
     let cards: Vec<AnyElement> = list
         .iter()
         .enumerate()
@@ -1068,45 +1151,159 @@ fn private(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             let playing = v.get("playing").and_then(Value::as_i64).unwrap_or(0);
             let most = v.get("maxPlayers").and_then(Value::as_i64).unwrap_or(0);
             let full = most > 0 && playing >= most;
+            let running = v.get("running").and_then(Value::as_bool).unwrap_or(false);
+            let server_id = v.get("id").and_then(Value::as_i64).unwrap_or(i as i64);
             let code = s(v, "accessCode").to_string();
+            let owner_id = v.get("ownerId").and_then(Value::as_i64).unwrap_or(0);
+            let is_own = own(v);
+            // An own server's owner is one of the accounts: named as the app names it (hidden names stay hidden).
+            let owner_account = if is_own { root.accounts().iter().find(|a| a.get("userId").and_then(Value::as_i64) == Some(owner_id)).cloned() } else { None };
+            let owner = owner_account.as_ref().map_or_else(|| s(v, "owner").to_string(), |a| s(a, "label").to_string());
             let names: Vec<String> = v.get("via").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).map(str::to_string).collect();
             let ids: Vec<String> = v.get("viaIds").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).map(str::to_string).collect();
-            // A button for each account that can join: its name, and it joins.
-            let joins = ids.into_iter().zip(names).enumerate().map(|(n, (id, name))| {
-                let free = root.accounts().iter().find(|a| s(a, "id") == id).is_some_and(can_join_game);
-                let input = format!("roblox://experiences/start?placeId={place}&accessCode={code}");
-                Button::new(("ps-join", i * 16 + n), name).small().icon("play").disabled(full || !free || code.is_empty()).on_click(cx.listener(move |r, _, _, cx| {
-                    r.play_at(&[id.clone()], input.clone(), cx);
-                }))
-            });
-            let count = if most > 0 { format!("{playing}/{most}") } else { playing.to_string() };
-            let tone = if full { WARN } else { TEXT_2 };
-            block()
-                    .w(px(card_w))
-                    .p(px(14.))
+            let all = ids.len();
+            let open = sv.priv_open.contains(&server_id) || all <= JOINS_SHOWN + 1;
+            // A chip for each account that can join: its face and name, and it joins.
+            let joins: Vec<AnyElement> = ids
+                .into_iter()
+                .zip(names)
+                .take(if open { usize::MAX } else { JOINS_SHOWN })
+                .enumerate()
+                .map(|(n, (id, name))| {
+                    let account = root.accounts().iter().find(|a| s(a, "id") == id).cloned();
+                    let free = account.as_ref().is_some_and(can_join_game);
+                    let ok = !full && free && !code.is_empty();
+                    let input = format!("roblox://experiences/start?placeId={place}&accessCode={code}");
+                    let (url, user) = account.as_ref().map_or((String::new(), 0), |a| (s(a, "avatarUrl").to_string(), a.get("userId").and_then(Value::as_i64).unwrap_or(0)));
+                    let chip = hot(("ps-join", i * 64 + n))
+                        .h(px(30.))
+                        .max_w(px(170.))
+                        .pl(px(4.))
+                        .pr(px(10.))
+                        .flex()
+                        .items_center()
+                        .gap(px(7.))
+                        .rounded_full()
+                        .bg(ca(WHITE, 0.08))
+                        .text_size(px(T_S))
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(c(if ok { TEXT } else { MUTED }))
+                        .child(face_at(&url, &name, user, 22., cx))
+                        .child(div().min_w_0().truncate().child(name))
+                        .child(icon("play", 11., c(if ok { TEXT } else { DIM })));
+                    if ok {
+                        chip.cursor_pointer()
+                            .hover(|d| d.bg(ca(WHITE, 0.14)))
+                            .on_click(cx.listener(move |r, _, _, cx| {
+                                r.play_at(&[id.clone()], input.clone(), cx);
+                            }))
+                            .into_any_element()
+                    } else {
+                        chip.opacity(0.6).into_any_element()
+                    }
+                })
+                .collect();
+            let more = (!open).then(|| {
+                hot(("ps-more", i))
+                    .h(px(30.))
+                    .px(px(10.))
                     .flex()
-                    .flex_col()
-                    .gap(px(12.))
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(12.))
-                            .child(div().flex_none().child(icon("key", 20., c(TEXT_2))))
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .flex()
-                                    .flex_col()
-                                    .gap(px(2.))
-                                    .child(div().truncate().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(Some(s(v, "name")).filter(|n| !n.trim().is_empty()).map_or_else(|| root.tr("srv.privateUnnamed"), str::to_string)))
-                                    .child(div().truncate().text_size(px(T_S)).text_color(c(MUTED)).child(s(v, "owner").to_string())),
-                            )
-                            .child(div().flex_none().flex().items_center().gap(px(6.)).text_size(px(T_M)).font_features(tnum()).text_color(c(tone)).child(icon("users", 14., c(tone))).child(count)),
-                    )
-                    .child(div().flex().flex_wrap().gap(px(8.)).children(joins))
-            .into_any_element()
+                    .items_center()
+                    .rounded_full()
+                    .bg(ca(WHITE, 0.05))
+                    .cursor_pointer()
+                    .hover(|d| d.bg(ca(WHITE, 0.1)))
+                    .text_size(px(T_S))
+                    .text_color(c(TEXT_2))
+                    .child(format!("+{}", all - JOINS_SHOWN))
+                    .on_click(cx.listener(move |r, _, _, cx| {
+                        r.servers.priv_open.insert(server_id);
+                        cx.notify();
+                    }))
+            });
+            // What it is now: full, someone in it, or nobody; the accounts' own: "Yours".
+            let tag = |words: String, tone: u32, strong: bool| {
+                div()
+                    .flex_none()
+                    .h(px(22.))
+                    .px(px(8.))
+                    .flex()
+                    .items_center()
+                    .rounded(px(7.))
+                    .bg(ca(tone, if strong { 0.18 } else { 0.08 }))
+                    .text_size(px(T_XS))
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .text_color(c(tone))
+                    .child(words)
+            };
+            let state = if full {
+                tag(root.tr("srv.privFull"), WARN, true)
+            } else if running {
+                tag(root.tr("srv.privRunning"), OK, true)
+            } else {
+                tag(root.tr("srv.privEmpty"), MUTED, false)
+            };
+            let face_url = owner_account.as_ref().map_or_else(|| s(v, "ownerPicture").to_string(), |a| s(a, "avatarUrl").to_string());
+            let owner_face = div()
+                .relative()
+                .flex_none()
+                .child(face_at(&face_url, &owner, owner_id, 44., cx))
+                .child(div().absolute().right(px(-3.)).bottom(px(-3.)).size(px(20.)).rounded_full().bg(c(GROUND)).flex().items_center().justify_center().child(icon("key", 11., c(FACE))));
+            let title = Some(s(v, "name")).filter(|n| !n.trim().is_empty()).map_or_else(|| root.tr("srv.privateUnnamed"), str::to_string);
+            block()
+                .w(px(card_w))
+                .p(px(14.))
+                .flex()
+                .flex_col()
+                .gap(px(12.))
+                .when(is_own, |d| d.border_1().border_color(ca(FACE, 0.45)))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(12.))
+                        .child(owner_face)
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .flex()
+                                .flex_col()
+                                .gap(px(2.))
+                                .child(div().truncate().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(title))
+                                .child(div().truncate().text_size(px(T_S)).text_color(c(MUTED)).child(root.i18n.tv("srv.byOwner", &[("name", &owner)]))),
+                        )
+                        .when(is_own, |d| d.child(tag(root.tr("srv.privYours"), FACE, true))),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(6.))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(6.))
+                                .child(div().text_size(px(T_FIG)).line_height(px(26.)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).text_color(c(if full { WARN } else { TEXT })).child(playing.to_string()))
+                                .when(most > 0, |d| d.child(div().text_size(px(T_M)).font_features(tnum()).text_color(c(MUTED)).child(root.i18n.tv("srv.ofMax", &[("n", &most.to_string())]))))
+                                .child(div().flex_1())
+                                .child(state),
+                        )
+                        .child(bar(("ps-fill", i), if most > 0 { playing as f32 / most as f32 } else { 0. }, None)),
+                )
+                .child(
+                    div()
+                        .mt_auto()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(8.))
+                        .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("srv.joinWith")))
+                        .children(joins)
+                        .children(more),
+                )
+                .into_any_element()
         })
         .collect();
     // Each row as tall as its tallest card: stretched by the row, not h_full (a share of the whole list's height: with

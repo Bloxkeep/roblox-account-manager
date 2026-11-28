@@ -599,6 +599,21 @@ impl App {
                 let _ = rt::blocking(move || updater.check()).await;
             });
         }
+        // A newer package put into the packages folder while the app runs (a test build) is offered at once.
+        let staged = self.updates.updater.borrow().clone();
+        if staged.supported() {
+            let app = self.clone();
+            rt::spawn(async move {
+                loop {
+                    let updater = staged.clone();
+                    let _ = rt::blocking(move || updater.notice_staged()).await;
+                    rt::sleep(Duration::from_secs(10)).await;
+                    if app.controller.disposed.get() {
+                        break;
+                    }
+                }
+            });
+        }
         self.watch_foreground();
         self.watch_drags();
         // Multi-Roblox before the master password (see Prefs.MultiRobloxAtStart).

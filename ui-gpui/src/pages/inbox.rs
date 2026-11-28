@@ -704,7 +704,7 @@ pub fn say(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                         read_lines(r, cx);
                     }
                 }
-                Err(why) => r.toast = Some((if why.is_empty() { "Roblox".into() } else { why }, "bad".into())),
+                Err(why) => r.toast = Some((crate::net::why_words(&r.i18n, &why), "bad".into())),
             }
             cx.notify();
         });

@@ -20,7 +20,7 @@ use crate::{
         deco,
         friends,
     },
-    roblox::{self, Club, ClubHit, ClubPerms, Free, Friend, Offer, Profile, Ware},
+    roblox::{self, Club, ClubHit, ClubPerms, Free, LimitedDeal, Friend, Offer, Profile, Ware},
     shell::Root,
     theme::*,
 };
@@ -75,6 +75,14 @@ pub struct Data {
     pub free: bool,
     /// Watching, shown in place of the catalog (itemwatch.rs): the list as last read from disk.
     pub watch_view: bool,
+    /// Limited deals, shown in place of the catalog: the Limiteds resold below their RAP or Value (roblox::limited_deals;
+    /// None while the first read runs), when they were read, whether a read is under way, and whether the deal is
+    /// counted against the Value instead of the RAP.
+    pub deals: bool,
+    deal_list: Option<Result<Vec<LimitedDeal>, String>>,
+    deal_at: Option<std::time::Instant>,
+    deal_reading: bool,
+    deal_value: bool,
     pub watch: Vec<crate::itemwatch::Watched>,
     frees: Option<Result<Vec<Free>, String>>,
     free_at: Option<std::time::Instant>,
@@ -84,6 +92,10 @@ pub struct Data {
     /// A community opened from the profile, shown in its place until Back.
     club: Option<ClubView>,
     leaving_clubs: HashSet<(i64, i64)>,
+    /// (community, account) joining now, or waiting their turn in "Join with all".
+    joining_clubs: HashSet<(i64, i64)>,
+    /// (community, account) whose request to join waits for the community's say.
+    sent_clubs: HashSet<(i64, i64)>,
     /// A thing of the Marketplace opened from its tile, shown in the catalog's place until Back.
     item: Option<ItemView>,
     /// The friends, the followers or the followed, opened from their count: which ("friends", "followers",
@@ -234,6 +246,11 @@ const SGAP: f32 = 2.;
 const GAP: f32 = 14.;
 /// How old New free's list may get while it is shown.
 const FREE_FRESH: std::time::Duration = std::time::Duration::from_secs(10);
+/// Limited deals are read again after this long while shown: Rolimons' feed of the last minutes' price changes (one
+/// call; every price is asked of Roblox again only every half hour, roblox::limited_deals).
+const DEALS_FRESH: std::time::Duration = std::time::Duration::from_secs(60);
+/// A Limited shows in Limited deals from this much below its RAP or Value, Rolimons' Deals page's own first step.
+const DEAL_LEAST: i64 = 10;
 /// How old where the person whose profile is open is may get while it is shown.
 const WHERE_FRESH: std::time::Duration = std::time::Duration::from_secs(30);
 
@@ -836,6 +853,7 @@ fn join_club(r: &mut Root, cx: &mut Context<Root>) {
         cx.notify();
         // Your accounts in it, read again with the one just in.
         if state == "member" {
+            roblox::club_forget(user);
             let rx = roblox::run(move || roblox::club_mine(id, &users));
             answer(rx, cx, move |r, mine, cx| {
                 if let (Ok(mine), Some(view)) = (mine, r.profile.club.as_mut().filter(|c| c.ask == ask)) {
@@ -985,6 +1003,88 @@ fn ask_club_friends(root: &mut Root, cx: &mut Context<Root>) {
             f.1 = Some(got);
             cx.notify();
         }
+    });
+}
+
+/// Joins the community with each account in `queue` (its id in the app, its Roblox id), one after another with a
+/// pause between, as friend requests are sent: a check Roblox asks for is solved in Bloxkeep's window before the next.
+/// Stops at the first refusal (or a check closed unsolved), and the rest stay as they were.
+fn join_clubs(root: &mut Root, id: i64, queue: Vec<(String, i64)>, cx: &mut Context<Root>) {
+    let queue: Vec<(String, i64)> = queue.into_iter().filter(|(_, user)| !root.profile.joining_clubs.contains(&(id, *user))).collect();
+    if queue.is_empty() || root.link.is_none() {
+        return;
+    }
+    root.profile.joining_clubs.extend(queue.iter().map(|(_, user)| (id, *user)));
+    join_next(root, id, queue.into(), cx);
+    cx.notify();
+}
+
+fn join_next(root: &mut Root, id: i64, mut queue: std::collections::VecDeque<(String, i64)>, cx: &mut Context<Root>) {
+    let Some(link) = root.link.clone() else { return };
+    let Some((account, user)) = queue.pop_front() else { return };
+    let rx = link.call("gameCommunity", json!({ "id": account, "groupId": id, "action": "join" }));
+    answer(rx, cx, move |r, result, cx| {
+        r.profile.joining_clubs.remove(&(id, user));
+        let state = match &result {
+            Ok(Ok(v)) => v["state"].as_str().unwrap_or_default().to_string(),
+            _ => String::new(),
+        };
+        if let Some(m) = r.profile.club.as_mut().filter(|c| c.id == id).and_then(|c| c.me.as_mut()).filter(|m| m.user == user) {
+            if !state.is_empty() {
+                m.state = state.clone();
+            }
+        }
+        let go_on = match result {
+            Ok(Ok(_)) if state == "member" => {
+                roblox::club_forget(user);
+                true
+            }
+            Ok(Ok(_)) if state == "pending" => {
+                r.profile.sent_clubs.insert((id, user));
+                true
+            }
+            Ok(Ok(_)) => {
+                r.toast = Some((r.tr("gp.communityError"), "bad".into()));
+                false
+            }
+            Ok(Err(e)) => {
+                r.toast = Some((e.to_string(), "bad".into()));
+                false
+            }
+            Err(_) => {
+                r.toast = Some((r.tr("gp.communityError"), "bad".into()));
+                false
+            }
+        };
+        if !go_on {
+            for (_, rest) in &queue {
+                r.profile.joining_clubs.remove(&(id, *rest));
+            }
+            queue.clear();
+        }
+        // Your accounts in it, read again with the one just in.
+        if state == "member" {
+            let users: Vec<i64> = r.accounts().iter().filter_map(|a| a["userId"].as_i64().filter(|u| *u > 0)).collect();
+            let rx = roblox::run(move || roblox::club_mine(id, &users));
+            answer(rx, cx, move |r, mine, cx| {
+                if let (Ok(mine), Some(view)) = (mine, r.profile.club.as_mut().filter(|c| c.id == id)) {
+                    view.mine = Some(mine);
+                    cx.notify();
+                }
+            });
+        }
+        if queue.is_empty() {
+            if go_on {
+                r.toast = Some((r.tr(if state == "pending" { "club.requested" } else { "club.joined" }), "ok".into()));
+            }
+        } else {
+            cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(std::time::Duration::from_millis(1500)).await;
+                let _ = this.update(cx, |r, cx| join_next(r, id, queue, cx));
+            })
+            .detach();
+        }
+        cx.notify();
     });
 }
 
@@ -1411,7 +1511,71 @@ fn club_about(root: &Root, view: &ClubView, club: &Club, inner: f32, cx: &mut Co
             }))
             .into_any_element(),
     };
-    out.push(club_block().child(title("club.mine")).child(mine).into_any_element());
+    // The accounts not in it yet (signed in to roblox.com), each with Join, and all of them at once.
+    let outside: Vec<&serde_json::Value> = match &view.mine {
+        Some(l) => friends::able_ref(root)
+            .into_iter()
+            .filter(|a| {
+                let user = a["userId"].as_i64().unwrap_or(0);
+                !l.iter().any(|(u, _)| *u == user) && club.owner_id != user && super::tabs::can_open_account(a)
+            })
+            .collect(),
+        None => Vec::new(),
+    };
+    let free: Vec<(String, i64)> = outside
+        .iter()
+        .map(|a| (super::accounts::id_of(a), a["userId"].as_i64().unwrap_or(0)))
+        .filter(|(_, user)| !root.profile.sent_clubs.contains(&(id, *user)) && !root.profile.joining_clubs.contains(&(id, *user)))
+        .collect();
+    let joining_any = outside.iter().any(|a| root.profile.joining_clubs.contains(&(id, a["userId"].as_i64().unwrap_or(0))));
+    let others = (!outside.is_empty() && root.link.is_some()).then(|| {
+        let head = div()
+            .flex()
+            .items_center()
+            .gap(px(10.))
+            .child(div().flex_1().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("club.outside")))
+            .when(free.len() > 1, |d| {
+                let all = free.clone();
+                d.child(
+                    Button::new("club-join-all", root.i18n.tv("club.joinAll", &[("n", &free.len().to_string())]))
+                        .small()
+                        .icon("plus")
+                        .disabled(joining_any)
+                        .on_click(cx.listener(move |r, _, _, cx| join_clubs(r, id, all.clone(), cx))),
+                )
+            });
+        let chips = div().flex().flex_wrap().gap(px(8.)).children(outside.iter().map(|account| {
+            let user = account["userId"].as_i64().unwrap_or(0);
+            let name = super::accounts::label(account);
+            let id_in_app = super::accounts::id_of(account);
+            let joining = root.profile.joining_clubs.contains(&(id, user));
+            let sent = root.profile.sent_clubs.contains(&(id, user));
+            let action: AnyElement = if sent {
+                badge(root.tr("gp.communityPending"), Tone::Warn).into_any_element()
+            } else {
+                Button::new(("club-join-one", user as usize), root.tr(if joining { "club.joining" } else { "club.join" }))
+                    .small()
+                    .disabled(joining)
+                    .on_click(cx.listener(move |r, _, _, cx| join_clubs(r, id, vec![(id_in_app.clone(), user)], cx)))
+                    .into_any_element()
+            };
+            div()
+                .min_h(px(34.))
+                .px(px(12.))
+                .py(px(4.))
+                .flex()
+                .items_center()
+                .gap(px(8.))
+                .rounded(px(R_M))
+                .border_1()
+                .border_color(c(LINE))
+                .child(super::accounts::avatar(account, 24., RAISED, cx))
+                .child(div().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT_2)).child(name))
+                .child(action)
+        }));
+        div().pt(px(6.)).flex().flex_col().gap(px(8.)).child(head).child(chips)
+    });
+    out.push(club_block().child(title("club.mine")).child(mine).children(others).into_any_element());
     out.extend(club_friends(root, view, cx).map(|d| club_block().child(d).into_any_element()));
     out
 }
@@ -2539,6 +2703,12 @@ pub fn want_shop(r: &mut Root, cx: &mut Context<Root>) {
         }
         return;
     }
+    if r.profile.deals {
+        if r.profile.deal_at.is_none_or(|t| t.elapsed() >= DEALS_FRESH) && !r.profile.deal_reading {
+            read_deals(r, cx);
+        }
+        return;
+    }
     if r.profile.asked.is_none() && !r.profile.reading {
         r.profile.asked = Some(String::new());
         // BLOXKEEP_SHOT_SHOP_FIND="wings": a hidden shot's Marketplace starts on that search.
@@ -2973,6 +3143,35 @@ fn item_page(root: &Root, view: &ItemView, inner: f32, cx: &mut Context<Root>) -
         .into_any_element()
 }
 
+/// Limited deals' list, read (roblox::limited_deals); once it is in, the page is drawn again when it has got old, which
+/// reads it again if Limited deals is still what is shown.
+fn read_deals(r: &mut Root, cx: &mut Context<Root>) {
+    r.profile.deal_reading = true;
+    let rx = roblox::run(|| roblox::limited_deals(DEAL_LEAST));
+    cx.spawn(async move |this, cx| {
+        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
+        let _ = this.update(cx, |r, cx| {
+            let p = &mut r.profile;
+            p.deal_reading = false;
+            p.deal_at = Some(std::time::Instant::now());
+            match got {
+                Ok(list) => p.deal_list = Some(Ok(list)),
+                // A later read that fails leaves what is shown.
+                Err(e) if !matches!(p.deal_list, Some(Ok(_))) => p.deal_list = Some(Err(e)),
+                Err(_) => {}
+            }
+            cx.notify();
+        });
+        cx.background_executor().timer(DEALS_FRESH + std::time::Duration::from_millis(200)).await;
+        let _ = this.update(cx, |r, cx| {
+            if r.profile.deals && r.page == crate::pages::Page::Games && r.games.view == crate::pages::games::View::Shop {
+                cx.notify();
+            }
+        });
+    })
+    .detach();
+}
+
 /// New free's list, read (roblox::free_new); and once it is in, the page is drawn again when the list has got old, which
 /// reads it again if New free is still what is shown (nothing is read while it isn't).
 fn read_free(r: &mut Root, cx: &mut Context<Root>) {
@@ -3073,6 +3272,7 @@ fn filters(cat: usize, sort: usize, words: bool) -> String {
 fn refilter(r: &mut Root, cat: usize, sort: usize, cx: &mut Context<Root>) {
     r.profile.free = false;
     r.profile.watch_view = false;
+    r.profile.deals = false;
     if r.profile.cat == cat && r.profile.sort == sort {
         return;
     }
@@ -3211,7 +3411,7 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         .child(crate::pages::games::brand(root))
         .relative().child(crate::pages::games::island(root, cx))
         .child(div().flex_1())
-        .when(!pf.free && pf.item.is_none(), |d| d.child(div().w(px(if width < 900. { 220. } else { 300. })).min_w(px(140.)).flex_shrink(1.).child(field(&root.shop_search, Some("search")))));
+        .when(!pf.free && !pf.deals && pf.item.is_none(), |d| d.child(div().w(px(if width < 900. { 220. } else { 300. })).min_w(px(140.)).flex_shrink(1.).child(field(&root.shop_search, Some("search")))));
     // Under it: the whole catalog, or the free limiteds in stock.
     // The kinds of thing as the page's filters (the one shown the yellow block), then, past a hairline, New free (a list
     // of its own); the order at the right, a quiet tool that opens its short list.
@@ -3232,7 +3432,7 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                 .items_center()
                 .gap(px(4.))
                 .children(CATS.iter().enumerate().map(|(i, (key, _))| {
-                    let on = !pf.free && !pf.watch_view && pf.cat == i;
+                    let on = !pf.free && !pf.watch_view && !pf.deals && pf.cat == i;
                     chip(("shop-cat", i), on).h(px(TOOL_H)).px(px(12.)).child(root.tr(key)).on_click(cx.listener(move |r, _, _, cx| {
                         refilter(r, i, sort, cx);
                         cx.notify();
@@ -3241,6 +3441,13 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                 .child(tool_rule())
                 .child(chip("shop-kind-free", pf.free).h(px(TOOL_H)).px(px(12.)).child(icon("tag", 15., c(if pf.free { INK } else { MUTED }))).child(root.tr("shop.freeNew")).on_click(cx.listener(|r, _, _, cx| {
                     r.profile.free = true;
+                    r.profile.watch_view = false;
+                    r.profile.deals = false;
+                    cx.notify();
+                })))
+                .child(chip("shop-kind-deals", pf.deals).h(px(TOOL_H)).px(px(12.)).child(icon("activity", 15., c(if pf.deals { INK } else { MUTED }))).child(root.tr("shop.deals")).on_click(cx.listener(|r, _, _, cx| {
+                    r.profile.deals = true;
+                    r.profile.free = false;
                     r.profile.watch_view = false;
                     cx.notify();
                 })))
@@ -3257,13 +3464,14 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                         .on_click(cx.listener(|r, _, _, cx| {
                             r.profile.watch_view = true;
                             r.profile.free = false;
+                            r.profile.deals = false;
                             r.profile.watch = crate::itemwatch::list();
                             crate::itemwatch::seen();
                             cx.notify();
                         }))
                 }),
         )
-        .when(!pf.free && !pf.watch_view, |d| d.child(sort_drop(root, cx)));
+        .when(!pf.free && !pf.watch_view && !pf.deals, |d| d.child(sort_drop(root, cx)));
     if let Some(view) = &pf.item {
         return shell.child(header).child(item_page(root, view, inner, cx));
     }
@@ -3272,6 +3480,9 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     }
     if pf.watch_view {
         return shell.child(header).child(kinds).child(watch_list(root, inner, cx));
+    }
+    if pf.deals {
+        return shell.child(header).child(kinds).child(deals(root, tile_w, cx));
     }
 
     // BLOXKEEP_SHOT_WAITING=1: a hidden shot keeps the Marketplace as it is while its first page is on its way.
@@ -3357,8 +3568,88 @@ fn sort_drop(root: &Root, cx: &mut Context<Root>) -> Div {
 /// The game that gives a free thing, opened on its page here (Games' own view), where it is started with the accounts
 /// wanted.
 fn open_game(r: &mut Root, place: i64, game: &str) {
-    r.games.view = crate::pages::games::View::Games;
-    crate::pages::games::open_place(r, place, game);
+    crate::pages::games::open_place_from(r, place, game);
+}
+
+/// Limited deals' tiles, as Rolimons' Deals page shows them: the thing, its price now, how much below its RAP (or Value)
+/// that is, and the RAP (or Value) itself; above them, which of the two the deal is counted against, and whose figures
+/// they are. The tile opens the thing's page here (to buy it).
+fn deals(root: &Root, tile_w: f32, cx: &mut Context<Root>) -> AnyElement {
+    let pf = &root.profile;
+    let by_value = pf.deal_value;
+    let all = match &pf.deal_list {
+        None => return div().flex_1().px(px(PAGE_X)).child(waiting_tiles(14, tile_w - 12., 14.)).into_any_element(),
+        Some(Err(why)) => return empty_note(root.i18n.tv("shop.dealsFailed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
+        Some(Ok(l)) => l,
+    };
+    let mut list: Vec<&LimitedDeal> = all.iter().filter(|d| d.off(by_value) >= DEAL_LEAST).collect();
+    list.sort_by_key(|d| std::cmp::Reverse(d.off(by_value)));
+    let bar = div()
+        .flex()
+        .items_center()
+        .gap(px(4.))
+        .pb(px(12.))
+        .child(div().pr(px(6.)).text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("shop.dealsBy")))
+        .child(chip("deals-rap", !by_value).h(px(TOOL_H)).px(px(12.)).child("RAP").on_click(cx.listener(|r, _, _, cx| {
+            r.profile.deal_value = false;
+            cx.notify();
+        })))
+        .child(chip("deals-value", by_value).h(px(TOOL_H)).px(px(12.)).child(root.tr("shop.dealsValue")).on_click(cx.listener(|r, _, _, cx| {
+            r.profile.deal_value = true;
+            cx.notify();
+        })))
+        .child(div().flex_1())
+        .child(div().text_size(px(T_S)).text_color(c(DIM)).child(root.tr("shop.dealsFrom")));
+    if list.is_empty() {
+        return div().flex_1().flex().flex_col().child(div().px(px(PAGE_X)).child(bar)).child(empty_note(root.tr("shop.dealsNone"))).into_any_element();
+    }
+    let key = crate::near::sig((list.len(), list.first().map(|d| d.ware.id), by_value));
+    let tile = |n: usize| {
+        let d = list[n];
+        let ware = d.ware.clone();
+        let price = d.ware.price.unwrap_or(0);
+        let base = if by_value { d.value } else { d.rap };
+        let off = d.off(by_value);
+        let worth = root.i18n.tv(if by_value { "shop.dealsValueN" } else { "shop.dealsRapN" }, &[("n", &thousands(base))]);
+        hot(("deal", n))
+            .w(px(tile_w))
+            .p(px(6.))
+            .cursor_pointer()
+            .rounded(px(R_L + 4.))
+            .lift(2.)
+            .flex()
+            .flex_col()
+            .on_click(cx.listener(move |r, _, _, cx| {
+                open_item(r, ware.clone(), cx);
+                cx.notify();
+            }))
+            .child(
+                crate::pages::avatar::tile_zoomed(tile_w - 14., &d.ware.pic, d.ware.name.clone(), false, Some(root.tr("news.noPicture").into()), if d.ware.bundle { 1.3 } else { 1. }, cx)
+                    .relative()
+                    .flex_1()
+                    .child(
+                        div()
+                            .px(px(2.))
+                            .pb(px(4.))
+                            .flex()
+                            .flex_col()
+                            .gap(px(2.))
+                            .child(div().flex().items_center().gap(px(5.)).text_size(px(T_M)).font_weight(FontWeight::MEDIUM).font_features(tnum()).text_color(c(TEXT)).child(icon("robux", 13., c(TEXT))).child(thousands(price)))
+                            .child(div().text_size(px(T_S)).font_features(tnum()).text_color(c(MUTED)).truncate().child(worth)),
+                    )
+                    .child(div().absolute().top(px(8.)).left(px(8.)).px(px(7.)).h(px(20.)).flex().items_center().rounded(px(6.)).bg(c(OK)).text_color(c(INK)).text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(format!("−{off}%"))),
+            )
+            .into_any_element()
+    };
+    let tiles = crate::near::tiles_in(Some(&crate::scrolled::handle("deals-body")), "deal-tiles", list.len(), tile_w, SGAP, key, false, tile_w + 70., tile);
+    div()
+        .flex_1()
+        .min_h_0()
+        .flex()
+        .flex_col()
+        .child(div().flex_none().px(px(PAGE_X)).child(bar))
+        .child(crate::scrolled::body("deals-body", div().px(px(PAGE_X - 6.)).pt(px(4.)).pb(px(24.)).child(tiles)))
+        .into_any_element()
 }
 
 /// New free's tiles: the thing, how many are left, the game that gives it, and Open game (the game's page here) or,

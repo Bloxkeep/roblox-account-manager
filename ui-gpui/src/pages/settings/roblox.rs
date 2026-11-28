@@ -354,7 +354,8 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     if list.is_empty() {
         list.push(note("info", root.tr("ru.none"), MUTED));
     }
-    out.push(group(Some(root.tr("ru.history")), list));
+    // (A list that only grows: folded under its name.)
+    out.push(group(None, vec![fold(root, cx, "rbx-history", root.tr("ru.history"), None, None, list)]));
     out
 }
 
@@ -369,13 +370,15 @@ struct Level {
     ram: Option<i64>,
     trim: bool,
     cores: bool,
+    /// Roblox's leanest drawing (Fast Flags): on, off, or as the person set it.
+    flags: Option<bool>,
 }
 
 /// What each mode sets, all of it said on its card. "Play and farm" leaves the RAM limit as the person set it.
 const LEVELS: [Level; 3] = [
-    Level { id: "light", mode: "all", graphics: 1, fps: 20, volume: 0, ram: Some(-1), trim: true, cores: true },
-    Level { id: "medium", mode: "all", graphics: 3, fps: 45, volume: -1, ram: None, trim: true, cores: true },
-    Level { id: "off", mode: "off", graphics: 0, fps: 0, volume: -1, ram: Some(0), trim: false, cores: false },
+    Level { id: "light", mode: "all", graphics: 1, fps: 20, volume: 0, ram: Some(512), trim: true, cores: true, flags: Some(true) },
+    Level { id: "medium", mode: "all", graphics: 3, fps: 45, volume: -1, ram: None, trim: true, cores: true, flags: None },
+    Level { id: "off", mode: "off", graphics: 0, fps: 0, volume: -1, ram: Some(0), trim: false, cores: false, flags: Some(false) },
 ];
 
 /// The mode the settings match now ("light", "medium", "off"); None for the person's own (Easy setup reads it too).
@@ -386,10 +389,37 @@ pub(crate) fn level_now(st: &Value) -> Option<&'static str> {
     LEVELS
         .iter()
         .find(|l| {
-            let rc_same = if l.mode == "off" { mode == "off" && !flag(st, "fastFlags") } else { mode == l.mode && graphics == l.graphics && fps == l.fps && volume == l.volume };
-            rc_same && l.ram.is_none_or(|r| int(st, "ramLimitMb", 0) == r) && flag(st, "trimBackground") == l.trim && flag(st, "splitCores") == l.cores
+            let rc_same = if l.mode == "off" { mode == "off" } else { mode == l.mode && graphics == l.graphics && fps == l.fps && volume == l.volume };
+            rc_same
+                && l.flags.is_none_or(|f| flag(st, "fastFlags") == f)
+                && l.ram.is_none_or(|r| int(st, "ramLimitMb", 0) == r)
+                && flag(st, "trimBackground") == l.trim
+                && flag(st, "splitCores") == l.cores
         })
         .map(|l| l.id)
+}
+
+/// AFK farming once set the RAM limit to Auto and left the leanest drawing alone; it sets 512 MB and the leanest
+/// drawing now. Settings still exactly as it left them are moved
+/// to 512 MB, once on this PC, so the card stays picked and means what it says.
+pub(crate) fn move_old_afk_farming(r: &mut crate::shell::Root) {
+    let st = &r.state;
+    let Some(set) = st.get("settings") else { return };
+    if crate::prefs::get("afkFarming512").is_some() {
+        return;
+    }
+    let rc = set.get("robloxConfig").cloned().unwrap_or(Value::Null);
+    let old = s(&rc, "mode") == "all"
+        && int(&rc, "graphics", 0) == 1
+        && int(&rc, "fps", 0) == 20
+        && int(&rc, "volume", -1) == 0
+        && int(set, "ramLimitMb", 0) == -1
+        && flag(set, "trimBackground")
+        && flag(set, "splitCores");
+    crate::prefs::set("afkFarming512", json!(true));
+    if old {
+        r.send("setSettings", json!({ "ramLimitMb": 512, "fastFlags": true }));
+    }
 }
 
 /// What picking a mode sends (setSettings), as its card does.
@@ -402,8 +432,8 @@ pub(crate) fn level_settings(id: &str) -> Option<Value> {
     if let Some(ram) = l.ram {
         v["ramLimitMb"] = json!(ram);
     }
-    if l.id == "off" {
-        v["fastFlags"] = json!(false);
+    if let Some(on) = l.flags {
+        v["fastFlags"] = json!(on);
     }
     Some(v)
 }
@@ -415,7 +445,42 @@ fn int(v: &Value, k: &str, d: i64) -> i64 {
     v.get(k).and_then(Value::as_i64).unwrap_or(d)
 }
 
-/// The Roblox settings group, first in Staying in game.
+/// A Roblox setting (robloxConfig) picked by hand: one picked while nobody gets them gives them to every account again,
+/// since picking it means wanting it.
+pub(crate) fn set_rc(r: &mut Root, mut rc: Value, cx: &mut Context<Root>) {
+    let off = r.state.pointer("/settings/robloxConfig/mode").and_then(Value::as_str).is_none_or(|m| m.is_empty() || m == "off");
+    if off && rc.get("mode").is_none() {
+        rc["mode"] = json!("all");
+    }
+    set(r, json!({ "robloxConfig": rc }), cx);
+}
+
+/// A small head inside the card, over the rows of one kind.
+fn sub_head(title: String) -> AnyElement {
+    div()
+        .px(px(ROW_X))
+        .pt(px(16.))
+        .pb(px(6.))
+        .text_size(px(T_S))
+        .font_weight(FontWeight::SEMIBOLD)
+        .text_color(c(MUTED))
+        .child(title)
+        .into_any_element()
+}
+
+/// The mode picked last (for Custom's way back to it).
+fn last_level() -> Option<&'static str> {
+    let v = crate::prefs::get("rcLastLevel")?;
+    let id = v.as_str()?.to_string();
+    LEVELS.iter().map(|l| l.id).find(|l| *l == id)
+}
+
+fn st_of(r: &Root) -> &Value {
+    r.state.get("settings").unwrap_or(&Value::Null)
+}
+
+/// The Roblox settings group, first in Staying in game: one mode in a row of four, what it sets under it, and
+/// Custom with every setting it is made of.
 pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
     let st = st(root);
     let rc = st.get("robloxConfig").cloned().unwrap_or(json!({ "mode": "off", "graphics": 0, "fps": 0, "volume": -1 }));
@@ -424,108 +489,198 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
     let accounts = root.accounts();
     let chosen = accounts.iter().filter(|a| flag(a, "useRobloxConfig")).count() as i64;
     let own_fps = accounts.iter().filter(|a| int(a, "fpsCap", 0) > 0).count() as i64;
-    let level = LEVELS
-        .iter()
-        .find(|l| {
-            let rc_same = if l.mode == "off" { mode == "off" && !flag(st, "fastFlags") } else { mode == l.mode && graphics == l.graphics && fps == l.fps && volume == l.volume };
-            rc_same && l.ram.is_none_or(|r| int(st, "ramLimitMb", 0) == r) && flag(st, "trimBackground") == l.trim && flag(st, "splitCores") == l.cores
-        })
-        .map(|l| l.id);
+    let level = level_now(st);
     // Custom is shown on request, or by itself once the settings match no mode.
     let shown = if root.settings.rc_custom || level.is_none() { "own" } else { level.unwrap_or("own") };
 
-    let mut cards = div().px(px(ROW_X)).pt(px(18.)).pb(px(12.)).flex().gap(px(10.));
-    for (i, id) in ["light", "medium", "off", "own"].into_iter().enumerate() {
+    // The four modes side by side, an icon over each name; the one picked underlined in yellow.
+    let mut bar = div().flex().border_b_1().border_color(c(LINE));
+    let mut words = String::new();
+    for (i, (id, ic)) in [("off", "roblox"), ("medium", "gamepad"), ("light", "moon"), ("own", "sliders")].into_iter().enumerate() {
         let on = id == shown;
-        let says = root.tr(&format!("rc.level.{id}.says"));
-        cards = cards.child(
+        let name = root.tr(&format!("rc.level.{id}"));
+        words.push_str(&format!("{name} {} ", root.tr(&format!("rc.level.{id}.says"))));
+        bar = bar.child(
             focusable(div().id(("rc-level", i)))
                 .flex_1()
                 .min_w(px(0.))
-                .p(px(14.))
-                .rounded(px(R_M))
+                .relative()
+                .pt(px(16.))
+                .pb(px(13.))
                 .flex()
                 .flex_col()
+                .items_center()
                 .gap(px(8.))
-                .border_1()
-                .border_color(if on { ca(WHITE, 0.5) } else { c(LINE) })
-                .bg(if on { ca(WHITE, 0.06) } else { c(INSET) })
-                .when(!on, |d| d.cursor_pointer().hover(|d| d.border_color(ca(WHITE, 0.18))))
+                // (The picked one lit faintly from its underline, as Armoury Crate's mode row; no box round it.)
+                .when(on, |d| d.bg(ca(FACE, 0.05)))
+                .when(!on, |d| d.cursor_pointer().hover(|d| d.bg(ca(WHITE, 0.03))))
+                .child(icon(ic, 24., if on { c(FACE) } else { c(MUTED) }))
+                .when(on, |d| d.child(div().absolute().bottom_0().left(px(12.)).right(px(12.)).h(px(2.)).rounded_full().bg(c(FACE))))
                 .child(
                     div()
-                        .flex()
-                        .items_center()
-                        .gap(px(8.))
-                        .child(div().flex_1().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(root.tr(&format!("rc.level.{id}"))))
-                        .child(
-                            div()
-                                .size(px(16.))
-                                .flex_none()
-                                .rounded_full()
-                                .border_1()
-                                .border_color(if on { c(FACE) } else { ca(WHITE, 0.25) })
-                                .bg(if on { c(FACE) } else { ca(WHITE, 0.) })
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .when(on, |d| d.child(icon("check", 11., c(INK)))),
-                        ),
+                        .max_w_full()
+                        .truncate()
+                        .text_size(px(T_L))
+                        .font_weight(if on { FontWeight::SEMIBOLD } else { FontWeight::MEDIUM })
+                        .text_color(if on { c(TEXT) } else { c(TEXT_2) })
+                        .child(name),
                 )
-                .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(says))
                 .on_click(cx.listener(move |r, _, _, cx| {
                     if id == "own" {
+                        if let Some(l) = level {
+                            crate::prefs::set("rcLastLevel", json!(l));
+                        }
                         r.settings.rc_custom = true;
                         cx.notify();
                         return;
                     }
                     r.settings.rc_custom = false;
+                    crate::prefs::set("rcLastLevel", json!(id));
                     if Some(id) == level {
                         cx.notify();
                         return;
                     }
-                    let l = LEVELS.iter().find(|l| l.id == id).expect("a level");
-                    let mut v = json!({
-                        "robloxConfig": { "mode": l.mode, "graphics": l.graphics, "fps": l.fps, "volume": l.volume },
-                        "trimBackground": l.trim, "splitCores": l.cores,
-                    });
-                    if let Some(ram) = l.ram {
-                        v["ramLimitMb"] = json!(ram);
+                    if let Some(v) = level_settings(id) {
+                        set(r, v, cx);
                     }
-                    if l.id == "off" {
-                        v["fastFlags"] = json!(false);
-                    }
-                    set(r, v, cx);
                 })),
         );
     }
-    let mut notes = div()
-        .px(px(ROW_X))
-        .pb(px(16.))
-        .flex()
-        .flex_col()
-        .gap(px(3.))
-        .text_size(px(T_S))
-        .text_color(c(MUTED))
-        .child(root.tr("rc.reopen"))
-        .child(div().flex().child(link_text("rc-easy", root.tr("es.open"), cx, |r, window, cx| crate::pages::easy_setup::open(r, window, cx))));
+
+    // Under the row: what the mode sets, a word each, and who gets it.
+    let mut about = div().px(px(ROW_X)).pt(px(14.)).pb(px(16.)).flex().flex_col().gap(px(12.));
+    if shown == "off" {
+        about = about.child(div().text_size(px(T_M)).text_color(c(TEXT_2)).child(root.tr("rc.level.off.says")));
+    } else if shown != "own" {
+        let says = root.tr(&format!("rc.level.{shown}.says"));
+        about = about
+            .child(div().flex().flex_wrap().gap(px(6.)).children(says.split(" · ").map(|w| {
+                div()
+                    .px(px(10.))
+                    .py(px(4.))
+                    .rounded(px(R_S))
+                    .bg(ca(WHITE, 0.05))
+                    .border_1()
+                    .border_color(c(LINE))
+                    .text_size(px(T_S))
+                    .text_color(c(TEXT_2))
+                    .child(w.to_string())
+            })))
+            .child(
+                div()
+                    .flex()
+                    .items_start()
+                    .gap(px(8.))
+                    .text_size(px(T_S))
+                    .text_color(c(MUTED))
+                    .child(div().pt(px(1.)).child(icon("star", 13., c(MUTED))))
+                    .child(div().flex_1().min_w_0().child(format!("{} {}", root.tr("rc.whoAll"), root.tr("rc.reopen")))),
+            );
+    } else {
+        // The way back to the mode picked last, while the settings aren't that mode.
+        let back = last_level().filter(|l| Some(*l) != level || root.settings.rc_custom);
+        about = about.child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(12.))
+                .child(div().flex_1().min_w_0().text_size(px(T_M)).text_color(c(TEXT_2)).child(format!("{} {}", root.tr("rc.level.own.says"), root.tr("rc.reopen"))))
+                .when_some(back, |d, l| {
+                    d.child(Button::new("rc-back", root.i18n.tv("rc.back", &[("m", &root.tr(&format!("rc.level.{l}")))])).icon("refresh").small().quiet().on_click(cx.listener(move |r, _, _, cx| {
+                        r.settings.rc_custom = false;
+                        if level_now(st_of(r)) != Some(l) {
+                            if let Some(v) = level_settings(l) {
+                                set(r, v, cx);
+                            }
+                        }
+                        cx.notify();
+                    })))
+                }),
+        );
+    }
+    let mut notes = div().flex().flex_wrap().gap(px(12.)).text_size(px(T_S)).text_color(c(MUTED));
+    notes = notes.child(link_text("rc-easy", root.tr("es.open"), cx, |r, window, cx| crate::pages::easy_setup::open(r, window, cx)));
     if own_fps > 0 {
         notes = notes.child(root.i18n.tn("rc.ownFps", own_fps, &[]));
     }
-    let mut rows: Vec<AnyElement> = vec![div().flex().flex_col().child(cards).child(notes).into_any_element()];
+    about = about.child(notes);
+    let head = div().flex().flex_col().child(bar).child(about).into_any_element();
+    let mut rows: Vec<AnyElement> = vec![found(&words, head)];
 
-    // Fast Flags go to the same accounts as the rest; a Bloxstrap-style launcher writes its own over Bloxkeep's: said here.
-    let updater = root.state.pointer("/robloxVersion/updater").and_then(Value::as_str).unwrap_or_default();
-    let overridden = !updater.is_empty() && updater != "Roblox" && s(st, "launchVia") != "direct";
-    let mut flags_desc = root.tr("rc.flagsDesc");
-    if overridden {
-        flags_desc = format!("{flags_desc} {}", root.i18n.tv("rc.flagsOver", &[("l", updater)]));
-    }
-    let flags = |cx: &mut Context<Root>| row(root.tr("rc.flags"), Some(flags_desc.clone()), switch("s-rc-flags", flag(st, "fastFlags"), cx, |r, on, cx| set(r, json!({ "fastFlags": on }), cx)));
-    if shown != "own" {
-        if mode != "off" {
-            rows.push(flags(cx));
+    if shown == "own" {
+        // In game: what Roblox draws and plays.
+        rows.push(sub_head(root.tr("rc.g.game")));
+        let keep = root.tr("rc.keep");
+        let off = mode == "off";
+        let pick = |list: &[i64], v: i64| if list.contains(&v) { v } else { list[0] };
+        let gl: Vec<i64> = std::iter::once(0).chain(1..=10).collect();
+        let mut fl: Vec<i64> = vec![0, 15, 20, 30, 45, 60, 120, 144, 240, FPS_MAX];
+        // A limit of the person's own (17, 18…: typed in the box) is in the list while it is the one set.
+        if fps > 0 && !fl.contains(&fps) {
+            fl.push(fps);
+            fl.sort_unstable();
         }
-    } else {
+        let vl: Vec<i64> = vec![-1, 0, 25, 50, 75, 100];
+        // (With nobody getting them, each shows as Roblox has it.)
+        let (graphics, fps, volume) = if off { (0, 0, -1) } else { (graphics, fps, volume) };
+        let g_items = gl.iter().map(|&n| (n, if n == 0 { keep.clone() } else { n.to_string() }, false)).collect();
+        let f_items = fl.iter().map(|&n| (n, if n == 0 { keep.clone() } else if n == FPS_MAX { root.tr("rc.fpsMax") } else { format!("{n} FPS") }, false)).collect();
+        let v_items = vl.iter().map(|&n| (n, if n == -1 { keep.clone() } else if n == 0 { root.tr("rc.mute") } else { format!("{n}%") }, false)).collect();
+        // ONE box: the number is typed in it, and its chevron opens the usual ones. What is typed is kept on Enter or
+        // on leaving the box (shell.rs).
+        let open = root.settings.menu == Some("s-rc-fps");
+        let mut fps_box = field(&root.fps_box, None).w(px(150.)).h(px(34.));
+        if fps > 0 && fps != FPS_MAX {
+            fps_box = fps_box.child(div().flex_none().text_color(c(MUTED)).child("FPS"));
+        }
+        fps_box = fps_box.child(
+            hot("s-rc-fps")
+                .size(px(24.))
+                .flex_none()
+                .flex()
+                .items_center()
+                .justify_center()
+                .rounded(px(6.))
+                .cursor_pointer()
+                .child(icon(if open { "chevronUp" } else { "chevronDown" }, 14., c(MUTED)))
+                .on_click(cx.listener(|r, _, _, cx| {
+                    toggle_menu(r, "s-rc-fps");
+                    cx.notify();
+                })),
+        );
+        let mut fps_ctl = div().relative().flex_none().child(fps_box);
+        let chosen_fps: std::rc::Rc<dyn Fn(&mut Root, i64, &mut Window, &mut Context<Root>)> = std::rc::Rc::new(|r, v, _, cx| set_rc(r, json!({ "fps": v }), cx));
+        if let Some(menu) = menu_pop(root, cx, "s-rc-fps", f_items, Vec::new(), &pick(&fl, fps), chosen_fps) {
+            fps_ctl = fps_ctl.child(menu);
+        }
+        rows.push(row_below(root.tr("rc.fps"), Some(root.tr("rc.fpsDesc")), fps_ctl));
+        rows.push(row_below(root.tr("rc.graphics"), None, chips(root, cx, "s-rc-graphics", g_items, &pick(&gl, graphics), |r, v, cx| set_rc(r, json!({ "graphics": v }), cx))));
+        rows.push(row_below(root.tr("rc.volume"), None, chips(root, cx, "s-rc-volume", v_items, &pick(&vl, volume), |r, v, cx| set_rc(r, json!({ "volume": v }), cx))));
+        // Fast Flags go to the same accounts as the rest; a Bloxstrap-style launcher writes its own over Bloxkeep's: said here.
+        let updater = root.state.pointer("/robloxVersion/updater").and_then(Value::as_str).unwrap_or_default();
+        let overridden = !updater.is_empty() && updater != "Roblox" && s(st, "launchVia") != "direct";
+        let mut flags_desc = root.tr("rc.flagsDesc");
+        if overridden {
+            flags_desc = format!("{flags_desc} {}", root.i18n.tv("rc.flagsOver", &[("l", updater)]));
+        }
+        rows.push(row(
+            root.tr("rc.noEffects"),
+            Some(flags_desc),
+            switch("s-rc-flags", flag(st, "fastFlags") && !off, cx, move |r, on, cx| {
+                let mut v = json!({ "fastFlags": on });
+                if on && off {
+                    v["robloxConfig"] = json!({ "mode": "all" });
+                }
+                set(r, v, cx);
+            }),
+        ));
+
+        // RAM and CPU: what Bloxkeep does to the windows.
+        rows.push(sub_head(root.tr("set.g.memory")));
+        rows.extend(memory_rows(root, st, cx));
+
+        // Who gets them.
+        rows.push(sub_head(root.tr("rc.mode")));
         let modes = ["off", "all", "marked"].into_iter().map(|m| (m.to_string(), root.tr(&format!("rc.mode.{m}")), false)).collect();
         let hint = match mode.as_str() {
             "off" => None,
@@ -558,56 +713,6 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
         if picking {
             rows.push(rc_picker(root, cx));
         }
-        if mode != "off" {
-            rows.push(flags(cx));
-            let keep = root.tr("rc.keep");
-            let pick = |list: &[i64], v: i64| if list.contains(&v) { v } else { list[0] };
-            let gl: Vec<i64> = std::iter::once(0).chain(1..=10).collect();
-            let mut fl: Vec<i64> = vec![0, 15, 20, 30, 45, 60, 120, 144, 240, FPS_MAX];
-            // A limit of the person's own (17, 18…: typed in the box) is in the list while it is the one set.
-            if fps > 0 && !fl.contains(&fps) {
-                fl.push(fps);
-                fl.sort_unstable();
-            }
-            let vl: Vec<i64> = vec![-1, 0, 25, 50, 75, 100];
-            let g_items = gl.iter().map(|&n| (n, if n == 0 { keep.clone() } else { n.to_string() }, false)).collect();
-            let f_items = fl.iter().map(|&n| (n, if n == 0 { keep.clone() } else if n == FPS_MAX { root.tr("rc.fpsMax") } else { format!("{n} FPS") }, false)).collect();
-            let v_items = vl
-                .iter()
-                .map(|&n| (n, if n == -1 { keep.clone() } else if n == 0 { root.tr("rc.mute") } else { format!("{n}%") }, false))
-                .collect();
-            rows.push(row_below(root.tr("rc.graphics"), None, chips(root, cx, "s-rc-graphics", g_items, &pick(&gl, graphics), |r, v, cx| set(r, json!({ "robloxConfig": { "graphics": v } }), cx))));
-            // ONE box: the number is typed in it, and its chevron opens the usual ones. (A list with arrows beside it,
-            // then with a − and a + beside it, were two controls for one number.) What is typed is kept on
-            // Enter or on leaving the box (shell.rs).
-            let open = root.settings.menu == Some("s-rc-fps");
-            let mut fps_box = field(&root.fps_box, None).w(px(150.)).h(px(34.));
-            if fps > 0 && fps != FPS_MAX {
-                fps_box = fps_box.child(div().flex_none().text_color(c(MUTED)).child("FPS"));
-            }
-            fps_box = fps_box.child(
-                hot("s-rc-fps")
-                    .size(px(24.))
-                    .flex_none()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .rounded(px(6.))
-                    .cursor_pointer()
-                    .child(icon(if open { "chevronUp" } else { "chevronDown" }, 14., c(MUTED)))
-                    .on_click(cx.listener(|r, _, _, cx| {
-                        toggle_menu(r, "s-rc-fps");
-                        cx.notify();
-                    })),
-            );
-            let mut fps_ctl = div().relative().flex_none().child(fps_box);
-            let chosen: std::rc::Rc<dyn Fn(&mut Root, i64, &mut Window, &mut Context<Root>)> = std::rc::Rc::new(|r, v, _, cx| set(r, json!({ "robloxConfig": { "fps": v } }), cx));
-            if let Some(menu) = menu_pop(root, cx, "s-rc-fps", f_items, Vec::new(), &pick(&fl, fps), chosen) {
-                fps_ctl = fps_ctl.child(menu);
-            }
-            rows.push(row_below(root.tr("rc.fps"), Some(root.tr("rc.fpsDesc")), fps_ctl));
-            rows.push(row_below(root.tr("rc.volume"), None, chips(root, cx, "s-rc-volume", v_items, &pick(&vl, volume), |r, v, cx| set(r, json!({ "robloxConfig": { "volume": v } }), cx))));
-        }
     }
     // The main account: which ones are, and a way to choose them, beside the settings that leave it out (people
     // didn't find the ⋮ menu's line). The star on an account's card sets it too.
@@ -637,6 +742,42 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
         rows.push(main_picker(root, cx));
     }
     group(Some(root.tr("rc.title")), rows)
+}
+
+/// Custom's RAM and CPU rows: the RAM limit, Save RAM, the played window first, the CPU limit (and putting them on
+/// windows already open, with a limit picked).
+fn memory_rows(root: &Root, st: &Value, cx: &mut Context<Root>) -> Vec<AnyElement> {
+    let ram = st.get("ramLimitMb").and_then(Value::as_i64).unwrap_or(0);
+    let mb = |n: f64| crate::lang::cur().mb(n);
+    let rams: Vec<(i64, String, bool)> = vec![
+        (0, root.tr("set.ramLimitOff"), false),
+        (-1, root.tr("set.ramLimitAuto"), false),
+        (512, mb(512.), false),
+        (768, mb(768.), false),
+        (1024, mb(1024.), false),
+        (1536, mb(1536.), false),
+        (2048, mb(2048.), false),
+    ];
+    let cpu = st.get("cpuLimit").and_then(Value::as_i64).unwrap_or(0);
+    let cpus: Vec<(i64, String, bool)> = [0, 1, 2, 3, 5, 10, 15, 20, 30, 50].into_iter().map(|n| (n, if n == 0 { root.tr("set.ramLimitOff") } else { format!("{n} %") }, false)).collect();
+    let cores = st.get("cores").unwrap_or(&Value::Null);
+    let cores_desc = if flag(cores, "hybrid") {
+        root.i18n.tv("set.coresDesc", &[("e", &cores.get("efficient").and_then(Value::as_i64).unwrap_or(0).to_string())])
+    } else {
+        root.tr("set.coresDescOne")
+    };
+    let mut rows = vec![
+        row_below(root.tr("set.ramLimit"), Some(root.tr("set.ramLimitDesc")), chips(root, cx, "s-ram", rams, &ram, |r, v, cx| set(r, json!({ "ramLimitMb": v }), cx))),
+        row(root.tr("set.trim"), Some(root.tr("set.trimDesc")), switch("s-trim", flag(st, "trimBackground"), cx, |r, on, cx| set(r, json!({ "trimBackground": on }), cx))),
+        row(root.tr("set.mute"), Some(root.tr("set.muteDesc")), switch("s-mute", flag(st, "muteBackground"), cx, |r, on, cx| set(r, json!({ "muteBackground": on }), cx))),
+        row(root.tr("set.cores"), Some(cores_desc), switch("s-cores", flag(st, "splitCores"), cx, |r, on, cx| set(r, json!({ "splitCores": on }), cx))),
+        row_below(root.tr("set.cpuLimit"), Some(root.tr("set.cpuLimitDesc")), chips(root, cx, "s-cpu", cpus, &cpu, |r, v, cx| set(r, json!({ "cpuLimit": v }), cx))),
+    ];
+    // Only with a limit picked (RAM or CPU: the switch covers both): with none, there is nothing to put on open windows.
+    if ram != 0 || cpu != 0 {
+        rows.push(row(root.tr("set.ramLimitOpen"), Some(root.tr("set.ramLimitOpenDesc")), switch("s-ram-open", flag(st, "ramLimitOpen"), cx, |r, on, cx| set(r, json!({ "ramLimitOpen": on }), cx))));
+    }
+    rows
 }
 
 /// The accounts ticked as main ones, then kept (the app's setMain, the ticked on and the rest off).

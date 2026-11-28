@@ -172,7 +172,7 @@ impl App {
             "antiAfk": p.anti_afk,
             "autoRejoin": p.auto_rejoin,
             "rejoinWith": p.rejoin_with,
-            "profile": p.profile,
+            "profile": "",
             "restartHours": p.restart_hours,
             "arrange": p.arrange,
             "onJoin": p.on_join,
@@ -267,7 +267,7 @@ impl App {
             rejoin_with = String::new();
         }
         let delay = if a.get("delaySeconds").is_some_and(|v| v.is_number()) { Some(long_of(a, "delaySeconds").clamp(0, 120) as i32) } else { None };
-        let profile = if str_of(a, "profile") == AFK_PROFILE { AFK_PROFILE.to_string() } else { String::new() };
+        let profile = String::new();
         // A restart opens the same game again (or follows again); a preset without a game has nothing to restart.
         let restart_hours =
             if (!place.is_empty() || server == "follow") && RESTART_CHOICES.contains(&(long_of(a, "restartHours") as i32)) { long_of(a, "restartHours") as i32 } else { 0 };
@@ -795,7 +795,12 @@ impl App {
 
     pub fn preset_for(&self, id: Option<Guid>) -> Option<LaunchPreset> {
         let preset = id?;
-        self.vault(|d| d.settings.presets.iter().find(|p| p.id == preset).cloned()).ok().flatten()
+        // (Light AFK, a preset's own lean settings, is gone: Settings' Roblox mode covers it. A preset saved with it
+        // opens as a normal one.)
+        self.vault(|d| d.settings.presets.iter().find(|p| p.id == preset).cloned()).ok().flatten().map(|mut p| {
+            p.profile.clear();
+            p
+        })
     }
 
     /// What a window of this preset does once in its game: a light-AFK one is minimised, else the preset's choice, else

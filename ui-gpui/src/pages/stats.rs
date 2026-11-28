@@ -262,12 +262,7 @@ pub fn recent(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
     let mut list = div().flex().flex_col();
     for (i, e) in entries.iter().take(HOME_ROWS as usize).enumerate() {
         let at = secs(e, "at");
-        let tone = match s(e, "tone") {
-            "ok" => c(OK),
-            "warn" => c(WARN),
-            "bad" => c(BAD),
-            _ => c(DIM),
-        };
+        let tone = entry_tone(e);
         let when = if local_day(at) == today { crate::time::ago(now - at, &root.i18n) } else { format!("{} · {}", day_heading(root, local_day(at), today), clock_at(root, at)) };
         list = list.child(
             div()
@@ -2036,12 +2031,7 @@ fn log_list(root: &Root, cx: &mut Context<Root>) -> Div {
                     .child(day_heading(root, day, today)),
             );
         }
-        let tone = match s(e, "tone") {
-            "ok" => c(OK),
-            "warn" => c(WARN),
-            "bad" => c(BAD),
-            _ => c(DIM),
-        };
+        let tone = entry_tone(e);
         let tip: SharedString = if day == today { format!("{} · {}", crate::time::ago(now - at, &root.i18n), clock_at(root, at)) } else { clock_at(root, at) }.into();
         list = list.child(
             div()
@@ -2153,6 +2143,23 @@ impl Masks {
 fn is_error(l: &Value) -> bool {
     s(l, "kind") == "error"
 }
+/// An activity line's dot: joined green, dropped or signed out amber, failed red; the rest by what it is about: play
+/// (a window closed, restarted) blue, Bloxkeep's and Roblox's updates violet, sign-ins teal, schedules gold.
+fn entry_tone(e: &Value) -> Hsla {
+    match s(e, "tone") {
+        "ok" => c(OK),
+        "warn" => c(WARN),
+        "bad" => c(BAD),
+        _ => c(match s(e, "group") {
+            "play" => 0x4db8ff,
+            "updates" => 0xb388ff,
+            "signin" => 0x2ec4b6,
+            "schedule" => 0xffb547,
+            _ => DIM,
+        }),
+    }
+}
+
 fn is_account(l: &Value) -> bool {
     !s(l, "account").is_empty()
 }

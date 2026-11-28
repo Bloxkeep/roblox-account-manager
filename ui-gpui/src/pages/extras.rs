@@ -374,6 +374,64 @@ fn wn_clip(rel: &str, vi: bool) -> Option<String> {
     rel.strip_suffix(".webp").and_then(|stem| wn_picture(&format!("{stem}.mp4"), vi))
 }
 
+/// "A new version is ready": what happens (Bloxkeep closes a few seconds, then opens again), Later or Update now.
+/// Later (or the ×) keeps it from coming back for that version; it still installs at a quiet moment by itself.
+pub fn update_ready(r: &mut Root, version: String, window: &mut Window, cx: &mut Context<Root>) {
+    let this = cx.weak_entity();
+    let (small, title, text, later, now) = (
+        format!("Bloxkeep {version}"),
+        r.tr("upd.popTitle"),
+        r.tr("upd.popBody"),
+        r.tr("upd.later"),
+        r.tr("upd.now"),
+    );
+    window.open_dialog(cx, move |dialog, _, _| {
+        let v = version.clone();
+        let put_off = move |_: &ClickEvent, w: &mut Window, cx: &mut App| {
+            crate::prefs::set("updPopupLater", json!(v.clone()));
+            w.close_dialog(cx);
+        };
+        let put_off_x = put_off.clone();
+        let go = this.clone();
+        let head = div()
+            .w_full()
+            .flex()
+            .items_start()
+            .justify_between()
+            .pl(px(24.))
+            .pr(px(14.))
+            .pt(px(20.))
+            .child(div().size(px(40.)).rounded(px(10.)).bg(c(RAISED)).flex().items_center().justify_center().child(icon("download", 20., c(FACE))))
+            .child(dialog_x(later.clone(), put_off_x));
+        let body = div()
+            .flex()
+            .flex_col()
+            .child(div().text_size(px(T_S)).text_color(c(MUTED)).mb(px(4.)).child(small.clone()))
+            .child(div().text_size(px(19.)).line_height(px(26.)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).mb(px(8.)).child(title.clone()))
+            .child(div().text_size(px(T_M)).line_height(px(21.)).text_color(c(TEXT_2)).child(text.clone()));
+        dialog
+            .close_button(false)
+            .p_0()
+            .gap_0()
+            .title(head)
+            .w(px(440.))
+            .centered()
+            .entrance(DialogEntrance::FadeSlide)
+            .child(dialog_body(body))
+            .footer(
+                dialog_foot()
+                    .child(Button::new("upd-later", later.clone()).on_click(put_off))
+                    .child(Button::new("upd-now", now.clone()).icon("refresh").primary().on_click(move |_, w, cx| {
+                        w.close_dialog(cx);
+                        let _ = go.update(cx, |r, cx| {
+                            r.ask("applyUpdate", json!({}), cx, |_, _| {});
+                            cx.notify();
+                        });
+                    })),
+            )
+    });
+}
+
 pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &mut Context<Root>) {
     if releases.is_empty() {
         return;

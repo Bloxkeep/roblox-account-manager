@@ -64,6 +64,7 @@ pub mod roblox_mods;
 pub mod roblox_crash_info;
 pub mod roblox_log_watcher;
 pub mod roblox_processes;
+pub mod roblox_sound;
 pub mod roblox_usage;
 pub mod server_regions;
 pub mod game_codes;

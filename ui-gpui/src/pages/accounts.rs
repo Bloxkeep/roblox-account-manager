@@ -2944,6 +2944,8 @@ fn more(root: &Root, picked: &[Value], cx: &mut Context<Root>) -> Div {
         .on_mouse_down_out(cx.listener(|r, _, _, cx| {
             if r.acc_menu {
                 r.acc_menu = false;
+                // (A press on the ⋮ button itself closed it here first; its click then opened it again.)
+                r.acc_drop_closed = Some(("acc-more", std::time::Instant::now()));
                 cx.notify();
             }
         }));
@@ -3089,7 +3091,9 @@ fn more(root: &Root, picked: &[Value], cx: &mut Context<Root>) -> Div {
         .relative()
         .flex_none()
         .child(IconButton::new("bar-more", "more").size(32.).selected(open).tip(root.tr("dock.moreTip")).on_click(cx.listener(|r, _, _, cx| {
-            r.acc_menu = !r.acc_menu;
+            let just = r.acc_drop_closed.is_some_and(|(k, at)| k == "acc-more" && at.elapsed().as_millis() < 300);
+            r.acc_drop_closed = None;
+            r.acc_menu = !just && !r.acc_menu;
             cx.notify();
         })))
         .child(popup(PopAt::AboveRight(38.), "acc-more-pop", open, menu))

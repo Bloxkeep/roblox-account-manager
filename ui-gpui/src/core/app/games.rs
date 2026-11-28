@@ -48,6 +48,8 @@ pub struct FriendFound {
 pub struct PrivateFound {
     pub server: PrivateServer,
     pub via: Vec<Guid>,
+    /// The owner's face (Roblox's headshot address), "" when Roblox gave none.
+    pub owner_picture: String,
 }
 
 #[derive(Default)]
@@ -619,7 +621,7 @@ impl App {
                                     f.via.push(viewer);
                                 }
                             }
-                            None => found.push(PrivateFound { server: s, via: vec![viewer] }),
+                            None => found.push(PrivateFound { server: s, via: vec![viewer], owner_picture: String::new() }),
                         }
                     }
                 }
@@ -635,6 +637,21 @@ impl App {
         }
         if !same_vault(&self.held_vault(), &Some(vault)) {
             return Err(Fail::user(l::t("Bloxkeep was locked.")));
+        }
+        // The owners' faces, in one asking (none is shown when it fails: their first letter stands in).
+        let owners: Vec<i64> = {
+            let mut ids: Vec<i64> = found.iter().map(|f| f.server.owner_id).filter(|id| *id > 0).collect();
+            ids.sort_unstable();
+            ids.dedup();
+            ids
+        };
+        if !owners.is_empty() {
+            let faces = rt::blocking(move || roblox_api::get_headshot_urls(owners, &Cancel::new())).await.unwrap_or_default();
+            for f in &mut found {
+                if let Some(url) = faces.get(&f.server.owner_id) {
+                    f.owner_picture = url.clone();
+                }
+            }
         }
         // Those every account asked can join first, then the fuller ones (people are playing there).
         let mut servers = found;
@@ -770,6 +787,10 @@ impl App {
                 "name": f.server.name,
                 "owner": if !f.server.owner_display_name.is_empty() { &f.server.owner_display_name } else { &f.server.owner_name },
                 "ownerName": f.server.owner_name,
+                "ownerId": f.server.owner_id,
+                "ownerPicture": f.owner_picture,
+                // Someone is in it now (Roblox gives the running server's id).
+                "running": f.server.job_id.is_some() || f.server.playing > 0,
                 "accessCode": f.server.access_code,
                 "playing": f.server.playing,
                 "maxPlayers": f.server.max_players,

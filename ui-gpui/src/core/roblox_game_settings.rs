@@ -132,10 +132,15 @@ pub fn fps_allowed(fps: i32) -> bool {
 pub const FPS_UNLIMITED: i32 = 9999;
 
 /// What a client opens with; None: nothing of Bloxkeep's. An account's own limit (Account.fps_cap) goes over
-/// the shared setup's and works without it; light AFK stays light, so only a lower limit goes over its own.
+/// the shared setup's and works without it; light AFK stays light, so only a lower limit goes over its own, the
+/// shared setup's included (Roblox settings at 15 FPS opened a light-AFK preset's windows at 30).
 pub fn for_launch(shared: &RobloxConfig, afk: bool, uses_shared: bool, account_fps: i32) -> Option<RobloxConfig> {
     let mut config = if afk {
-        Some(light_afk())
+        let mut light = light_afk();
+        if shared.mode != "off" && shared.fps > 0 && shared.fps < light.fps {
+            light.fps = shared.fps;
+        }
+        Some(light)
     } else if uses_shared {
         Some(RobloxConfig { graphics: shared.graphics, fps: shared.fps, volume: shared.volume, ..RobloxConfig::default() })
     } else {
@@ -151,10 +156,9 @@ pub fn for_launch(shared: &RobloxConfig, afk: bool, uses_shared: bool, account_f
     config
 }
 
-/// A preset's light AFK profile: lowest graphics, the lowest FPS limit Roblox's menu offers (30; lower is
-/// untested) and no sound.
+/// A preset's light AFK profile: lowest graphics, 20 FPS (as Settings' AFK farming) and no sound.
 pub fn light_afk() -> RobloxConfig {
-    RobloxConfig { mode: "all".into(), graphics: 1, fps: 30, volume: 0, extra: Extra::new() }
+    RobloxConfig { mode: "all".into(), graphics: 1, fps: 20, volume: 0, extra: Extra::new() }
 }
 
 /// Before opening an account: the shared setup if it uses it, the person's own values for everything else managed
@@ -401,7 +405,8 @@ fn holds_light_afk(now: &HashMap<String, String>) -> bool {
     wanted(&light_afk()).iter().all(|(key, value)| match (number(now.get(key)), number(Some(value))) {
         (Some(have), Some(afk)) => {
             if key == "FramerateCap" {
-                have > 0.0 && have <= afk
+                // (30: what older versions' light AFK wrote.)
+                have > 0.0 && have <= afk.max(30.0)
             } else {
                 have == afk
             }

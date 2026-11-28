@@ -303,6 +303,9 @@ fn proxy_host_port() -> Option<String> {
 /// gives the page instead of the transport's own words; the real error is in error.log. Pages show it in the reader's
 /// language (`why_words`), and the title bar's notice (shell) looks again at once.
 pub const UNREACHABLE: &str = "Roblox can't be reached";
+/// Roblox refused a chat message because the account's privacy settings turn chat off (403, reason_code
+/// "chat_disabled"): said as that, not as "Roblox 403".
+pub const CHAT_OFF: &str = "Roblox chat off";
 
 static ROBLOX_FAILED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
@@ -333,6 +336,8 @@ pub fn why_words(i18n: &crate::i18n::I18n, why: &str) -> String {
         "Roblox".into()
     } else if why == UNREACHABLE {
         i18n.t("net.unreachableWhy")
+    } else if why == CHAT_OFF {
+        i18n.t("net.chatOff")
     } else {
         why.to_string()
     }

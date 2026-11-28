@@ -277,6 +277,8 @@ pub struct Root {
     pub iv_q: Entity<InputState>,
     /// What's new was shown by itself in this run (once, after an update).
     wn_shown: bool,
+    /// The update the "new version is ready" box was shown for in this run (each version once).
+    upd_popup: Option<String>,
     pub join: pages::join::Data,
     /// Visibility on Roblox: its box's state.
     pub vis: pages::visibility::Data,
@@ -819,6 +821,7 @@ impl Root {
             iv_pw,
             iv_q,
             wn_shown: false,
+            upd_popup: None,
             join: Default::default(),
             vis: Default::default(),
             pending: Vec::new(),
@@ -1195,6 +1198,7 @@ impl Root {
         pages::rsettings::settle(self, window, cx);
         pages::wiki::settle(self, window, cx);
         pages::communities::settle(self, window, cx);
+        pages::servers::settle(self, window, cx);
         pages::accounts::settle_job(window, cx);
         // Settings left (or the app locked): typed passwords emptied, the Discord link hidden again.
         pages::settings::settle(self, window, cx);
@@ -1474,6 +1478,9 @@ impl Root {
         pages::home::setup_follow(self, cx);
         // The theme it says is in use (Settings › Appearance): its colours, and the picture behind the window.
         crate::theme::follow(&self.state, cx);
+        if !self.locked() {
+            pages::settings::move_old_afk_farming(self);
+        }
         let picked = self.selected.len();
         self.prune_selected(cx);
         if self.help_open {
@@ -1484,6 +1491,24 @@ impl Root {
             if let Some(list) = self.state.pointer("/whatsNew/releases").and_then(Value::as_array).filter(|l| !l.is_empty()).cloned() {
                 self.show_whats_new(list);
                 self.send("seenWhatsNew", json!({}));
+            }
+        }
+        // An update downloaded (or a package put into the packages folder) and waiting: offered once per version, unless
+        // Later was picked for it. A quiet fix installs by itself and isn't offered, one put there by hand is.
+        if !self.locked() {
+            let u = self.state.get("update").cloned().unwrap_or(Value::Null);
+            let flag = |k: &str| u.get(k).and_then(Value::as_bool).unwrap_or(false);
+            let version = u.get("version").and_then(Value::as_str).unwrap_or_default().to_string();
+            let later = crate::prefs::get("updPopupLater").and_then(|v| v.as_str().map(String::from));
+            if u.get("status").and_then(Value::as_str) == Some("ready")
+                && (!flag("quiet") || flag("staged"))
+                && !version.is_empty()
+                && later.as_deref() != Some(version.as_str())
+                && self.upd_popup.as_deref() != Some(version.as_str())
+            {
+                self.upd_popup = Some(version.clone());
+                self.pending.push(Pending::UpdateReady(version));
+                cx.notify();
             }
         }
         // A window here that just closed: noted, and drawn again once the minute is over.
@@ -1854,7 +1879,7 @@ impl Root {
                 // (Anti-AFK's Other key grid open.)
                 "afk-keys" => self.settings.afk_keys = true,
                 "restore" => {
-                    self.settings.part = Part::Backup;
+                    self.settings.part = Part::Security;
                     self.settings.asking = Some("restore");
                 }
                 "rbx-update" => {
@@ -2286,7 +2311,8 @@ impl Root {
     /// Home's data the state doesn't carry: the games played lately, then the pictures of every game it shows.
     pub fn want_home_data(&mut self, cx: &mut Context<Self>) {
         let Some(link) = self.link.clone() else { return };
-        if self.page == Page::Auto && !self.state.is_null() && !self.locked() {
+        // (Home's Presets row shows their games' pictures too.)
+        if matches!(self.page, Page::Auto | Page::Home) && !self.state.is_null() && !self.locked() {
             pages::auto::want(self);
         }
         if self.page == Page::Stats && !self.state.is_null() && !self.locked() {
@@ -2838,6 +2864,7 @@ impl Root {
     fn open_pending(&mut self, p: Pending, window: &mut Window, cx: &mut Context<Self>) {
         match p {
             Pending::WhatsNew(list) => pages::extras::whats_new(self, list, window, cx),
+            Pending::UpdateReady(v) => pages::extras::update_ready(self, v, window, cx),
             // Add account: the sign-in screen, with the other ways on it (the phone's code, Roblox's browser sign-in,
             // a cookie, a Bloxkeep file).
             Pending::Add => pages::password::open(self, window, cx),
@@ -3307,7 +3334,9 @@ impl Root {
     fn save_fps(&mut self, cx: &mut Context<Self>) {
         let Some(fps) = self.fps_box.read(cx).value().trim().parse::<f64>().ok().map(|v| (v.round() as i64).clamp(5, 360)) else { return };
         if self.state.pointer("/settings/robloxConfig/fps").and_then(Value::as_i64) != Some(fps) {
-            self.send("setSettings", json!({ "robloxConfig": { "fps": fps } }));
+            let off = self.state.pointer("/settings/robloxConfig/mode").and_then(Value::as_str).is_none_or(|m| m.is_empty() || m == "off");
+            let rc = if off { json!({ "fps": fps, "mode": "all" }) } else { json!({ "fps": fps }) };
+            self.send("setSettings", json!({ "robloxConfig": rc }));
         }
     }
 
@@ -4677,6 +4706,8 @@ enum Pending {
     /// Add account: which way.
     Add,
     WhatsNew(Vec<Value>),
+    /// "A new version is ready": the version.
+    UpdateReady(String),
 }
 
 impl Render for Root {

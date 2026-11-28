@@ -197,6 +197,9 @@ fn refused(url: &str, code: u16, r: ureq::Response) -> String {
         .and_then(|v| v.pointer("/errors/0/message").and_then(Value::as_str).map(str::to_string))
         .unwrap_or_else(|| body.chars().filter(|c| !c.is_control()).take(160).collect());
     crate::net::note_failed("Roblox said", url, &format!("{code}: {}", if said.trim().is_empty() { "no reason given" } else { said.trim() }));
+    if code == 403 && (body.contains("\"reason_code\":\"chat_di") || body.contains("Chat is disabled")) {
+        return crate::net::CHAT_OFF.into();
+    }
     format!("Roblox {code}")
 }
 
@@ -3012,6 +3015,11 @@ fn club_book() -> &'static std::sync::Mutex<HashMap<i64, HashMap<i64, String>>> 
     BOOK.get_or_init(Default::default)
 }
 
+/// An account just joined a community: its communities are asked of Roblox again at the next look.
+pub fn club_forget(user: i64) {
+    club_book().hold().remove(&user);
+}
+
 pub fn club_left(id: i64, user: i64) {
     {
         let mut book = club_book().hold();
@@ -3733,6 +3741,179 @@ pub struct Free {
 fn free_book() -> &'static std::sync::Mutex<(HashMap<i64, i64>, HashMap<i64, (i64, String)>)> {
     static BOOK: std::sync::OnceLock<std::sync::Mutex<(HashMap<i64, i64>, HashMap<i64, (i64, String)>)>> = std::sync::OnceLock::new();
     BOOK.get_or_init(Default::default)
+}
+
+/// A Limited resold below what it is worth: Roblox's cheapest price for it now (`ware.price`), against Rolimons' RAP
+/// (what it sold for lately) and Value (Rolimons' own figure; the RAP where it gives none). `projected`: Rolimons says
+/// its RAP was pushed up by a few sales, so a "deal" against it isn't one.
+#[derive(Clone, Debug, Default)]
+pub struct LimitedDeal {
+    pub ware: Ware,
+    pub rap: i64,
+    pub value: i64,
+    pub projected: bool,
+}
+
+impl LimitedDeal {
+    /// How much cheaper than its RAP (or its Value), in %, counted as Rolimons' Deals page counts it: 100 − price ÷ it.
+    pub fn off(&self, by_value: bool) -> i64 {
+        let base = if by_value { self.value } else { self.rap };
+        match self.ware.price {
+            Some(p) if p > 0 && base > 0 => 100 - (p * 100 + base / 2) / base,
+            _ => 0,
+        }
+    }
+}
+
+/// What Rolimons says of one Limited: (bundle, id, name, RAP, Value or the RAP, projected).
+type Rated = (bool, i64, String, i64, i64, bool);
+
+/// Rolimons' figures for every Limited (api.rolimons.com's item details, no sign-in), kept 10 minutes: its figures
+/// move slowly and it asks callers to keep their reads few.
+fn rolimons_rated() -> Result<Vec<Rated>, String> {
+    static KEPT: std::sync::Mutex<Option<(std::time::Instant, Vec<Rated>)>> = std::sync::Mutex::new(None);
+    if let Some((at, list)) = KEPT.lock().unwrap_or_else(|e| e.into_inner()).as_ref()
+        && at.elapsed() < Duration::from_secs(600)
+    {
+        return Ok(list.clone());
+    }
+    let d = get("https://api.rolimons.com/items/v3/itemdetails", None)?;
+    let mut list = Vec::new();
+    for (bundle, key) in [(false, "assets"), (true, "bundles")] {
+        for (id, v) in d.get(key).and_then(Value::as_object).into_iter().flatten() {
+            // [name, acronym, rap, value, default value (the value, else the RAP), demand, trend, projected, hyped, …]
+            let f = |i: usize| v.get(i).and_then(Value::as_i64).unwrap_or(-1);
+            let (Ok(id), Some(name)) = (id.parse::<i64>(), v.get(0).and_then(Value::as_str)) else { continue };
+            let rap = f(2);
+            if rap > 0 {
+                list.push((bundle, id, name.to_string(), rap, if f(4) > 0 { f(4) } else { rap }, f(7) == 1));
+            }
+        }
+    }
+    if list.is_empty() {
+        return Err("Rolimons sent no items".into());
+    }
+    *KEPT.lock().unwrap_or_else(|e| e.into_inner()) = Some((std::time::Instant::now(), list.clone()));
+    Ok(list)
+}
+
+/// Every Limited's cheapest price now, by (bundle, id): read from Roblox in full at most every PRICES_FULL (its
+/// catalog's details, 120 things a call, no sign-in), and in between brought up to date from Rolimons' feed of the last
+/// minutes' changes (one call), as Rolimons' own Deals page keeps itself current. RAPs that changed since come with it.
+struct Prices {
+    full_at: Option<std::time::Instant>,
+    price: HashMap<(bool, i64), i64>,
+    rap: HashMap<(bool, i64), i64>,
+}
+
+static PRICES: std::sync::LazyLock<std::sync::Mutex<Prices>> = std::sync::LazyLock::new(|| std::sync::Mutex::new(Prices { full_at: None, price: HashMap::new(), rap: HashMap::new() }));
+
+/// How often every price is asked of Roblox again (some 22 calls, spaced): Roblox refuses (429) a burst of them.
+const PRICES_FULL: Duration = Duration::from_secs(30 * 60);
+
+/// All the prices, asked of Roblox a call at a time with a pause between; one refused for asking too often is asked
+/// once more after a wait, then the rest wait for the next full read. Err only when none came.
+fn read_all_prices(rated: &[Rated]) -> Result<HashMap<(bool, i64), i64>, String> {
+    let mut prices: HashMap<(bool, i64), i64> = HashMap::new();
+    let mut failed: Option<String> = None;
+    for (n, chunk) in rated.chunks(120).enumerate() {
+        if n > 0 {
+            std::thread::sleep(Duration::from_millis(400));
+        }
+        let items: Vec<Value> = chunk.iter().map(|r| serde_json::json!({ "itemType": if r.0 { "Bundle" } else { "Asset" }, "id": r.1 })).collect();
+        let body = serde_json::json!({ "items": items });
+        let mut got = post("https://catalog.roblox.com/v1/catalog/items/details", &body, None);
+        if got.as_ref().is_err_and(|e| e.contains("429")) {
+            std::thread::sleep(Duration::from_secs(5));
+            got = post("https://catalog.roblox.com/v1/catalog/items/details", &body, None);
+        }
+        match got {
+            Ok(d) => {
+                for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
+                    let resale = int(v, "lowestResalePrice");
+                    let price = if resale > 0 { resale } else { int(v, "lowestPrice") };
+                    if price > 0 {
+                        prices.insert((text(v, "itemType") == "Bundle", int(v, "id")), price);
+                    }
+                }
+            }
+            Err(e) => {
+                let stop = e.contains("429");
+                failed.get_or_insert(e);
+                if stop {
+                    break;
+                }
+            }
+        }
+    }
+    if prices.is_empty() { Err(failed.unwrap_or_else(|| "Roblox sent no prices".into())) } else { Ok(prices) }
+}
+
+/// Rolimons' feed of the last minutes: [when, kind (0 the cheapest price, 1 the RAP), id, 1 an item or 2 a bundle,
+/// the new figure]; a cheapest price of 0 is none on sale any more.
+fn follow_price_feed(p: &mut Prices) {
+    let Ok(d) = get("https://api.rolimons.com/market/v2/dealactivity", None) else { return };
+    for a in d.get("activities").and_then(Value::as_array).into_iter().flatten() {
+        let f = |i: usize| a.get(i).and_then(Value::as_i64).unwrap_or(-1);
+        let key = (f(3) == 2, f(2));
+        match (f(1), f(4)) {
+            (0, 0) => {
+                p.price.remove(&key);
+            }
+            (0, price) if price > 0 => {
+                p.price.insert(key, price);
+            }
+            (1, rap) if rap > 0 => {
+                p.rap.insert(key, rap);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// The Limiteds resold now at least `least` % below their RAP or their Value, the cheapest against the RAP first. The
+/// RAP and Value are Rolimons'; the prices Roblox's own (see Prices), so a price is the one the Marketplace sells at.
+/// Projected ones are left out, as Rolimons' Deals page hides them.
+pub fn limited_deals(least: i64) -> Result<Vec<LimitedDeal>, String> {
+    let rated = rolimons_rated()?;
+    let full = PRICES.lock().unwrap_or_else(|e| e.into_inner()).full_at.is_none_or(|t| t.elapsed() >= PRICES_FULL);
+    if full {
+        let read = read_all_prices(&rated);
+        let mut p = PRICES.lock().unwrap_or_else(|e| e.into_inner());
+        match read {
+            Ok(prices) => {
+                p.price.extend(prices);
+                p.rap.clear();
+                p.full_at = Some(std::time::Instant::now());
+            }
+            Err(e) if p.price.is_empty() => return Err(e),
+            Err(_) => {}
+        }
+    } else {
+        follow_price_feed(&mut PRICES.lock().unwrap_or_else(|e| e.into_inner()));
+    }
+    let (prices, raps) = {
+        let p = PRICES.lock().unwrap_or_else(|e| e.into_inner());
+        (p.price.clone(), p.rap.clone())
+    };
+    let mut list: Vec<LimitedDeal> = rated
+        .into_iter()
+        .filter(|r| !r.5)
+        .filter_map(|(bundle, id, name, rap, value, projected)| {
+            let price = *prices.get(&(bundle, id))?;
+            let rap = raps.get(&(bundle, id)).copied().unwrap_or(rap);
+            Some(LimitedDeal { ware: Ware { id, bundle, name, price: Some(price), ..Default::default() }, rap, value, projected })
+        })
+        .filter(|d| d.off(false) >= least || d.off(true) >= least)
+        .collect();
+    list.sort_by_key(|d| std::cmp::Reverse(d.off(false)));
+    let of = |bundle: bool| list.iter().filter(|d| d.ware.bundle == bundle).map(|d| d.ware.id).collect::<Vec<i64>>();
+    let items = thumbs("assets?size=420x420&assetIds=", &of(false));
+    let bundles = thumbs("bundles/thumbnails?size=420x420&bundleIds=", &of(true));
+    for d in &mut list {
+        d.ware.pic = if d.ware.bundle { bundles.get(&d.ware.id) } else { items.get(&d.ware.id) }.cloned().unwrap_or_default();
+    }
+    Ok(list)
 }
 
 /// The most new things asked about in one read (a call each): the rest wait for the next read.

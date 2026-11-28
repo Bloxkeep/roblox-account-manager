@@ -20,7 +20,7 @@ use crate::val::flag;
 pub mod appearance;
 mod discord;
 mod roblox;
-pub(crate) use roblox::{level_now, level_settings};
+pub(crate) use roblox::{level_now, level_settings, move_old_afk_farming};
 pub(crate) use roblox::FPS_MAX;
 /// A custom theme's code, for the checks.
 #[cfg(feature = "core")]
@@ -39,18 +39,18 @@ pub fn ensure_discord(r: &mut Root, window: &mut Window, cx: &mut Context<Root>)
 pub enum Part {
     #[default]
     Launch,
-    Roblox,
     Perf,
+    Roblox,
     Notify,
     Discord,
     Appearance,
+    /// Security and the backups (the vault, its password, locking, copies of it, its files).
     Security,
-    Backup,
     Updates,
 }
 
 impl Part {
-    pub const ALL: [Part; 9] = [Part::Launch, Part::Roblox, Part::Perf, Part::Notify, Part::Discord, Part::Appearance, Part::Security, Part::Backup, Part::Updates];
+    pub const ALL: [Part; 8] = [Part::Launch, Part::Perf, Part::Roblox, Part::Notify, Part::Discord, Part::Appearance, Part::Security, Part::Updates];
     pub fn key(self) -> &'static str {
         match self {
             Part::Launch => "launch",
@@ -60,7 +60,6 @@ impl Part {
             Part::Discord => "discord",
             Part::Appearance => "appearance",
             Part::Security => "security",
-            Part::Backup => "backup",
             Part::Updates => "updates",
         }
     }
@@ -72,8 +71,7 @@ impl Part {
             Part::Notify => "bell",
             Part::Discord => "discord",
             Part::Appearance => "palette",
-            Part::Security => "key",
-            Part::Backup => "cloud",
+            Part::Security => "lock",
             Part::Updates => "download",
         }
     }
@@ -87,7 +85,6 @@ impl Part {
             Part::Discord => "Discord",
             Part::Appearance => "set.appearance",
             Part::Security => "set.p.security",
-            Part::Backup => "set.p.backup",
             Part::Updates => "set.p.updates",
         }
     }
@@ -143,6 +140,8 @@ pub struct Data {
     pub dc_board_preview: bool,
     /// Anti-AFK's key list open under its row (Other key).
     pub afk_keys: bool,
+    /// The rows that hold others (`fold`) opened.
+    pub open: HashSet<&'static str>,
     pub dc_alerts_want: Option<bool>,
     /// Discord's tab: "summary", "alerts", "messages", "control".
     pub dc_tab: &'static str,
@@ -299,7 +298,6 @@ fn build_part(root: &Root, p: Part, cx: &mut Context<Root>) -> Vec<Div> {
         Part::Discord => discord::discord(root, cx),
         Part::Appearance => appearance::appearance(root, cx),
         Part::Security => security(root, cx),
-        Part::Backup => backup(root, cx),
         Part::Updates => updates(root, cx),
     }
 }
@@ -406,6 +404,69 @@ pub(super) fn found(words: &str, el: AnyElement) -> AnyElement {
         }
         Some(false) => div().into_any_element(),
     }
+}
+
+/// A row that holds others (Windows Settings' and PowerToys' expanders): its name and what it does, its own control
+/// if it has one, and a chevron; its rows show under it once opened, a step in. The name or the chevron opens it, so
+/// its switch still only switches. While searched its rows are read too, so the search finds them.
+fn fold(root: &Root, cx: &mut Context<Root>, key: &'static str, title: String, desc: Option<String>, ctl: Option<AnyElement>, kids: Vec<AnyElement>) -> AnyElement {
+    let open = root.settings.open.contains(key);
+    let words = with_en(format!("{title} {}", desc.as_deref().unwrap_or_default()), &[&title, desc.as_deref().unwrap_or_default()]);
+    let flip = move |r: &mut Root, cx: &mut Context<Root>| {
+        if !r.settings.open.remove(key) {
+            r.settings.open.insert(key);
+        }
+        cx.notify();
+    };
+    let head = div()
+        .px(px(ROW_X))
+        .py(px(12.))
+        .min_h(px(58.))
+        .flex()
+        .flex_wrap()
+        .items_center()
+        .gap_x(px(24.))
+        .gap_y(px(10.))
+        .child(
+            div()
+                .id(SharedString::from(format!("fold-{key}")))
+                .flex_1()
+                .min_w(px(220.))
+                .cursor_pointer()
+                .child(row_words(title, desc))
+                .on_click(cx.listener(move |r, _, _, cx| flip(r, cx))),
+        )
+        .child(
+            div()
+                .flex_none()
+                .flex()
+                .items_center()
+                .justify_end()
+                .gap(px(10.))
+                .children(ctl)
+                .child(
+                    hot(SharedString::from(format!("fold-chev-{key}")))
+                        .size(px(28.))
+                        .flex_none()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .rounded(px(6.))
+                        .cursor_pointer()
+                        .child(icon(if open { "chevronUp" } else { "chevronDown" }, 16., c(MUTED)))
+                        .on_click(cx.listener(move |r, _, _, cx| flip(r, cx))),
+                ),
+        )
+        .into_any_element();
+    let head = found(&words, head);
+    if !open && !finding() {
+        return head;
+    }
+    let mut inner = div().flex().flex_col().bg(ca(GROUND, 0.16)).border_t_1().border_color(c(LINE));
+    for (i, k) in kids.into_iter().enumerate() {
+        inner = inner.child(div().pl(px(28.)).when(i > 0, |d| d.border_t_1().border_color(c(LINE))).child(k));
+    }
+    div().flex().flex_col().child(head).child(inner).into_any_element()
 }
 
 /// A setting whose choice is a menu or a short switch of words: since the menus are compact, the same as a row.
@@ -1190,11 +1251,11 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         );
     }
     let rename = flag(st, "renameWindows");
-    windows.push(row(root.tr("set.rename"), Some(root.tr("set.renameDesc")), switch("s-rename", rename, cx, |r, on, cx| set(r, json!({ "renameWindows": on }), cx))));
+    let mut shown_on = vec![row(root.tr("set.rename"), Some(root.tr("set.renameDesc")), switch("s-rename", rename, cx, |r, on, cx| set(r, json!({ "renameWindows": on }), cx)))];
     let pictures = st.get("windowPictures").and_then(Value::as_bool).unwrap_or(rename);
-    windows.push(row(root.tr("set.pictures"), Some(root.tr("set.picturesDesc")), switch("s-pictures", pictures, cx, |r, on, cx| set(r, json!({ "windowPictures": on }), cx))));
+    shown_on.push(row(root.tr("set.pictures"), Some(root.tr("set.picturesDesc")), switch("s-pictures", pictures, cx, |r, on, cx| set(r, json!({ "windowPictures": on }), cx))));
     let taskbar = Some(s(st, "taskbarGroups")).filter(|x| !x.is_empty()).unwrap_or("roblox").to_string();
-    windows.push(row_below(
+    shown_on.push(row_below(
         root.tr("set.taskbar"),
         Some(root.tr("set.taskbarDesc")),
         chips(
@@ -1206,8 +1267,9 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             |r, v, cx| set(r, json!({ "taskbarGroups": v }), cx),
         ),
     ));
+    let mut win = Vec::new();
     let open_as = if flag(m, "tile") { "tile" } else if flag(st, "maximizeOnOpen") { "maximize" } else { "roblox" }.to_string();
-    windows.push(row_below(
+    win.push(row_below(
         root.tr("set.openAs"),
         Some(root.tr("set.openAsDesc")),
         chips(
@@ -1230,7 +1292,7 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     // above says where it stands; the two hold together, a minimised window opening into its tile or maximised. (A
     // "show" kept from when this row had that choice is left open, as it meant.)
     let on_join = if s(st, "onJoin") == "minimise" { "minimise" } else { "keep" }.to_string();
-    windows.push(row_below(
+    win.push(row_below(
         root.tr("set.onJoin"),
         Some(root.tr("set.onJoinDesc")),
         chips(
@@ -1279,7 +1341,8 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                 .child(Button::new("s-arrange", root.tr("m.arrange")).icon("screens").small().on_click(cx.listener(|r, _, _, cx| crate::pages::accounts::arrange(r, cx)))),
         );
     }
-    windows.push(row_wide(root.tr("set.winLayout"), Some(root.tr("set.winLayoutDesc")), layout_ctl));
+    win.push(fold(root, cx, "layout", root.tr("set.winLayout"), Some(root.tr("set.winLayoutDesc")), None, vec![div().px(px(ROW_X)).py(px(14.)).child(layout_ctl).into_any_element()]));
+    win.push(fold(root, cx, "on-window", root.tr("set.onWindow"), Some(root.tr("set.onWindowDesc")), None, shown_on));
 
     // What opens Roblox: other Bloxstrap-style launchers only when found here (or still the one chosen); VNG always last.
     let has = |k: &str| flag(ins, k);
@@ -1343,7 +1406,7 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     } else {
         None
     };
-    let mut client = vec![row_below(
+    windows.push(row_below(
         root.tr("set.client"),
         Some(root.tr("set.clientDesc")),
         div()
@@ -1355,21 +1418,23 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             .child(Button::new("s-pick-launcher", root.tr("launch.pickBtn")).icon("folder").small().quiet().on_click(cx.listener(|r, _, _, cx| {
                 r.ask("pickLauncher", json!({}), cx, |_, _| {})
             }))),
-    )];
+    ));
     if let Some(n) = store_note {
-        client.push(note("info", n, TEXT_2));
+        windows.push(note("info", n, TEXT_2));
     }
     let close = flag(st, "closeAfterLeave");
-    client.push(row(root.tr("set.closeAfterLeave"), Some(root.tr("set.closeAfterLeaveDesc")), switch("s-close-leave", close, cx, |r, on, cx| set(r, json!({ "closeAfterLeave": on }), cx))));
     let own = flag(st, "ownRobloxLinks");
-    client.push(row(root.tr("set.ownLinks"), Some(root.tr("set.ownLinksDesc")), switch("s-own-links", own, cx, |r, on, cx| set(r, json!({ "ownRobloxLinks": on }), cx))));
+    let rare = vec![
+        row(root.tr("set.ownLinks"), Some(root.tr("set.ownLinksDesc")), switch("s-own-links", own, cx, |r, on, cx| set(r, json!({ "ownRobloxLinks": on }), cx))),
+        row(root.tr("set.closeAfterLeave"), Some(root.tr("set.closeAfterLeaveDesc")), switch("s-close-leave", close, cx, |r, on, cx| set(r, json!({ "closeAfterLeave": on }), cx))),
+    ];
     let delay = st.get("launchDelaySeconds").and_then(Value::as_i64).unwrap_or(0);
     let mut delays: Vec<i64> = DELAYS.to_vec();
     if !delays.contains(&delay) {
         delays.push(delay);
         delays.sort_unstable();
     }
-    client.push(row_below(
+    windows.push(row_below(
         root.tr("set.delay"),
         Some(root.tr("set.delayDesc")),
         chips(
@@ -1381,7 +1446,7 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             |r, v, cx| set(r, json!({ "launchDelaySeconds": v }), cx),
         ),
     ));
-    vec![group(Some(root.tr("set.g.windows")), windows), group(Some(root.tr("set.g.client")), client)]
+    vec![group(None, windows), group(Some(root.tr("set.g.win")), win), group(Some(root.tr("set.g.rare")), rare)]
 }
 
 // ───────────────────────── Staying in game ─────────────────────────
@@ -1414,93 +1479,55 @@ fn perf(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     for n in [1, 2, 3, 5, 8, 10, 15, 20] {
         hops.push((n, if n == 1 { root.tr("set.hopN1") } else { root.i18n.tv("set.hopN", &[("n", &n.to_string())]) }, false));
     }
-    let daily = root.state.get("dailySignInCheck").and_then(Value::as_bool).unwrap_or(true);
-    let mut daily_desc = root.tr("set.dailyDesc");
-    if let Some(at) = root.state.get("lastSignInCheck").and_then(Value::as_str).and_then(crate::time::iso_secs) {
-        let local = at + crate::time::utc_offset_secs();
-        let today = (crate::time::now_secs() + crate::time::utc_offset_secs()).div_euclid(86400);
-        let hm = format!("{:02}:{:02}", local.rem_euclid(86400) / 3600, local.rem_euclid(3600) / 60);
-        let when = if local.div_euclid(86400) == today {
-            hm
-        } else {
-            let t = local.div_euclid(86400) * 86400;
-            let date = civil_dm(t / 86400);
-            format!("{date} {hm}")
-        };
-        daily_desc = format!("{daily_desc} {}", root.i18n.tv("set.dailyLast", &[("t", &when)]));
-    }
-    let keep = vec![
-        row(root.tr("set.rejoin"), Some(root.tr("set.rejoinDesc")), rejoin_ctl),
-        row_below(root.tr("set.rejoinWait"), Some(root.tr("set.rejoinWaitDesc")), {
-            let now = st.get("rejoinWaitSeconds").and_then(Value::as_i64).unwrap_or(0);
-            let mut waits: Vec<i64> = vec![0, 10, 30, 60, 120];
-            if !waits.contains(&now) {
-                waits.push(now);
-                waits.sort_unstable();
-            }
-            let items = waits.into_iter().map(|n| (n, if n == 0 { root.tr("set.rejoinWait0") } else if n % 60 == 0 { root.i18n.tv("set.minutesN", &[("n", &(n / 60).to_string())]) } else { root.i18n.tv("set.seconds", &[("n", &n.to_string())]) }, false)).collect();
-            chips(root, cx, "s-rejoin-wait", items, &now, |r, v, cx| set(r, json!({ "rejoinWaitSeconds": v }), cx))
-        }),
-        row(root.tr("set.antiAfk"), Some(root.tr("set.antiAfkDesc")), switch("s-antiafk", flag(st, "antiAfk"), cx, |r, on, cx| set(r, json!({ "antiAfk": on }), cx))),
-        row_below(root.tr("set.antiAfkEvery"), Some(root.tr("set.antiAfkEveryDesc")), {
-            let now = st.get("antiAfkMinutes").and_then(Value::as_i64).unwrap_or(12);
-            let mut every: Vec<i64> = vec![5, 8, 10, 12, 15, 18];
-            if !every.contains(&now) {
-                every.push(now);
-                every.sort_unstable();
-            }
-            let items = every.into_iter().map(|n| (n, root.i18n.tv("set.minutesN", &[("n", &n.to_string())]), false)).collect();
-            chips(root, cx, "s-afk-every", items, &now, |r, v, cx| set(r, json!({ "antiAfkMinutes": v }), cx))
-        }),
+    let wait_ctl = {
+        let now = st.get("rejoinWaitSeconds").and_then(Value::as_i64).unwrap_or(0);
+        let mut waits: Vec<i64> = vec![0, 10, 30, 60, 120];
+        if !waits.contains(&now) {
+            waits.push(now);
+            waits.sort_unstable();
+        }
+        let items = waits.into_iter().map(|n| (n, if n == 0 { root.tr("set.rejoinWait0") } else if n % 60 == 0 { root.i18n.tv("set.minutesN", &[("n", &(n / 60).to_string())]) } else { root.i18n.tv("set.seconds", &[("n", &n.to_string())]) }, false)).collect();
+        chips(root, cx, "s-rejoin-wait", items, &now, |r, v, cx| set(r, json!({ "rejoinWaitSeconds": v }), cx))
+    };
+    let every_ctl = {
+        let now = st.get("antiAfkMinutes").and_then(Value::as_i64).unwrap_or(12);
+        let mut every: Vec<i64> = vec![5, 8, 10, 12, 15, 18];
+        if !every.contains(&now) {
+            every.push(now);
+            every.sort_unstable();
+        }
+        let items = every.into_iter().map(|n| (n, root.i18n.tv("set.minutesN", &[("n", &n.to_string())]), false)).collect();
+        chips(root, cx, "s-afk-every", items, &now, |r, v, cx| set(r, json!({ "antiAfkMinutes": v }), cx))
+    };
+    let afk_sw = switch("s-antiafk", flag(st, "antiAfk"), cx, |r, on, cx| set(r, json!({ "antiAfk": on }), cx)).into_any_element();
+    let afk_kids = vec![
+        row_below(root.tr("set.antiAfkEvery"), Some(root.tr("set.antiAfkEveryDesc")), every_ctl),
         row_wide(root.tr("set.antiAfkKey"), Some(root.tr("set.antiAfkKeyDesc")), afk_key(root, st, cx)),
-        row_below(root.tr("set.hop"), Some(root.tr("set.hopDesc")), chips(root, cx, "s-hop", hops, &hop, |r, v, cx| set(r, json!({ "hopAbovePlayers": v }), cx))),
-        row(
-            root.tr("set.daily"),
-            Some(daily_desc),
-            switch("s-daily", daily, cx, |r, on, cx| r.ask("setDailySignInCheck", json!({ "enabled": on }), cx, |_, _| {})),
-        ),
     ];
-    let ram = st.get("ramLimitMb").and_then(Value::as_i64).unwrap_or(0);
-    let rams: Vec<(i64, String, bool)> = vec![
-        (0, root.tr("set.ramLimitOff"), false),
-        (-1, root.tr("set.ramLimitAuto"), false),
-        (512, crate::lang::cur().mb(512.), false),
-        (768, crate::lang::cur().mb(768.), false),
-        (1024, crate::lang::cur().mb(1024.), false),
-        (1536, crate::lang::cur().mb(1536.), false),
-        (2048, crate::lang::cur().mb(2048.), false),
+    let hop_ctl = chips(root, cx, "s-hop", hops, &hop, |r, v, cx| set(r, json!({ "hopAbovePlayers": v }), cx));
+    let rejoin_kids = vec![
+        row_below(root.tr("set.rejoinWait"), Some(root.tr("set.rejoinWaitDesc")), wait_ctl),
+        row(root.tr("set.rejoinSame"), Some(root.tr("set.rejoinSameDesc")), switch("s-rejoin-same", flag(st, "rejoinSameServer"), cx, |r, on, cx| set(r, json!({ "rejoinSameServer": on }), cx))),
+        row_below(root.tr("set.hop"), Some(root.tr("set.hopDesc")), hop_ctl),
     ];
-    let cpu = st.get("cpuLimit").and_then(Value::as_i64).unwrap_or(0);
-    let cpus: Vec<(i64, String, bool)> = [0, 1, 2, 3, 5, 10, 15, 20, 30, 50].into_iter().map(|n| (n, if n == 0 { root.tr("set.ramLimitOff") } else { format!("{n} %") }, false)).collect();
+    let keep = vec![
+        fold(root, cx, "anti-afk", root.tr("set.antiAfk"), Some(root.tr("set.antiAfkDesc")), Some(afk_sw), afk_kids),
+        fold(root, cx, "rejoin", root.tr("set.rejoin"), Some(root.tr("set.rejoinDesc")), Some(rejoin_ctl.into_any_element()), rejoin_kids),
+    ];
     let heavy = st.get("restartAboveMb").and_then(Value::as_i64).unwrap_or(0);
     let mut heavies: Vec<(i64, String, bool)> = vec![(0, root.tr("set.heavyOff"), false)];
     for g in [3, 4, 6, 8] {
         heavies.push((g * 1024, root.i18n.tv("set.heavyAbove", &[("n", &g.to_string())]), false));
     }
-    let cores = st.get("cores").unwrap_or(&Value::Null);
-    let cores_desc = if flag(cores, "hybrid") {
-        root.i18n.tv("set.coresDesc", &[("e", &cores.get("efficient").and_then(Value::as_i64).unwrap_or(0).to_string())])
-    } else {
-        root.tr("set.coresDescOne")
-    };
-    let mut memory = vec![
+    // (The RAM and CPU limits, Save RAM and the played window first are in Roblox settings' Custom, with the rest a
+    // mode sets.)
+    let memory = vec![
         row(root.tr("set.memWarn"), Some(root.tr("set.memWarnDesc")), switch("s-memwarn", flag(st, "memoryWarnings"), cx, |r, on, cx| set(r, json!({ "memoryWarnings": on }), cx))),
-        row(root.tr("set.trim"), Some(root.tr("set.trimDesc")), switch("s-trim", flag(st, "trimBackground"), cx, |r, on, cx| set(r, json!({ "trimBackground": on }), cx))),
+        row_below(root.tr("set.heavy"), Some(root.tr("set.heavyDesc")), chips(root, cx, "s-heavy", heavies, &heavy, |r, v, cx| set(r, json!({ "restartAboveMb": v }), cx))),
         row(root.tr("ram.clean"), Some(root.tr("ram.cleanDesc")), Button::new("s-clean-ram", root.tr("ram.open")).icon("shield").small().on_click(cx.listener(|r, _, w, cx| crate::clean_ram::open(r, w, cx)))),
-        row_below(root.tr("set.ramLimit"), Some(root.tr("set.ramLimitDesc")), chips(root, cx, "s-ram", rams, &ram, |r, v, cx| set(r, json!({ "ramLimitMb": v }), cx))),
-        row_below(root.tr("set.cpuLimit"), Some(root.tr("set.cpuLimitDesc")), chips(root, cx, "s-cpu", cpus, &cpu, |r, v, cx| set(r, json!({ "cpuLimit": v }), cx))),
     ];
-    // Only with a limit picked (RAM or CPU: the switch covers both): with none, there is nothing to put on open windows.
-    if ram != 0 || cpu != 0 {
-        memory.push(row(
-            root.tr("set.ramLimitOpen"),
-            Some(root.tr("set.ramLimitOpenDesc")),
-            switch("s-ram-open", flag(st, "ramLimitOpen"), cx, |r, on, cx| set(r, json!({ "ramLimitOpen": on }), cx)),
-        ));
-    }
-    memory.push(row_below(root.tr("set.heavy"), Some(root.tr("set.heavyDesc")), chips(root, cx, "s-heavy", heavies, &heavy, |r, v, cx| set(r, json!({ "restartAboveMb": v }), cx))));
-    memory.push(row(root.tr("set.cores"), Some(cores_desc), switch("s-cores", flag(st, "splitCores"), cx, |r, on, cx| set(r, json!({ "splitCores": on }), cx))));
-    vec![roblox::config(root, cx), group(Some(root.tr("set.g.keep")), keep), group(Some(root.tr("set.g.memory")), memory)]
+    // (RAM right under the mode, which sets most of what Roblox takes.)
+    vec![roblox::config(root, cx), group(Some("RAM".into()), memory), group(Some(root.tr("set.g.keep")), keep)]
 }
 
 // ───────────────────────── Notifications ─────────────────────────
@@ -1510,11 +1537,6 @@ const NOTIFY_KINDS: [&str; 5] = ["drop", "schedule", "signin", "ram", "launch"];
 fn notify(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let on = root.state.get("notifications").and_then(Value::as_bool).unwrap_or(true);
     let off: Vec<String> = root.state.get("notifyOff").and_then(Value::as_array).map(|l| l.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default();
-    let main = vec![row(
-        root.tr("set.notify"),
-        Some(root.tr("set.notifyDesc")),
-        switch("s-notify", on, cx, |r, on, cx| r.ask("setNotifications", json!({ "enabled": on }), cx, |_, _| {})),
-    )];
     let kinds: Vec<AnyElement> = NOTIFY_KINDS
         .iter()
         .enumerate()
@@ -1532,11 +1554,7 @@ fn notify(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         .collect();
     let phone = root.state.get("phone").unwrap_or(&Value::Null);
     let phone_on = flag(phone, "enabled");
-    let mut phone_rows = vec![row(
-        root.tr("set.phoneOn"),
-        Some(root.tr("set.phoneDesc")),
-        switch("s-phone", phone_on, cx, |r, on, cx| r.ask("setPhone", json!({ "enabled": on }), cx, |_, _| {})),
-    )];
+    let mut phone_rows = Vec::new();
     let topic = s(phone, "topic").to_string();
     if phone_on && !topic.is_empty() {
         let mut desc = root.tr("set.phoneTopicDesc");
@@ -1571,7 +1589,35 @@ fn notify(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             r.ask("resetSkipConfirm", json!({}), cx, |r, _| r.ok(r.tr("set.asksDone")))
         })),
     )];
-    vec![group(None, main), group(Some(root.tr("set.notifyKinds")), kinds), group(Some(root.tr("set.phone")), phone_rows), group(Some(root.tr("set.g.asks")), asks)]
+    let daily = root.state.get("dailySignInCheck").and_then(Value::as_bool).unwrap_or(true);
+    let mut daily_desc = root.tr("set.dailyDesc");
+    if let Some(at) = root.state.get("lastSignInCheck").and_then(Value::as_str).and_then(crate::time::iso_secs) {
+        let local = at + crate::time::utc_offset_secs();
+        let today = (crate::time::now_secs() + crate::time::utc_offset_secs()).div_euclid(86400);
+        let hm = format!("{:02}:{:02}", local.rem_euclid(86400) / 3600, local.rem_euclid(3600) / 60);
+        let when = if local.div_euclid(86400) == today {
+            hm
+        } else {
+            let t = local.div_euclid(86400) * 86400;
+            let date = civil_dm(t / 86400);
+            format!("{date} {hm}")
+        };
+        daily_desc = format!("{daily_desc} {}", root.i18n.tv("set.dailyLast", &[("t", &when)]));
+    }
+    let notify_sw = switch("s-notify", on, cx, |r, on, cx| r.ask("setNotifications", json!({ "enabled": on }), cx, |_, _| {})).into_any_element();
+    let mut main = vec![fold(root, cx, "notify", root.tr("set.notify"), Some(root.tr("set.notifyDesc")), Some(notify_sw), kinds)];
+    let phone_sw = switch("s-phone", phone_on, cx, |r, on, cx| r.ask("setPhone", json!({ "enabled": on }), cx, |_, _| {})).into_any_element();
+    if phone_rows.is_empty() {
+        main.push(row(root.tr("set.phoneOn"), Some(root.tr("set.phoneDesc")), phone_sw));
+    } else {
+        main.push(fold(root, cx, "phone", root.tr("set.phoneOn"), Some(root.tr("set.phoneDesc")), Some(phone_sw), phone_rows));
+    }
+    main.push(row(
+        root.tr("set.daily"),
+        Some(daily_desc),
+        switch("s-daily", daily, cx, |r, on, cx| r.ask("setDailySignInCheck", json!({ "enabled": on }), cx, |_, _| {})),
+    ));
+    vec![group(None, main), group(Some(root.tr("set.g.rare")), asks)]
 }
 
 // ───────────────────────── Security ─────────────────────────
@@ -1640,11 +1686,12 @@ const AUTO_LOCK: [i64; 7] = [0, 5, 10, 15, 30, 60, 120];
 
 fn security(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let mut out = Vec::new();
+    let mut vault_group = None;
     let vaults = root.state.get("vaults").unwrap_or(&Value::Null);
     let open = s(vaults, "open");
     if vaults.get("list").and_then(Value::as_array).is_some_and(|l| l.iter().any(|v| s(v, "id") == open && !open.is_empty())) {
         let name = vaults.get("list").and_then(Value::as_array).and_then(|l| l.iter().find(|v| s(v, "id") == open)).map(|v| s(v, "name").to_string()).unwrap_or_default();
-        out.push(group(
+        vault_group = Some(group(
             Some(root.tr("vault.group")),
             vec![
                 row(root.tr("vault.name"), Some(root.tr("vault.nameDesc")), field(&root.s_vault_name, None).w(px(220.))),
@@ -1680,9 +1727,7 @@ fn security(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             .child(div().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT_2)).child(root.tr(label)))
             .child(field(e, None).w(px(340.)))
     };
-    out.push(group(
-        Some(root.tr("set.master")),
-        vec![
+    let pw_form = vec![
             div()
                 .px(px(ROW_X))
                 .py(px(16.))
@@ -1702,8 +1747,7 @@ fn security(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                         .when_some(root.settings.pw_msg.clone(), |d, (text, bad)| d.child(div().min_w_0().text_size(px(T_S)).text_color(c(if bad { BAD } else { MUTED })).child(text))),
                 )
                 .into_any_element(),
-        ],
-    ));
+        ];
     let lock = st(root).get("autoLockMinutes").and_then(Value::as_i64).unwrap_or(0);
     let words = |n: i64| {
         if n == 0 {
@@ -1717,19 +1761,28 @@ fn security(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         }
     };
     out.push(group(
-        Some(root.tr("set.g.autoLock")),
-        vec![row_below(
-            root.tr("set.autoLock"),
-            Some(root.tr("set.autoLockDesc")),
-            chips(root, cx, "s-autolock", AUTO_LOCK.iter().map(|n| (*n, words(*n), false)).collect(), &lock, |r, v, cx| set(r, json!({ "autoLockMinutes": v }), cx)),
-        )],
+        Some(root.tr("set.g.security")),
+        vec![
+            fold(root, cx, "password", root.tr("set.master"), None, None, pw_form),
+            row_below(
+                root.tr("set.autoLock"),
+                Some(root.tr("set.autoLockDesc")),
+                chips(root, cx, "s-autolock", AUTO_LOCK.iter().map(|n| (*n, words(*n), false)).collect(), &lock, |r, v, cx| set(r, json!({ "autoLockMinutes": v }), cx)),
+            ),
+        ],
     ));
+    let (copies, files) = backup(root, cx);
+    out.push(copies);
+    out.extend(vault_group);
+    out.push(files);
     out
 }
 
 // ───────────────────────── Backup & data ─────────────────────────
 
-fn backup(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
+/// The backups (their folder, the last one, putting one back, accounts from another file), and where Bloxkeep keeps
+/// its files: Security & data's second and last groups.
+fn backup(root: &Root, cx: &mut Context<Root>) -> (Div, Div) {
     let bk = root.state.get("backup").unwrap_or(&Value::Null);
     let folder = s(bk, "folder").to_string();
     let has_folder = !folder.is_empty();
@@ -1790,16 +1843,16 @@ fn backup(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     ));
 
     let asking = root.settings.asking == Some("restore");
-    let mut restore = vec![row(
+    rows.push(row(
         root.tr("bk.restore"),
         Some(root.tr("bk.restoreDesc")),
         Button::new("s-bk-restore", root.tr("bk.restoreBtn")).small().disabled(asking).on_click(cx.listener(|r, _, _, cx| {
             r.settings.asking = Some("restore");
             cx.notify();
         })),
-    )];
+    ));
     if asking {
-        restore.push(
+        rows.push(
             div()
                 .px(px(ROW_X))
                 .py(px(12.))
@@ -1849,12 +1902,12 @@ fn backup(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         ));
     }
     // Accounts from another Bloxkeep file (a backup, or another PC's vault): the ones here stay as they are.
-    let import = vec![row(
+    rows.push(row(
         root.tr("iv.setRow"),
         Some(root.tr("iv.setRowDesc")),
         Button::new("s-import", root.tr("iv.setBtn")).icon("download").small().on_click(cx.listener(|r, _, window, cx| crate::pages::import_vault::open(r, window, cx))),
-    )];
-    vec![group(Some(root.tr("bk.title")), rows), group(Some(root.tr("bk.restore")), restore), group(None, import), group(Some(root.tr("set.data")), data)]
+    ));
+    (group(Some(root.tr("bk.title")), rows), group(Some(root.tr("set.data")), data))
 }
 
 // ───────────────────────── Bloxkeep ─────────────────────────
@@ -1901,15 +1954,14 @@ fn updates(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             .on_click(cx.listener(|r, _, _, cx| r.ask("checkUpdates", json!({}), cx, |_, _| {})))
             .into_any_element()
     };
-    let upd = vec![
-        row(format!("Bloxkeep {}", s(u, "current")), Some(text), ctl),
-        row(root.tr("upd.auto"), None, switch("s-autoupd", flag(u, "auto"), cx, |r, on, cx| r.ask("setAutoUpdate", json!({ "enabled": on }), cx, |_, _| {})).disabled(!supported)),
-        row(
-            root.tr("upd.beta"),
-            Some(root.tr("upd.betaDesc")),
-            switch("s-betaupd", flag(u, "beta"), cx, |r, on, cx| r.ask("setBetaUpdates", json!({ "enabled": on }), cx, |_, _| {})).disabled(!supported),
-        ),
-    ];
+    let auto_sw = switch("s-autoupd", flag(u, "auto"), cx, |r, on, cx| r.ask("setAutoUpdate", json!({ "enabled": on }), cx, |_, _| {})).disabled(!supported).into_any_element();
+    let beta = vec![row(
+        root.tr("upd.beta"),
+        Some(root.tr("upd.betaDesc")),
+        switch("s-betaupd", flag(u, "beta"), cx, |r, on, cx| r.ask("setBetaUpdates", json!({ "enabled": on }), cx, |_, _| {})).disabled(!supported),
+    )];
+    let auto_row = fold(root, cx, "auto-update", root.tr("upd.auto"), None, Some(auto_sw), beta);
+    let upd = vec![row(format!("Bloxkeep {}", s(u, "current")), Some(text), ctl), auto_row];
 
     let keys = root.state.get("hotkeys").unwrap_or(&Value::Null);
     let keys_on = keys.get("on").and_then(Value::as_bool).unwrap_or(true);
@@ -1962,13 +2014,6 @@ fn updates(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             )
             .child(switch("s-hotkeys", keys_on, cx, |r, on, cx| r.ask("setHotkeys", json!({ "enabled": on }), cx, |_, _| {})))
             .into_any_element(),
-        // Hardware acceleration of the windows still drawn as web pages (mini window, macro panel, sign-in browser):
-        // off is the safe rendering WebView2 starts with (UpdatesPage.tsx's s-gpu).
-        row(
-            root.tr("set.gpu"),
-            Some(root.tr("set.gpuDesc")),
-            switch("s-gpu", !flag(&root.state, "safeRendering"), cx, |r, on, cx| r.ask("setRendering", json!({ "gpu": on }), cx, |_, _| {})),
-        ),
     ];
     let link = |id: &'static str, icon_name: &'static str, label: String, cmd: &'static str| {
         Button::new(id, label).icon(icon_name).small().on_click(cx.listener(move |r, _, _, _| r.send(cmd, json!({}))))
@@ -1990,15 +2035,24 @@ fn updates(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         row(root.tr("star.title"), Some(root.tr("star.desc")), link("s-github", "star", root.tr("star.open"), "openGitHub")),
     ];
     let counted = root.state.get("countOnline").and_then(Value::as_bool).unwrap_or(true);
-    let privacy = vec![row(
-        root.tr("onl.title"),
-        Some(root.tr("onl.desc")),
-        switch("s-online", counted, cx, |r, on, cx| r.ask("setCountOnline", json!({ "enabled": on }), cx, |_, _| {})),
-    )];
+    let rare = vec![
+        // Hardware acceleration of the windows still drawn as web pages (mini window, macro panel, sign-in browser):
+        // off is the safe rendering WebView2 starts with (UpdatesPage.tsx's s-gpu).
+        row(
+            root.tr("set.gpu"),
+            Some(root.tr("set.gpuDesc")),
+            switch("s-gpu", !flag(&root.state, "safeRendering"), cx, |r, on, cx| r.ask("setRendering", json!({ "gpu": on }), cx, |_, _| {})),
+        ),
+        row(
+            root.tr("onl.title"),
+            Some(root.tr("onl.desc")),
+            switch("s-online", counted, cx, |r, on, cx| r.ask("setCountOnline", json!({ "enabled": on }), cx, |_, _| {})),
+        ),
+    ];
     vec![
         group(Some(root.tr("upd.title")), upd),
         group(Some(root.tr("set.g.app")), app),
         group(Some(root.tr("fb.group")), help),
-        group(Some(root.tr("onl.group")), privacy),
+        group(Some(root.tr("set.g.rare")), rare),
     ]
 }

@@ -48,9 +48,13 @@ pub async fn run(c: &mut Checks, dir: &str) {
     c.check("light AFK takes a lower limit", cfg(&rgs::for_launch(&shared, true, false, 15)) == Some((15, 1, 0)), cfg(&rgs::for_launch(&shared, true, false, 15)));
     c.check(
         "…but stays light under a higher one",
-        rgs::for_launch(&shared, true, false, 240).is_some_and(|c| c.fps == 30),
+        rgs::for_launch(&shared, true, false, 240).is_some_and(|c| c.fps == 20),
         cfg(&rgs::for_launch(&shared, true, false, 240)),
     );
+    let low = RobloxConfig { mode: "all".into(), graphics: 3, fps: 15, volume: 20, ..Default::default() };
+    c.check("light AFK takes the shared setup's lower limit too", rgs::for_launch(&low, true, false, 0).is_some_and(|c| c.fps == 15), cfg(&rgs::for_launch(&low, true, false, 0)));
+    let low_off = RobloxConfig { mode: "off".into(), ..low.clone() };
+    c.check("…not one of a setup that is off", rgs::for_launch(&low_off, true, false, 0).is_some_and(|c| c.fps == 20), cfg(&rgs::for_launch(&low_off, true, false, 0)));
     let uses_both = uses_both.expect("a setup");
     let alone = alone.expect("a setup");
 
@@ -116,7 +120,7 @@ pub async fn run(c: &mut Checks, dir: &str) {
     );
     c.check(
         "…and Light AFK's values aren't taken for the person's own",
-        !rebased && !rgs::has_baseline() && fps() == "30",
+        !rebased && !rgs::has_baseline() && fps() == "20",
         format!("{rebased} {}", fps()),
     );
     std::fs::write(&file, XML).unwrap(); // the person sets their own again in Roblox

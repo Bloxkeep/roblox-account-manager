@@ -676,10 +676,12 @@ fn player_badge(m: &crate::media::Playing, size: f32) -> Div {
     div().absolute().right(px(4.)).bottom(px(4.)).size(px(size)).rounded_full().bg(ca(SHADE, 0.62)).flex().items_center().justify_center().child(icon(m.player.icon(), (size * 0.6).round(), c(m.player.colour())))
 }
 
-/// The card's ground and edge with a song on it, Spotify's or a chosen file's: its picture's own colour; the plain
-/// `ground` while the song has no picture.
-fn song_tones(pic: Option<&str>, ground: u32, cx: &mut Context<Root>) -> (Hsla, Hsla) {
-    match pic.and_then(|p| images::tone(p, cx)) {
+/// The card's ground and edge with a song on it, Spotify's or a chosen file's: its picture's own colour; `grey`'s
+/// (the music app's colour) when the picture has loaded with none (a black and white cover); the plain `ground` while
+/// the song has no picture.
+fn song_tones(pic: Option<&str>, grey: Option<u32>, ground: u32, cx: &mut Context<Root>) -> (Hsla, Hsla) {
+    let tone = pic.and_then(|p| images::tone(p, cx).or_else(|| grey.filter(|_| images::pic(p, cx).is_some())));
+    match tone {
         // (The picture's hue kept, dark and still coloured: mixed into the charcoal an orange cover went brown.)
         Some(tone) => {
             let t = c(tone);
@@ -739,7 +741,7 @@ pub(super) fn card(root: &Root, user: i64, w: f32, ground: u32, art: Option<Stri
         if let (Some(m), Some([back, play, next])) = (&root.music(cx), root.music_keys(["pf-sp-back", "pf-sp-play", "pf-sp-next"], cx)) {
             // (The app's mark stands at the right of the name, where the card had room, not over the picture.)
             let pic = div().absolute().inset_0().children(spotify_cover(m, PIC, cx)).into_any_element();
-            let (ground, edge) = song_tones(m.cover.as_deref(), ground, cx);
+            let (ground, edge) = song_tones(m.cover.as_deref(), Some(m.player.colour()), ground, cx);
             // (Where the song is, as a file's song has it: Spotify tells Windows, and takes a new place from it.)
             let bar = m.at().map(|(at, length)| bar_under("sp", at, Some(length), spotify_zones(cx)));
             // (Another song: its picture, name and line come in anew, rising into place, kit::line_in.)
@@ -764,7 +766,7 @@ pub(super) fn card(root: &Root, user: i64, w: f32, ground: u32, art: Option<Stri
     let at = track.map_or(0, |t| t.position);
     let title = Path::new(&file).file_stem().and_then(|s| s.to_str()).unwrap_or_default().to_string();
     let pic_url = cover(&file).or(art);
-    let (ground, edge) = song_tones(pic_url.as_deref(), ground, cx);
+    let (ground, edge) = song_tones(pic_url.as_deref(), None, ground, cx);
     let pic = pic_url.and_then(|u| images::pic_pair(&u, PIC, PIC, cx))
         .map(|(src, key)| div().absolute().inset_0().child(fade_in(img(src).size_full().rounded(px(R_L)).object_fit(ObjectFit::Cover), &key)).into_any_element())
         .unwrap_or_else(|| div().into_any_element());
@@ -794,7 +796,7 @@ pub(super) fn row(root: &Root, user: i64, inner: f32, art: Option<String>, cx: &
     let shell = div().w_full().rounded(px(R_HERO)).bg(c(RAISED)).border_1().border_color(c(LINE)).p(px(18.)).pr(px(20.)).flex().items_center().gap(px(12.));
     let Some(file) = path(Kind::Song, user) else {
         if let (Some(m), Some([back, play, next])) = (&root.music(cx), root.music_keys(["pf-sp-back", "pf-sp-play", "pf-sp-next"], cx)) {
-            let (ground, edge) = song_tones(m.cover.as_deref(), RAISED, cx);
+            let (ground, edge) = song_tones(m.cover.as_deref(), Some(m.player.colour()), RAISED, cx);
             let bar = m.at().map(|(at, length)| bar_between("sp", at, Some(length), spotify_zones(cx)));
             let (under, beside) = if inner >= 760. { (None, bar) } else { (bar, None) };
             return shell.bg(ground).border_color(edge)
@@ -826,7 +828,7 @@ pub(super) fn row(root: &Root, user: i64, inner: f32, art: Option<String>, cx: &
     let at = track.map_or(0, |t| t.position);
     let title = Path::new(&file).file_stem().and_then(|s| s.to_str()).unwrap_or_default().to_string();
     let pic_url = cover(&file).or(art);
-    let (ground, edge) = song_tones(pic_url.as_deref(), RAISED, cx);
+    let (ground, edge) = song_tones(pic_url.as_deref(), None, RAISED, cx);
     let pic = pic_url.and_then(|u| images::pic_pair(&u, PIC, PIC, cx));
     let wide = inner >= 760.;
     let zones = file_zones(user, &file, cx);

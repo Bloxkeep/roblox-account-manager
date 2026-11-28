@@ -719,6 +719,7 @@ impl App {
             self.note_client_memory(&players);
             self.emit_metrics(&players, &windows, &memory)?;
             self.guard_resources(&players, &memory, now);
+            self.guard_sound(&players, now);
             self.limit_resting_ram(&players, &windows, now, &memory);
             self.empty_resting_ram_once(&players, &windows, now);
             Ok(())

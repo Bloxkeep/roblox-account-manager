@@ -14,7 +14,7 @@ use serde_json::{Value, json};
 use super::App;
 use super::backup::same_path;
 use super::controller::{JsonKind, bool_of, error_text, has, str_of};
-use super::presets::{AFK_PROFILE, MAX_PRESET_NAME, MAX_PRESETS, PRESET_SERVERS, RESTART_CHOICES};
+use super::presets::{MAX_PRESET_NAME, MAX_PRESETS, PRESET_SERVERS, RESTART_CHOICES};
 use super::other_import::RamKind;
 use super::settings::open_file_dialog;
 use crate::core::base::{Fail, Guid, Res, Stamp, new_guid};
@@ -217,7 +217,7 @@ pub fn merge_import(target: &mut VaultData, source: &VaultData, keys: &HashSet<i
             copy.account_ids = ids.clone();
             copy.server = if PRESET_SERVERS.contains(&p.server.as_str()) { p.server.clone() } else { "any".into() };
             copy.delay_seconds = p.delay_seconds.map(|delay| delay.clamp(0, 120));
-            copy.profile = if p.profile == AFK_PROFILE { AFK_PROFILE.into() } else { String::new() };
+            copy.profile = String::new();
             copy.on_join = super::presets::on_join_value(&p.on_join).to_string();
             copy.restart_hours =
                 if (!p.place_input.is_empty() || copy.server == "follow") && RESTART_CHOICES.contains(&p.restart_hours) { p.restart_hours } else { 0 };

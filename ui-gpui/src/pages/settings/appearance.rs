@@ -383,13 +383,14 @@ pub fn appearance(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         Some(root.tr("set.hideNamesDesc")),
         switch("s-hidenames", hide, cx, |r, on, cx| r.ask("setHideNames", json!({ "enabled": on }), cx, |_, _| {})),
     ));
+    let mut effects = Vec::new();
     // Only where there is a picture to see through: glass on everything (the panels), or on the blocks alone.
     if crate::theme::frosted() {
         // (As the theme reads it: on with Sunset until the person sets it.)
         let on = crate::theme::glass_blocks_asked();
         // (On, and the picture too light or too dark for the words outside the blocks: said, as nothing changes.)
         let held = on && !crate::theme::glass_blocks();
-        more.push(row(
+        effects.push(row(
             root.tr("set.glassBlocks"),
             Some(root.tr(if held { "set.glassBlocksHeld" } else { "set.glassBlocksDesc" })),
             switch("s-glass-blocks", on, cx, |_, on, cx| {
@@ -399,7 +400,7 @@ pub fn appearance(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         ));
     }
     let still = crate::kit::still_behind();
-    more.push(row(
+    effects.push(row(
         root.tr("set.stillBehind"),
         Some(root.tr("set.stillBehindDesc")),
         switch("s-still", still, cx, |_, on, cx| {
@@ -407,6 +408,7 @@ pub fn appearance(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             cx.notify();
         }),
     ));
+    more.push(super::fold(root, cx, "effects", root.tr("set.effects"), Some(root.tr("set.effectsDesc")), None, effects));
     vec![div().flex().flex_col().gap(px(8.)).child(theme_head).child(super::rows_card(rows)), group(None, more)]
 }
 

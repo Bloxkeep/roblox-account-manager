@@ -1,5 +1,63 @@
 [
   {
+    "version": "1.1.8",
+    "date": "2026-11-28",
+    "new": {
+      "en": [
+        "A window asks to update when a new version is ready.",
+        "Rejoin the same server: a window that drops goes back to the server it was in.",
+        "Mute background windows: only the Roblox window you play makes sound.",
+        "Limited deals in the Marketplace: Limiteds selling below their RAP or Value.",
+        "Several accounts can join a community at once.",
+        "Private servers show their owner, how full they are and which of your accounts can join; the account you are using comes first.",
+        "Search private servers, and clear the recent servers list."
+      ],
+      "vi": [
+        "Có cửa sổ hỏi cập nhật khi bản mới sẵn sàng.",
+        "Vào lại đúng server cũ: cửa sổ bị văng sẽ vào lại server vừa chơi.",
+        "Tắt tiếng cửa sổ nền: chỉ cửa sổ Roblox bạn đang chơi có tiếng.",
+        "Limited giá hời trong Cửa hàng: các Limited đang bán dưới RAP hoặc Value.",
+        "Nhiều tài khoản có thể cùng tham gia một cộng đồng.",
+        "Server riêng hiện chủ server, số người trong đó và tài khoản nào vào được; tài khoản bạn đang dùng hiện lên đầu.",
+        "Tìm server riêng, và xóa danh sách server gần đây."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Settings are grouped more clearly: Roblox windows, Effects, Security and Less used.",
+        "The song card takes the music app's colour when the album cover is black and white.",
+        "Activity in Statistics is coloured by what happened.",
+        "A game opened from the Marketplace or a profile goes Back there.",
+        "Presets no longer have their own Light AFK: Settings' Roblox mode covers it.",
+        "Animations use less CPU."
+      ],
+      "vi": [
+        "Cài đặt được chia nhóm rõ hơn: Cửa sổ Roblox, Hiệu ứng, Bảo mật và Ít dùng.",
+        "Thẻ bài hát lấy màu của app nhạc khi ảnh bìa đen trắng.",
+        "Hoạt động trong Thống kê có màu theo việc đã xảy ra.",
+        "Game mở từ Cửa hàng hoặc hồ sơ bấm Quay lại sẽ về đúng chỗ đó.",
+        "Preset không còn AFK nhẹ riêng: chế độ Roblox trong Cài đặt đã lo việc này.",
+        "Hiệu ứng chuyển động tốn ít CPU hơn."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Joining a community said \"Roblox requires verification\"; the check now opens in Bloxkeep.",
+        "A preset card on Home could show no picture.",
+        "A profile's game hours counted every open window as more play time.",
+        "The ⋮ menu on an account could close and open again on a click.",
+        "Messaging an account with chat turned off now says why it can't."
+      ],
+      "vi": [
+        "Tham gia cộng đồng báo \"Roblox yêu cầu xác minh\"; giờ bước xác minh mở ngay trong Bloxkeep.",
+        "Thẻ preset ở Trang chủ có lúc không có ảnh.",
+        "Số giờ chơi trên hồ sơ cộng dồn mỗi cửa sổ đang mở thành thêm giờ chơi.",
+        "Menu ⋮ của tài khoản có lúc bấm vào thì đóng rồi mở lại.",
+        "Nhắn tin cho tài khoản đã tắt chat giờ báo rõ lý do."
+      ]
+    }
+  },
+  {
     "version": "1.1.7",
     "date": "2026-11-27",
     "improved": {

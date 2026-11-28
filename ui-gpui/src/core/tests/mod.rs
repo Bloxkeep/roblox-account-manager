@@ -17,6 +17,9 @@ pub mod restart;
 pub mod rejoin;
 pub mod rejoin_place;
 pub mod window_rules;
+pub mod sound;
+pub mod same_server;
+pub mod limited_deals;
 pub mod window_loan;
 pub mod window_plan;
 pub mod close_plan;
@@ -170,7 +173,7 @@ pub async fn unlock(app: &Rc<App>) {
 }
 
 /// Every suite, in Program.cs's order, with whether it needs the network (left out unless asked by name).
-pub const SUITES: &[(&str, bool)] = &[("afk", false), ("restart", false), ("rejoin", false), ("follow", false), ("private-servers", false), ("claims", false), ("presets", false), ("window", false), ("arrange", false), ("watch", false), ("feedback", false), ("online", false), ("remote", false), ("latest", false), ("roblox-update", false), ("game-target", false), ("played-games", false), ("game-accounts", false), ("discord", false), ("website", false), ("dialog", false), ("tray", false), ("autolock", false), ("vault-save", false), ("main-browser", false), ("cores", false), ("robux", false), ("saved-servers", false), ("discord-presence", false), ("quiet-fixes", false), ("lock-update", false), ("custom-theme", false), ("vaults", false), ("data-folder", false), ("rejoin-with", false), ("rejoin-place", false), ("window-rules", false), ("window-plan", false), ("close-plan", false), ("roblox-words", false), ("words", false), ("bot-check", false), ("server-hop", false), ("launch-choice", false), ("hide-windows", false), ("ram-limit", false), ("flags", false), ("fps-cap", false), ("roblox-usage", false), ("game-page", false), ("window-shot", false), ("monitor", false), ("foreign-vault", false), ("window-icons", false), ("taskbar-groups", false), ("home-session", false), ("sign-ins", false), ("tick-time", false), ("schedule", false), ("play-losses", false), ("play-heat", false), ("macros", false), ("input-turn", false), ("server-pick", false), ("adopt", false), ("delete-accounts", false), ("shutdown", false), ("tick", false), ("totp", false), ("lock-wall", false), ("vault-crash", false), ("window-loan", false), ("stats-icons", true), ("watch-online", true)];
+pub const SUITES: &[(&str, bool)] = &[("afk", false), ("restart", false), ("rejoin", false), ("follow", false), ("private-servers", false), ("claims", false), ("presets", false), ("window", false), ("arrange", false), ("watch", false), ("feedback", false), ("online", false), ("remote", false), ("latest", false), ("roblox-update", false), ("game-target", false), ("played-games", false), ("game-accounts", false), ("discord", false), ("website", false), ("dialog", false), ("tray", false), ("autolock", false), ("vault-save", false), ("main-browser", false), ("cores", false), ("robux", false), ("saved-servers", false), ("discord-presence", false), ("quiet-fixes", false), ("lock-update", false), ("custom-theme", false), ("vaults", false), ("data-folder", false), ("rejoin-with", false), ("rejoin-place", false), ("window-rules", false), ("window-plan", false), ("close-plan", false), ("roblox-words", false), ("words", false), ("bot-check", false), ("server-hop", false), ("launch-choice", false), ("hide-windows", false), ("ram-limit", false), ("flags", false), ("fps-cap", false), ("roblox-usage", false), ("game-page", false), ("window-shot", false), ("monitor", false), ("foreign-vault", false), ("window-icons", false), ("taskbar-groups", false), ("home-session", false), ("sign-ins", false), ("tick-time", false), ("schedule", false), ("play-losses", false), ("play-heat", false), ("macros", false), ("input-turn", false), ("server-pick", false), ("adopt", false), ("delete-accounts", false), ("shutdown", false), ("tick", false), ("totp", false), ("lock-wall", false), ("vault-crash", false), ("window-loan", false), ("sound", false), ("same-server", false), ("stats-icons", true), ("watch-online", true), ("limited-deals", true)];
 
 /// One suite in this process, on the core's thread: the exit code is the count of failures.
 pub fn run_one(name: &str, dir: &str) -> i32 {
@@ -247,6 +250,9 @@ async fn run_suite(name: &str, c: &mut Checks, dir: &str) {
         "rejoin-with" => rejoin_with::run(c, dir).await,
         "rejoin-place" => rejoin_place::run(c, dir).await,
         "window-rules" => window_rules::run(c, dir).await,
+        "sound" => sound::run(c, dir).await,
+        "same-server" => same_server::run(c, dir).await,
+        "limited-deals" => limited_deals::run(c, dir).await,
         "window-loan" => window_loan::run(c, dir).await,
         "window-plan" => window_plan::run(c, dir).await,
         "close-plan" => close_plan::run(c, dir).await,

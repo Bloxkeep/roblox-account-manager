@@ -1,6 +1,7 @@
 use serde_json::{Value, json};
 
-use super::{header, parse_json, realm, refused, request, send, send_with_csrf};
+use super::login::{decode_metadata, safe_name};
+use super::{HttpRequest, JoinChallenge, add_challenge_headers, header, parse_json, raw_text, realm, refused, request, send, send_with_csrf};
 use crate::core::{base::{Cancel, Fail, Res}, l};
 
 const HOST: &str = "https://groups.roblox.com";
@@ -69,7 +70,9 @@ pub fn read_group(group: i64, viewer: Option<(i64, &str)>, ct: &Cancel) -> Res<V
     }))
 }
 
-pub fn change_group(group: i64, user: i64, cookie: &str, join: bool, ct: &Cancel) -> Res<Value> {
+/// Joins or leaves; when Roblox holds the change for a check (rblx-challenge-* headers, as it does a friend request),
+/// the check comes back to be solved, and `answered` carries it solved when the change is asked again.
+pub fn change_group(group: i64, user: i64, cookie: &str, join: bool, answered: Option<&JoinChallenge>, ct: &Cancel) -> Res<(Value, Option<JoinChallenge>)> {
     // (Asked fresh, and nothing kept from before the change: membership is what changes.)
     KEPT.lock().unwrap_or_else(|e| e.into_inner()).clear();
     let mut details = read_group(group, Some((user, cookie)), ct)?;
@@ -78,16 +81,28 @@ pub fn change_group(group: i64, user: i64, cookie: &str, join: bool, ct: &Cancel
         return Err(Fail::user(l::t("Transfer community ownership before leaving.")));
     }
     if (join && details["state"] != "join") || (!join && details["state"] != "member") {
-        return Ok(details);
+        return Ok((details, None));
     }
     let members = format!("{HOST}/v1/groups/{group}/users");
-    let response = if join {
-        send_with_csrf("POST", &members, cookie, Some("{}"), None, ct, realm::GLOBAL)?
-    } else {
-        send_with_csrf("DELETE", &format!("{members}/{user}"), cookie, None, None, ct, realm::GLOBAL)?
+    let configure = |req: &mut HttpRequest| {
+        if let Some(answered) = answered {
+            add_challenge_headers(req, answered);
+        }
     };
-    if header(&response, "rblx-challenge-id").is_some_and(|id| !id.is_empty()) {
-        return Err(Fail::user(l::t("Roblox requires verification to change this membership.")));
+    let configure = answered.map(|_| &configure as &dyn Fn(&mut HttpRequest));
+    let response = if join {
+        send_with_csrf("POST", &members, cookie, Some("{}"), configure, ct, realm::GLOBAL)?
+    } else {
+        send_with_csrf("DELETE", &format!("{members}/{user}"), cookie, None, configure, ct, realm::GLOBAL)?
+    };
+    if let Some(id) = header(&response, "rblx-challenge-id").filter(|id| !id.is_empty()) {
+        let kind = header(&response, "rblx-challenge-type").unwrap_or_default();
+        crate::core::log::note(&format!("Community {}: HTTP {}, held for a check ({}){}.", if join { "join" } else { "leave" }, response.status, safe_name(&kind), if answered.is_some() { " again after one was solved" } else { "" }));
+        if answered.is_some() {
+            return Err(Fail::user(l::t("Roblox requires verification to change this membership.")));
+        }
+        let meta = decode_metadata(header(&response, "rblx-challenge-metadata").as_deref());
+        return Ok((details, Some(JoinChallenge { id, r#type: kind, metadata_json: meta.as_ref().map(raw_text).unwrap_or_else(|| "{}".into()) })));
     }
     if !response.is_success() {
         return Err(refused("Roblox community", response.status, &response.text(), response.status == 401));
@@ -100,5 +115,5 @@ pub fn change_group(group: i64, user: i64, cookie: &str, join: bool, ct: &Cancel
     } else {
         "member"
     });
-    Ok(details)
+    Ok((details, None))
 }

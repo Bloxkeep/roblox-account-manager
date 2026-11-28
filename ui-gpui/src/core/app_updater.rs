@@ -55,6 +55,10 @@ pub(crate) struct State {
     limited: bool,
     not_found_logged: bool,
     checked_at: Option<Stamp>,
+    /// The one ready was found in the packages folder (put there by hand, or left from before), not downloaded now.
+    staged: bool,
+    /// The packages folder's files (name, size) at the last look, so it is read again only when they change.
+    staged_seen: Option<Vec<(String, u64)>>,
 }
 
 pub struct AppUpdater {
@@ -101,6 +105,8 @@ impl AppUpdater {
                 limited: false,
                 not_found_logged: false,
                 checked_at: None,
+                staged: false,
+                staged_seen: None,
             }),
             done: Condvar::new(),
             on_changed: Mutex::new(None),
@@ -112,6 +118,7 @@ impl AppUpdater {
                 s.new_version = Some(pending.Version.clone());
                 s.ready = Some(pending);
                 s.status = "ready".into();
+                s.staged = true;
             }
             if updater.drop_unwanted_beta() {
                 guard(&updater.state).status = "idle".into();
@@ -243,7 +250,11 @@ impl AppUpdater {
                 manager.download_updates(&update, Some(tx))
             });
             downloaded?;
-            guard(&self.state).ready = Some(update.TargetFullRelease.clone());
+            {
+                let mut s = guard(&self.state);
+                s.ready = Some(update.TargetFullRelease.clone());
+                s.staged = false;
+            }
             log::note(&format!("Update: {version} downloaded, ready to install."));
             // Get beta versions turned off during the download: not this one.
             let status = if self.drop_unwanted_beta() { "idle" } else { "ready" };
@@ -257,17 +268,67 @@ impl AppUpdater {
             let not_found = text.contains("404");
             {
                 let mut s = guard(&self.state);
-                // A private (or renamed) repository answers 404 every time: that says nothing new after the first one.
-                if !not_found || !s.not_found_logged {
+                let lower = text.to_lowercase();
+                s.limited = text.contains("hourly limit");
+                let offline = !lower.contains("status") && (lower.contains("dns") || lower.contains("connect") || lower.contains("timed out") || lower.contains("network") || lower.contains("io error"));
+                s.offline = Some(offline);
+                if offline {
+                    // No internet (a PC just woken from sleep checks before its network is back): said as the other
+                    // parts say it, not as an error with its address.
+                    log::note(&format!(
+                        "Update: check failed (network error ({})); tried again at the next check.",
+                        crate::core::app::sign_ins::network_reason(&text)
+                    ));
+                } else if !not_found || !s.not_found_logged {
+                    // A private (or renamed) repository answers 404 every time: that says nothing new after the first one.
                     log::write(&e);
                 }
                 s.not_found_logged |= not_found;
-                let lower = text.to_lowercase();
-                s.limited = text.contains("hourly limit");
-                s.offline = Some(!lower.contains("status") && (lower.contains("dns") || lower.contains("connect") || lower.contains("timed out") || lower.contains("network") || lower.contains("io error")));
             }
             self.set("error");
         }
+    }
+
+    /// A newer package put into the packages folder while Bloxkeep runs (a test build copied there): taken as ready,
+    /// as one found there at the start is, without a restart first. Cheap when nothing changed (one folder listing).
+    pub fn notice_staged(&self) {
+        let Some(manager) = &self.manager else { return };
+        let Ok(locator) = velopack::locator::auto_locate_app_manifest(velopack::locator::LocationContext::FromCurrentExe) else { return };
+        let dir = locator.get_packages_dir();
+        let Ok(entries) = std::fs::read_dir(&dir) else { return };
+        let mut files: Vec<(String, u64)> = entries
+            .flatten()
+            .filter_map(|e| {
+                let name = e.file_name().to_string_lossy().into_owned();
+                name.to_ascii_lowercase().ends_with(".nupkg").then(|| (name, e.metadata().map_or(0, |m| m.len())))
+            })
+            .collect();
+        files.sort();
+        {
+            let mut s = guard(&self.state);
+            if s.running || s.staged_seen.as_ref() == Some(&files) {
+                return;
+            }
+            // (The first look only notes what is there: what was there at the start was read by `new`.)
+            let first = s.staged_seen.is_none();
+            s.staged_seen = Some(files);
+            if first {
+                return;
+            }
+        }
+        let Some(pending) = manager.get_update_pending_restart() else { return };
+        {
+            let mut s = guard(&self.state);
+            if s.ready.as_ref().is_some_and(|r| r.Version == pending.Version) {
+                return;
+            }
+            log::note(&format!("Update: {} found in the packages folder, ready to install.", pending.Version));
+            s.new_version = Some(pending.Version.clone());
+            s.ready = Some(pending);
+            s.staged = true;
+        }
+        let status = if self.drop_unwanted_beta() { "idle" } else { "ready" };
+        self.set(status);
     }
 
     fn on_progress(&self, percent: i32) {
@@ -356,9 +417,9 @@ impl AppUpdater {
     }
 
     pub fn dto(&self) -> Value {
-        let (status, new_version, progress, checked_at) = {
+        let (status, new_version, progress, checked_at, staged) = {
             let s = guard(&self.state);
-            (s.status.clone(), s.new_version.clone(), s.progress, s.checked_at)
+            (s.status.clone(), s.new_version.clone(), s.progress, s.checked_at, s.staged)
         };
         let (check_updates, beta_updates) = {
             let p = prefs::lock();
@@ -374,6 +435,8 @@ impl AppUpdater {
             // A quiet fix (or a beta copy's next beta) on its way: no "Restart to update" while automatic updates install it by themselves.
             "quiet": whats_new::is_quiet_update(new_version.as_deref(), Some(&self.current_version)) && check_updates,
             "progress": progress,
+            // Found in the packages folder, not downloaded (a test build put there): offered even when quiet.
+            "staged": staged && status == "ready",
             "error": self.error(),
             "auto": check_updates,
             "beta": beta_updates,

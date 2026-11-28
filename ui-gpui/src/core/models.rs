@@ -179,6 +179,8 @@ pub struct AppSettings {
     pub auto_lock_minutes: i32,
     pub memory_warnings: bool,
     pub trim_background: bool,
+    /// Only the Roblox window played makes sound; the others are muted (roblox_sound.rs, MemoryState::guard_sound).
+    pub mute_background: bool,
     /// Clean RAM's areas (clean_ram.rs, one bit each).
     pub clean_areas: u32,
     /// Auto clean: when the PC's RAM use (%) goes above this; 0 off.
@@ -223,6 +225,9 @@ pub struct AppSettings {
     /// every drop is given). A game that moves between servers can show a disconnect for a moment and get into the
     /// next server by itself; with a wait, a window back in a game by then is left alone.
     pub rejoin_wait_seconds: i32,
+    /// A window dropped from a public server rejoins that server first; when it has ended or is full, the game (any
+    /// server). On by default. See rejoin.rs `same_server`.
+    pub rejoin_same_server: bool,
     pub roblox_config: RobloxConfig,
     pub recent_games: Vec<RecentGame>,
     pub pinned_games: Vec<RecentGame>,
@@ -269,6 +274,7 @@ impl Default for AppSettings {
             auto_lock_minutes: 0,
             memory_warnings: true,
             trim_background: false,
+            mute_background: false,
             clean_areas: crate::clean_ram::DEFAULT_AREAS,
             auto_clean_at: 0,
             auto_clean_every: 0,
@@ -285,6 +291,7 @@ impl Default for AppSettings {
             anti_afk_key: "F15".into(),
             hop_above_players: 0,
             rejoin_wait_seconds: 0,
+            rejoin_same_server: true,
             roblox_config: RobloxConfig::default(),
             recent_games: Vec::new(),
             pinned_games: Vec::new(),
